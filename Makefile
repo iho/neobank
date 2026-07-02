@@ -1,4 +1,4 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog
+.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs
 
 OAPI_CODEGEN ?= oapi-codegen
 SQLC ?= sqlc
@@ -31,6 +31,10 @@ oapi:
 	cd services/card && $(OAPI_CODEGEN) -config api/oapi-codegen.yaml api/openapi.yaml
 
 generate: proto sqlc oapi
+
+grpc-mtls-certs:
+	chmod +x deployments/grpc-mtls/gen-certs.sh
+	./deployments/grpc-mtls/gen-certs.sh
 
 build: generate
 	go build -o bin/user ./services/user/cmd/server

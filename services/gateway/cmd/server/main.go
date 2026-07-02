@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/iho/neobank/pkg/auth"
+	"github.com/iho/neobank/pkg/grpcutil"
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
 	"github.com/iho/neobank/pkg/otel"
@@ -52,6 +53,9 @@ func main() {
 	}
 
 	jwtAuth := auth.NewJWT(cfg.JWTSecret)
+	if grpcutil.MTLSEnabled() {
+		logger.Info("grpc mTLS enabled for backend clients")
+	}
 
 	users, err := client.NewUserClient(ctx, client.Config{Addr: cfg.UserGRPCAddr})
 	if err != nil {

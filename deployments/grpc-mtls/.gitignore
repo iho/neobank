@@ -1,0 +1,7 @@
+*.key
+*.csr
+*.srl
+*.cnf
+ca.crt
+server.crt
+client.crt

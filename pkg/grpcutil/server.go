@@ -9,13 +9,21 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// NewServer builds a gRPC server with correlation propagation and optional OTel stats.
-func NewServer() *grpc.Server {
+// NewServer builds a gRPC server with correlation propagation, optional mTLS, and OTel stats.
+func NewServer() (*grpc.Server, error) {
 	opts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(serverCorrelationInterceptor),
 	}
+	tlsCfg := LoadTLSConfigFromEnv()
+	if tlsCfg.Enabled {
+		creds, err := tlsCfg.ServerCredentials()
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, grpc.Creds(creds))
+	}
 	opts = append(opts, otel.GRPCServerOptions()...)
-	return grpc.NewServer(opts...)
+	return grpc.NewServer(opts...), nil
 }
 
 func serverCorrelationInterceptor(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {

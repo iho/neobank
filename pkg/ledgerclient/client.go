@@ -42,7 +42,7 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 		cfg.Addr = "localhost:50051"
 	}
 
-	conn, err := grpcutil.Dial(ctx, cfg.Addr)
+	conn, err := grpcutil.DialInsecure(ctx, cfg.Addr)
 	if err != nil {
 		return nil, fmt.Errorf("dial ledger: %w", err)
 	}

@@ -95,7 +95,14 @@ func main() {
 	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("notification")))
 	genapi.HandlerFromMux(strictHandler, r)
 
-	grpcServer := grpcutil.NewServer()
+	grpcServer, err := grpcutil.NewServer()
+	if err != nil {
+		logger.Error("grpc server init failed", "error", err)
+		os.Exit(1)
+	}
+	if grpcutil.MTLSEnabled() {
+		logger.Info("grpc mTLS enabled")
+	}
 	neobankv1.RegisterNotificationServiceServer(grpcServer, grpcadapter.NewServer(strictServer))
 	grpcLis, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.GRPCPort))
 	if err != nil {

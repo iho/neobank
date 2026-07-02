@@ -199,6 +199,21 @@ docker compose -f docker-compose.full.yml up -d
 
 Neobank uses `LEDGER_GRPC_ADDR=localhost:50051`. See [services/ledger/README.md](services/ledger/README.md).
 
+**Internal gRPC mTLS** (optional; off by default for local dev):
+
+```bash
+make grpc-mtls-certs   # then export:
+export GRPC_MTLS_ENABLED=true
+export GRPC_TLS_CA_FILE=$PWD/deployments/grpc-mtls/ca.crt
+export GRPC_TLS_SERVER_CERT_FILE=$PWD/deployments/grpc-mtls/server.crt
+export GRPC_TLS_SERVER_KEY_FILE=$PWD/deployments/grpc-mtls/server.key
+export GRPC_TLS_CLIENT_CERT_FILE=$PWD/deployments/grpc-mtls/client.crt
+export GRPC_TLS_CLIENT_KEY_FILE=$PWD/deployments/grpc-mtls/client.key
+export GRPC_TLS_SERVER_NAME=localhost
+```
+
+Servers require client certificates; clients verify the server against the CA. goledger stays on plaintext via `grpcutil.DialInsecure` until it supports mTLS.
+
 ### 3. Generate, migrate, build
 
 ```bash
@@ -424,6 +439,13 @@ Contract source: [pkg/events/catalog.go](pkg/events/catalog.go). Export with `ma
 | `NOTIFICATION_GRPC_ADDR` | `localhost:50055` | gateway |
 | `USER_SERVICE_URL` | `http://localhost:8081` | payment/card wallet projection ingest |
 | `GRPC_PORT` | `50052`–`50055` | user/payment/card/notification gRPC listeners |
+| `GRPC_MTLS_ENABLED` | `false` | all gRPC servers/clients (set `true` for mTLS) |
+| `GRPC_TLS_CA_FILE` | _(empty)_ | CA bundle to verify peer certs |
+| `GRPC_TLS_SERVER_CERT_FILE` | _(empty)_ | server listener certificate (PEM) |
+| `GRPC_TLS_SERVER_KEY_FILE` | _(empty)_ | server listener private key (PEM) |
+| `GRPC_TLS_CLIENT_CERT_FILE` | _(empty)_ | client dial certificate (PEM) |
+| `GRPC_TLS_CLIENT_KEY_FILE` | _(empty)_ | client dial private key (PEM) |
+| `GRPC_TLS_SERVER_NAME` | _(empty)_ | SNI override for client cert verification (e.g. `localhost`) |
 | `PAYMENT_SERVICE_URL` | `http://localhost:8082` | gateway |
 | `CARD_SERVICE_URL` | `http://localhost:8084` | gateway |
 | `NOTIFICATION_SERVICE_URL` | `http://localhost:8083` | gateway, outbox |
@@ -450,6 +472,7 @@ make up / make down    # docker-compose infra
 make migrate           # golang-migrate all services
 make migrate-user      # … payment, notification, card
 make vault-init        # local Vault Transit keys
+make grpc-mtls-certs   # dev PKI for internal gRPC mTLS
 
 make reconcile-payment / reconcile-card
 make list-payment-breaks / list-card-breaks
@@ -519,7 +542,7 @@ Integration tests cover P2P, card auth/capture, wallet projection dedup, notific
 
 - Standalone Fraud service (today: `pkg/fraud` in Payment/Card)
 - Real KYC/AML vendors (today: stubs with persisted evidence)
-- mTLS on internal gRPC (today: insecure credentials via grpcutil)
+- Production Vault HA / AppRole (dev Vault via `make vault-init`)
 - Kubernetes manifests and production Vault (HA, AppRole, auto-unseal)
 - Outbox partition + WORM archival to object storage
 - Background saga recovery worker (today: client retry + watchdog alerts)

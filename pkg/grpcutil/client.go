@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
@@ -31,14 +32,37 @@ const (
 	UserIDHeader         = "x-user-id"
 )
 
-// Dial opens an insecure gRPC connection (mTLS in production).
+// Dial opens a gRPC connection. Uses mTLS when GRPC_MTLS_ENABLED=true.
 func Dial(ctx context.Context, addr string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	tlsCfg := LoadTLSConfigFromEnv()
+	var creds credentials.TransportCredentials
+	if tlsCfg.Enabled {
+		var err error
+		creds, err = tlsCfg.ClientCredentials()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		creds = insecure.NewCredentials()
+	}
+
+	base := []grpc.DialOption{
+		grpc.WithTransportCredentials(creds),
+		grpc.WithChainUnaryInterceptor(correlationInterceptor),
+	}
+	base = append(base, otel.GRPCDialOptions()...)
+
+	return grpc.NewClient(addr, append(base, opts...)...)
+}
+
+// DialInsecure opens a plaintext gRPC connection regardless of GRPC_MTLS_ENABLED.
+// Use for third-party services (e.g. goledger) that do not yet terminate mTLS.
+func DialInsecure(ctx context.Context, addr string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	base := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithChainUnaryInterceptor(correlationInterceptor),
 	}
 	base = append(base, otel.GRPCDialOptions()...)
-
 	return grpc.NewClient(addr, append(base, opts...)...)
 }
 

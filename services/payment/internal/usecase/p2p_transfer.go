@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/iho/neobank/pkg/amlmonitor"
 	"github.com/iho/neobank/pkg/audit"
 	"github.com/iho/neobank/pkg/events"
 	"github.com/iho/neobank/pkg/fraud"
@@ -38,8 +40,10 @@ type P2PTransferUseCase struct {
 	transfers port.TransferRepository
 	users     *userclient.Client
 	ledger    *ledgerclient.Client
-	fraud     *fraud.Checker
+	fraud       *fraud.Checker
 	fraudRepo   port.FraudDecisionRepository
+	aml         *amlmonitor.Monitor
+	amlRepo     port.AMLRepository
 	screening   port.ScreeningRepository
 	screener    screening.Screener
 	outbox      outbox.TxPublisher
@@ -54,6 +58,8 @@ func NewP2PTransferUseCase(
 	ledger *ledgerclient.Client,
 	fraudChecker *fraud.Checker,
 	fraudRepo port.FraudDecisionRepository,
+	amlMonitor *amlmonitor.Monitor,
+	amlRepo port.AMLRepository,
 	screeningRepo port.ScreeningRepository,
 	screener screening.Screener,
 	outboxPublisher outbox.TxPublisher,
@@ -65,8 +71,10 @@ func NewP2PTransferUseCase(
 		transfers: transfers,
 		users:     users,
 		ledger:    ledger,
-		fraud:     fraudChecker,
+		fraud:       fraudChecker,
 		fraudRepo:   fraudRepo,
+		aml:         amlMonitor,
+		amlRepo:     amlRepo,
 		screening:   screeningRepo,
 		screener:    screener,
 		outbox:      outboxPublisher,
@@ -215,6 +223,8 @@ func (uc *P2PTransferUseCase) Execute(ctx context.Context, in P2PTransferInput) 
 		return t, nil
 	}
 
+	uc.runAMLMonitoring(ctx, state)
+
 	completedEvent := events.TransferCompleted{
 		TransferID:       transferID,
 		LedgerTransferID: state.Get("ledger_transfer_id"),
@@ -251,6 +261,58 @@ func (uc *P2PTransferUseCase) GetByID(ctx context.Context, id string) (*domain.T
 
 func (uc *P2PTransferUseCase) List(ctx context.Context, userID string, limit int) ([]domain.Transfer, error) {
 	return uc.transfers.ListByUser(ctx, userID, limit)
+}
+
+func (uc *P2PTransferUseCase) runAMLMonitoring(ctx context.Context, state *saga.State) {
+	if uc.aml == nil {
+		return
+	}
+	result, err := uc.aml.Evaluate(
+		state.Get("sender_user_id"), "p2p", state.Get("amount"), state.Get("currency"),
+		amlmonitor.EvaluateOpts{},
+	)
+	if err != nil {
+		slog.WarnContext(ctx, "aml evaluation failed", "error", err, "transfer_id", state.Get("transfer_id"))
+		return
+	}
+	if uc.amlRepo == nil {
+		return
+	}
+	evalID, err := uc.amlRepo.RecordEvaluation(ctx, "transfer", state.Get("transfer_id"), state.Get("sender_user_id"),
+		"p2p", state.Get("amount"), state.Get("currency"), result)
+	if err != nil {
+		slog.WarnContext(ctx, "record aml evaluation failed", "error", err, "transfer_id", state.Get("transfer_id"))
+		return
+	}
+	if result.Disposition == amlmonitor.DispositionClear {
+		return
+	}
+	caseType := amlCaseType(result)
+	if caseType == "" {
+		return
+	}
+	if err := uc.amlRepo.OpenCase(ctx, evalID, state.Get("sender_user_id"), "transfer", state.Get("transfer_id"),
+		caseType, result.ReasonCode, reqctx.CorrelationID(ctx)); err != nil {
+		slog.WarnContext(ctx, "open aml case failed", "error", err, "transfer_id", state.Get("transfer_id"))
+	}
+}
+
+func amlCaseType(result amlmonitor.Result) string {
+	switch result.Disposition {
+	case amlmonitor.DispositionReport:
+		switch result.ReasonCode {
+		case "CTR_THRESHOLD":
+			return "ctr"
+		case "STRUCTURING":
+			return "sar"
+		default:
+			return "sar"
+		}
+	case amlmonitor.DispositionReview:
+		return "review"
+	default:
+		return ""
+	}
 }
 
 func (uc *P2PTransferUseCase) steps() []saga.Step {

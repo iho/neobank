@@ -1,4 +1,4 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-jobs down-jobs migrate-user migrate-payment migrate-notification migrate-card tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts
+.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-jobs down-jobs migrate-user migrate-payment migrate-notification migrate-card tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export
 
 OAPI_CODEGEN ?= oapi-codegen
 SQLC ?= sqlc
@@ -43,6 +43,7 @@ build: generate
 	go build -o bin/payment-resolve-break ./services/payment/cmd/resolve-break
 	go build -o bin/card-resolve-break ./services/card/cmd/resolve-break
 	go build -o bin/saga-watchdog ./tools/saga-watchdog
+	go build -o bin/payment-aml-export ./services/payment/cmd/aml-export
 
 test:
 	cd pkg && go test ./...
@@ -106,3 +107,6 @@ saga-watchdog:
 
 list-saga-alerts:
 	cd tools/saga-watchdog && go run . -list
+
+aml-export:
+	cd services/payment && go run ./cmd/aml-export

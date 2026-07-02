@@ -3,6 +3,7 @@ package port
 import (
 	"context"
 
+	"github.com/iho/neobank/pkg/amlmonitor"
 	"github.com/iho/neobank/pkg/fraud"
 	"github.com/iho/neobank/services/payment/internal/domain"
 	"github.com/jackc/pgx/v5"
@@ -42,4 +43,9 @@ type ScreeningCheck struct {
 
 type ScreeningRepository interface {
 	Record(ctx context.Context, check ScreeningCheck) error
+}
+
+type AMLRepository interface {
+	RecordEvaluation(ctx context.Context, entityType, entityID, userID, transactionType, amount, currency string, result amlmonitor.Result) (evaluationID string, err error)
+	OpenCase(ctx context.Context, evaluationID, userID, entityType, entityID, caseType, reasonCode, correlationID string) error
 }

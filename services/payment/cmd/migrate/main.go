@@ -18,6 +18,7 @@ func main() {
 		"migrations/004_reconciliation_breaks.sql",
 		"migrations/005_saga_alerts.sql",
 		"migrations/006_screening_checks.sql",
+		"migrations/007_aml_monitoring.sql",
 	}
 
 	ctx := context.Background()

@@ -157,6 +157,7 @@ func (h *Harness) runMigrations() {
 		filepath.Join(root, "services/payment/migrations/004_reconciliation_breaks.sql"),
 		filepath.Join(root, "services/payment/migrations/005_saga_alerts.sql"),
 		filepath.Join(root, "services/payment/migrations/006_screening_checks.sql"),
+		filepath.Join(root, "services/payment/migrations/007_aml_monitoring.sql"),
 		filepath.Join(root, "services/card/migrations/001_init.sql"),
 		filepath.Join(root, "services/card/migrations/002_authorizations.sql"),
 		filepath.Join(root, "services/card/migrations/003_traceability.sql"),

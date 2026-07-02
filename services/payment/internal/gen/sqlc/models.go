@@ -9,6 +9,38 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type PaymentAmlCase struct {
+	ID              uuid.UUID
+	EvaluationID    uuid.UUID
+	UserID          uuid.UUID
+	EntityType      string
+	EntityID        string
+	CaseType        string
+	Status          string
+	ReasonCode      string
+	FilingReference pgtype.Text
+	CorrelationID   pgtype.Text
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	ClosedAt        pgtype.Timestamptz
+}
+
+type PaymentAmlEvaluation struct {
+	ID              uuid.UUID
+	EntityType      string
+	EntityID        string
+	UserID          uuid.UUID
+	TransactionType string
+	Amount          pgtype.Numeric
+	Currency        string
+	Disposition     string
+	ReasonCode      string
+	RiskScore       int32
+	RuleSetVersion  string
+	CorrelationID   pgtype.Text
+	CreatedAt       pgtype.Timestamptz
+}
+
 type PaymentAuditLog struct {
 	ID            uuid.UUID
 	EntityType    string

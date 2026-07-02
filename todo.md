@@ -92,9 +92,9 @@ audit rows are now persisted.
 - [x] Sanctions/PEP screening hook — `pkg/screening` stub at KYC onboarding and P2P
       counterparty checks; persisted to `user.screening_checks` and
       `payment.screening_checks`.
-- [ ] AML transaction-monitoring layer distinct from fraud (structuring/threshold rules,
-      case creation, SAR/CTR export format) — Phase 3 in architecture.md; pull the data
-      model forward so history exists when it ships.
+- [x] AML transaction-monitoring layer distinct from fraud (structuring/threshold rules,
+      case creation, SAR/CTR export format) — `pkg/amlmonitor`, `payment.aml_evaluations` /
+      `payment.aml_cases`, post-ledger hook in P2P transfer, `cmd/aml-export`.
 
 ### 5. Outbox is not an archive — MEDIUM — still open
 `MarkPublished` mutates rows; nothing forbids deletion; retention is undefined. If the
@@ -176,7 +176,8 @@ validation with no environment guard.
 3. ~~Persist fraud decisions (#3)~~ — done.
 4. ~~Reconciliation job (#6)~~ — done, not yet scheduled.
 5. Outbox retention/archival (#5) — open, needs an infra/compliance decision.
-6. KYC/AML evidence model (#4) — open, schema + provider integration both still needed.
+6. KYC/AML evidence model (#4) — KYC evidence + screening done; AML txn-monitoring stub done;
+   real vendor integration still needed.
 7. PII encryption (#7) — open, needs a KMS decision. Dev-auth hardening (#7b) — done.
 8. Light CQRS read model for `/v1/wallet/transactions` fed from outbox events — ✅ DONE
    (`user.wallet_transactions`, `pkg/walletprojection`, User service ingest + list API,

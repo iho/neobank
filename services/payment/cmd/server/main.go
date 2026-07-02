@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/iho/neobank/pkg/amlmonitor"
 	"github.com/iho/neobank/pkg/fraud"
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
@@ -57,13 +58,15 @@ func main() {
 	outboxRepo := sqlcrepo.NewOutboxRepository(queries)
 	auditRepo := sqlcrepo.NewAuditRepository(queries)
 	fraudRepo := sqlcrepo.NewFraudDecisionRepository(queries)
+	amlRepo := sqlcrepo.NewAMLRepository(queries)
 	sagaStore := sqlcrepo.NewSagaStore(queries)
 
 	users := userclient.New(cfg.UserURL)
 	fraudChecker := fraud.NewChecker()
+	amlMonitor := amlmonitor.NewMonitor(nil)
 	txRunner := pgutil.NewTxRunner(pool)
 	screeningRepo := sqlcrepo.NewScreeningRepository(queries)
-	p2pUC := usecase.NewP2PTransferUseCase(transferRepo, users, ledger, fraudChecker, fraudRepo, screeningRepo, screening.NewStubScreener(), outboxRepo, auditRepo, sagaStore, txRunner)
+	p2pUC := usecase.NewP2PTransferUseCase(transferRepo, users, ledger, fraudChecker, fraudRepo, amlMonitor, amlRepo, screeningRepo, screening.NewStubScreener(), outboxRepo, auditRepo, sagaStore, txRunner)
 
 	strictServer := apiadapter.NewServer(p2pUC)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)

@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	CountAMLCasesByEntity(ctx context.Context, arg CountAMLCasesByEntityParams) (int64, error)
 	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
 	CreateTransfer(ctx context.Context, arg CreateTransferParams) error
 	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error)
@@ -18,12 +19,15 @@ type Querier interface {
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
 	GetTransferByID(ctx context.Context, id uuid.UUID) (GetTransferByIDRow, error)
 	GetTransferBySenderAndIdempotencyKey(ctx context.Context, arg GetTransferBySenderAndIdempotencyKeyParams) (GetTransferBySenderAndIdempotencyKeyRow, error)
+	InsertAMLCase(ctx context.Context, arg InsertAMLCaseParams) error
+	InsertAMLEvaluation(ctx context.Context, arg InsertAMLEvaluationParams) (uuid.UUID, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	InsertFraudDecision(ctx context.Context, arg InsertFraudDecisionParams) error
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error
 	InsertScreeningCheck(ctx context.Context, arg InsertScreeningCheckParams) error
 	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
 	ListFraudDecisionsByEntity(ctx context.Context, arg ListFraudDecisionsByEntityParams) ([]ListFraudDecisionsByEntityRow, error)
+	ListOpenAMLCasesForExport(ctx context.Context, dollar_1 []string) ([]ListOpenAMLCasesForExportRow, error)
 	ListOpenReconciliationBreaks(ctx context.Context, limit int32) ([]ListOpenReconciliationBreaksRow, error)
 	ListTransfersByUser(ctx context.Context, arg ListTransfersByUserParams) ([]ListTransfersByUserRow, error)
 	ListTransfersForReconciliation(ctx context.Context, limit int32) ([]ListTransfersForReconciliationRow, error)

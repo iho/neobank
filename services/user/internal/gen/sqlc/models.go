@@ -28,6 +28,15 @@ type UserConsumerInbox struct {
 	ProcessedAt pgtype.Timestamptz
 }
 
+type UserGdprRequest struct {
+	ID            uuid.UUID
+	UserID        uuid.UUID
+	RequestType   string
+	Actor         string
+	CorrelationID pgtype.Text
+	CreatedAt     pgtype.Timestamptz
+}
+
 type UserKycCase struct {
 	ID              uuid.UUID
 	UserID          uuid.UUID

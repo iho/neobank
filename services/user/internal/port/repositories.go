@@ -2,6 +2,7 @@ package port
 
 import (
 	"context"
+	"time"
 
 	"github.com/iho/neobank/services/user/internal/domain"
 	"github.com/jackc/pgx/v5"
@@ -26,6 +27,7 @@ type KYCSubmission struct {
 	ScreeningDecision string
 	ScreeningReason   string
 	CorrelationID     string
+	CreatedAt         time.Time
 }
 
 type ScreeningCheck struct {
@@ -40,6 +42,15 @@ type ScreeningCheck struct {
 	ProviderReference string
 	RawResponse       []byte
 	CorrelationID     string
+}
+
+type GDPRRepository interface {
+	ListKYCSubmissionsByUser(ctx context.Context, userID string) ([]KYCSubmission, error)
+	ListWalletsByUser(ctx context.Context, userID string) ([]domain.Wallet, error)
+	CountWalletTransactions(ctx context.Context, userID string) (int64, error)
+	RecordRequest(ctx context.Context, userID, requestType string) error
+	MaskUserPII(ctx context.Context, userID, maskedEmail, passwordHash string) error
+	WithTx(tx pgx.Tx) GDPRRepository
 }
 
 type KYCRepository interface {

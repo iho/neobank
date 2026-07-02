@@ -14,6 +14,7 @@ import (
 type Querier interface {
 	ApproveKYCCase(ctx context.Context, arg ApproveKYCCaseParams) error
 	ConsumerInboxExists(ctx context.Context, eventID uuid.UUID) (bool, error)
+	CountWalletTransactionsByUser(ctx context.Context, userID uuid.UUID) (int64, error)
 	CreateKYCCase(ctx context.Context, arg CreateKYCCaseParams) (CreateKYCCaseRow, error)
 	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
@@ -29,15 +30,21 @@ type Querier interface {
 	GetWalletByUserAndCurrency(ctx context.Context, arg GetWalletByUserAndCurrencyParams) (GetWalletByUserAndCurrencyRow, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	InsertConsumerInbox(ctx context.Context, arg InsertConsumerInboxParams) error
+	InsertGDPRRequest(ctx context.Context, arg InsertGDPRRequestParams) error
 	InsertKYCSubmission(ctx context.Context, arg InsertKYCSubmissionParams) error
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error
 	InsertPIIAccessLog(ctx context.Context, arg InsertPIIAccessLogParams) error
 	InsertScreeningCheck(ctx context.Context, arg InsertScreeningCheckParams) error
 	InsertWalletTransaction(ctx context.Context, arg InsertWalletTransactionParams) error
 	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
+	ListKYCSubmissionsByUser(ctx context.Context, userID uuid.UUID) ([]ListKYCSubmissionsByUserRow, error)
 	ListPIIAccessBySubject(ctx context.Context, subjectUserID uuid.UUID) ([]ListPIIAccessBySubjectRow, error)
 	ListWalletTransactionsByUser(ctx context.Context, arg ListWalletTransactionsByUserParams) ([]ListWalletTransactionsByUserRow, error)
+	ListWalletsByUser(ctx context.Context, userID uuid.UUID) ([]ListWalletsByUserRow, error)
 	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
+	MaskKYCSubmissionsByUser(ctx context.Context, userID uuid.UUID) error
+	MaskUserAccount(ctx context.Context, arg MaskUserAccountParams) error
+	MaskUserProfile(ctx context.Context, userID uuid.UUID) error
 	RejectKYCCase(ctx context.Context, arg RejectKYCCaseParams) error
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
 	UpsertProfile(ctx context.Context, arg UpsertProfileParams) error

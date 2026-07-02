@@ -131,8 +131,10 @@ Service tables and goledger can drift (saga compensation failures, crashes betwe
 - [x] Audit access to PII (who read which customer record) — `user.pii_access_log` records
       successful reads of profile, KYC status, wallet balance/transactions, internal user-by-phone,
       and internal wallet lookups; actor/correlation from `reqctx`.
-- [ ] GDPR export/delete workflows — still open; document that deletion must be *masking*,
-      not row deletion, because financial records must be retained.
+- [x] GDPR export/delete workflows — internal `POST .../gdpr/export` bundles profile, KYC
+      submissions, wallets, and wallet-tx count; `POST .../gdpr/mask` masks PII in place
+      (email/phone/profile/KYC document numbers, invalidates password) while retaining
+      financial rows; requests recorded in `user.gdpr_requests` + audit_log.
 - [x] Dev-auth bypasses hardened — see #7b below.
 
 ### 7b. Dev auth bypass reachable in production — HIGH — ✅ DONE

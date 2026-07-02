@@ -33,6 +33,34 @@ type EventEnvelope struct {
 	Payload       map[string]interface{} `json:"payload"`
 }
 
+// GDPRExportKYCSubmission defines model for GDPRExportKYCSubmission.
+type GDPRExportKYCSubmission struct {
+	CreatedAt         time.Time          `json:"created_at"`
+	DocumentNumber    *string            `json:"document_number,omitempty"`
+	DocumentType      *string            `json:"document_type,omitempty"`
+	Id                openapi_types.UUID `json:"id"`
+	KycCaseId         openapi_types.UUID `json:"kyc_case_id"`
+	Provider          string             `json:"provider"`
+	ScreeningDecision string             `json:"screening_decision"`
+	ScreeningReason   *string            `json:"screening_reason,omitempty"`
+}
+
+// GDPRExportResponse defines model for GDPRExportResponse.
+type GDPRExportResponse struct {
+	ExportedAt             time.Time                 `json:"exported_at"`
+	KycSubmissions         []GDPRExportKYCSubmission `json:"kyc_submissions"`
+	Profile                Profile                   `json:"profile"`
+	UserId                 openapi_types.UUID        `json:"user_id"`
+	WalletTransactionCount int64                     `json:"wallet_transaction_count"`
+	Wallets                []Wallet                  `json:"wallets"`
+}
+
+// GDPRMaskResponse defines model for GDPRMaskResponse.
+type GDPRMaskResponse struct {
+	Status string             `json:"status"`
+	UserId openapi_types.UUID `json:"user_id"`
+}
+
 // HealthResponse defines model for HealthResponse.
 type HealthResponse struct {
 	Status string `json:"status"`
@@ -176,6 +204,16 @@ type RegisterParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
+// ExportUserGDPRParams defines parameters for ExportUserGDPR.
+type ExportUserGDPRParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// MaskUserGDPRParams defines parameters for MaskUserGDPR.
+type MaskUserGDPRParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
 // GetWalletParams defines parameters for GetWallet.
 type GetWalletParams struct {
 	UserId   openapi_types.UUID `form:"user_id" json:"user_id"`
@@ -252,6 +290,12 @@ type ServerInterface interface {
 	// (GET /api/v1/internal/users/by-phone/{phone})
 	GetUserByPhone(w http.ResponseWriter, r *http.Request, phone string)
 
+	// (POST /api/v1/internal/users/{user_id}/gdpr/export)
+	ExportUserGDPR(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID, params ExportUserGDPRParams)
+
+	// (POST /api/v1/internal/users/{user_id}/gdpr/mask)
+	MaskUserGDPR(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID, params MaskUserGDPRParams)
+
 	// (GET /api/v1/internal/wallets)
 	GetWallet(w http.ResponseWriter, r *http.Request, params GetWalletParams)
 
@@ -303,6 +347,16 @@ func (_ Unimplemented) IngestEvent(w http.ResponseWriter, r *http.Request) {
 
 // (GET /api/v1/internal/users/by-phone/{phone})
 func (_ Unimplemented) GetUserByPhone(w http.ResponseWriter, r *http.Request, phone string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /api/v1/internal/users/{user_id}/gdpr/export)
+func (_ Unimplemented) ExportUserGDPR(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID, params ExportUserGDPRParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /api/v1/internal/users/{user_id}/gdpr/mask)
+func (_ Unimplemented) MaskUserGDPR(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID, params MaskUserGDPRParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -459,6 +513,114 @@ func (siw *ServerInterfaceWrapper) GetUserByPhone(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetUserByPhone(w, r, phone)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ExportUserGDPR operation middleware
+func (siw *ServerInterfaceWrapper) ExportUserGDPR(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "user_id" -------------
+	var userId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", chi.URLParam(r, "user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ExportUserGDPRParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ExportUserGDPR(w, r, userId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MaskUserGDPR operation middleware
+func (siw *ServerInterfaceWrapper) MaskUserGDPR(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "user_id" -------------
+	var userId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", chi.URLParam(r, "user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params MaskUserGDPRParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MaskUserGDPR(w, r, userId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -999,6 +1161,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/api/v1/internal/users/by-phone/{phone}", wrapper.GetUserByPhone)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/internal/users/{user_id}/gdpr/export", wrapper.ExportUserGDPR)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/internal/users/{user_id}/gdpr/mask", wrapper.MaskUserGDPR)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/internal/wallets", wrapper.GetWallet)
 	})
 	r.Group(func(r chi.Router) {
@@ -1190,6 +1358,80 @@ func (response GetUserByPhone200JSONResponse) VisitGetUserByPhoneResponse(w http
 type GetUserByPhone404JSONResponse ErrorResponse
 
 func (response GetUserByPhone404JSONResponse) VisitGetUserByPhoneResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ExportUserGDPRRequestObject struct {
+	UserId openapi_types.UUID `json:"user_id"`
+	Params ExportUserGDPRParams
+}
+
+type ExportUserGDPRResponseObject interface {
+	VisitExportUserGDPRResponse(w http.ResponseWriter) error
+}
+
+type ExportUserGDPR200JSONResponse GDPRExportResponse
+
+func (response ExportUserGDPR200JSONResponse) VisitExportUserGDPRResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ExportUserGDPR404JSONResponse ErrorResponse
+
+func (response ExportUserGDPR404JSONResponse) VisitExportUserGDPRResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MaskUserGDPRRequestObject struct {
+	UserId openapi_types.UUID `json:"user_id"`
+	Params MaskUserGDPRParams
+}
+
+type MaskUserGDPRResponseObject interface {
+	VisitMaskUserGDPRResponse(w http.ResponseWriter) error
+}
+
+type MaskUserGDPR200JSONResponse GDPRMaskResponse
+
+func (response MaskUserGDPR200JSONResponse) VisitMaskUserGDPRResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MaskUserGDPR404JSONResponse ErrorResponse
+
+func (response MaskUserGDPR404JSONResponse) VisitMaskUserGDPRResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -1466,6 +1708,12 @@ type StrictServerInterface interface {
 	// (GET /api/v1/internal/users/by-phone/{phone})
 	GetUserByPhone(ctx context.Context, request GetUserByPhoneRequestObject) (GetUserByPhoneResponseObject, error)
 
+	// (POST /api/v1/internal/users/{user_id}/gdpr/export)
+	ExportUserGDPR(ctx context.Context, request ExportUserGDPRRequestObject) (ExportUserGDPRResponseObject, error)
+
+	// (POST /api/v1/internal/users/{user_id}/gdpr/mask)
+	MaskUserGDPR(ctx context.Context, request MaskUserGDPRRequestObject) (MaskUserGDPRResponseObject, error)
+
 	// (GET /api/v1/internal/wallets)
 	GetWallet(ctx context.Context, request GetWalletRequestObject) (GetWalletResponseObject, error)
 
@@ -1665,6 +1913,60 @@ func (sh *strictHandler) GetUserByPhone(w http.ResponseWriter, r *http.Request, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetUserByPhoneResponseObject); ok {
 		if err := validResponse.VisitGetUserByPhoneResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ExportUserGDPR operation middleware
+func (sh *strictHandler) ExportUserGDPR(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID, params ExportUserGDPRParams) {
+	var request ExportUserGDPRRequestObject
+
+	request.UserId = userId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ExportUserGDPR(ctx, request.(ExportUserGDPRRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ExportUserGDPR")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ExportUserGDPRResponseObject); ok {
+		if err := validResponse.VisitExportUserGDPRResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// MaskUserGDPR operation middleware
+func (sh *strictHandler) MaskUserGDPR(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID, params MaskUserGDPRParams) {
+	var request MaskUserGDPRRequestObject
+
+	request.UserId = userId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MaskUserGDPR(ctx, request.(MaskUserGDPRRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MaskUserGDPR")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MaskUserGDPRResponseObject); ok {
+		if err := validResponse.VisitMaskUserGDPRResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

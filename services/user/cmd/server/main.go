@@ -69,6 +69,7 @@ func main() {
 	outboxRepo := sqlcrepo.NewOutboxRepository(queries)
 	auditRepo := sqlcrepo.NewAuditRepository(queries)
 	piiAccessRepo := sqlcrepo.NewPIIAccessRepository(queries)
+	gdprRepo := sqlcrepo.NewGDPRRepository(queries)
 	sagaStore := sqlcrepo.NewSagaStore(queries)
 	walletTxRepo := sqlcrepo.NewWalletTransactionRepository(queries)
 	inboxRepo := sqlcrepo.NewConsumerInboxRepository(queries)
@@ -97,6 +98,8 @@ func main() {
 	walletBalanceUC := usecase.NewGetWalletBalanceUseCase(walletRepo, ledgerAdapter)
 	projectWalletEventUC := usecase.NewProjectWalletEventUseCase(walletTxRepo, inboxRepo)
 	listWalletTxUC := usecase.NewListWalletTransactionsUseCase(walletTxRepo)
+	exportGDPRUC := usecase.NewExportGDPRUseCase(userRepo, gdprRepo)
+	maskGDPRUC := usecase.NewMaskGDPRUseCase(userRepo, gdprRepo, auditRepo, txRunner)
 
 	if cfg.KafkaBrokers != "" {
 		consumer := kafkaadapter.NewConsumer(cfg.KafkaBrokers, "user-wallet-projection", projectWalletEventUC, logger)
@@ -111,7 +114,8 @@ func main() {
 	strictServer := apiadapter.NewServer(
 		registerUC, loginUC, refreshUC, submitKYCUC, getKYCStatusUC, getProfileUC, walletBalanceUC,
 		listWalletTxUC, projectWalletEventUC,
-		provisionWalletUC, userRepo, walletRepo, piiAccessRepo,
+		provisionWalletUC, exportGDPRUC, maskGDPRUC,
+		userRepo, walletRepo, piiAccessRepo,
 	)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
 

@@ -27,6 +27,8 @@ type Server struct {
 	listWalletTx        *usecase.ListWalletTransactionsUseCase
 	projectWalletEvent  *usecase.ProjectWalletEventUseCase
 	provisionWallet     *usecase.ProvisionWalletUseCase
+	exportGDPR          *usecase.ExportGDPRUseCase
+	maskGDPR            *usecase.MaskGDPRUseCase
 	users               *sqlcrepo.UserRepository
 	wallets             *sqlcrepo.WalletRepository
 	piiAccess           audit.PIIAccessRecorder
@@ -43,6 +45,8 @@ func NewServer(
 	listWalletTx *usecase.ListWalletTransactionsUseCase,
 	projectWalletEvent *usecase.ProjectWalletEventUseCase,
 	provisionWallet *usecase.ProvisionWalletUseCase,
+	exportGDPR *usecase.ExportGDPRUseCase,
+	maskGDPR *usecase.MaskGDPRUseCase,
 	users *sqlcrepo.UserRepository,
 	wallets *sqlcrepo.WalletRepository,
 	piiAccess audit.PIIAccessRecorder,
@@ -58,6 +62,8 @@ func NewServer(
 		listWalletTx:       listWalletTx,
 		projectWalletEvent: projectWalletEvent,
 		provisionWallet:    provisionWallet,
+		exportGDPR:         exportGDPR,
+		maskGDPR:           maskGDPR,
 		users:              users,
 		wallets:            wallets,
 		piiAccess:          piiAccess,
@@ -408,5 +414,100 @@ func (s *Server) GetWallet(ctx context.Context, req api.GetWalletRequestObject) 
 		Currency:        wallet.Currency,
 		LedgerAccountId: wallet.LedgerAccountID,
 		Status:          wallet.Status,
+	}, nil
+}
+
+func (s *Server) ExportUserGDPR(ctx context.Context, req api.ExportUserGDPRRequestObject) (api.ExportUserGDPRResponseObject, error) {
+	userID := req.UserId.String()
+	out, err := s.exportGDPR.Execute(ctx, userID)
+	if err != nil {
+		if err.Error() == "user not found" {
+			return api.ExportUserGDPR404JSONResponse{Error: "user_not_found"}, nil
+		}
+		return nil, err
+	}
+	if err := s.recordPIIAccess(ctx, userID, audit.PIIResourceGDPRExport, nil); err != nil {
+		return nil, err
+	}
+
+	profile := out.Profile
+	userUUID, _ := uuid.Parse(profile.UserID)
+	resp := api.GDPRExportResponse{
+		UserId:                 openapi_types.UUID(userUUID),
+		ExportedAt:             out.ExportedAt,
+		WalletTransactionCount: out.WalletTransactionCount,
+		Profile: api.Profile{
+			UserId:    openapi_types.UUID(userUUID),
+			Email:     profile.Email,
+			Phone:     profile.Phone,
+			Status:    profile.Status,
+			KycStatus: profile.KYCStatus,
+			CreatedAt: profile.CreatedAt,
+		},
+	}
+	if profile.FullName != "" {
+		resp.Profile.FullName = &profile.FullName
+	}
+	if profile.CountryCode != "" {
+		resp.Profile.CountryCode = &profile.CountryCode
+	}
+	if profile.DateOfBirth != "" {
+		dob, err := time.Parse("2006-01-02", profile.DateOfBirth)
+		if err == nil {
+			resp.Profile.DateOfBirth = &openapi_types.Date{Time: dob}
+		}
+	}
+
+	resp.KycSubmissions = make([]api.GDPRExportKYCSubmission, 0, len(out.KYCSubmissions))
+	for _, sub := range out.KYCSubmissions {
+		subID, _ := uuid.Parse(sub.ID)
+		caseID, _ := uuid.Parse(sub.KYCCaseID)
+		view := api.GDPRExportKYCSubmission{
+			Id:                openapi_types.UUID(subID),
+			KycCaseId:         openapi_types.UUID(caseID),
+			Provider:          sub.Provider,
+			ScreeningDecision: sub.ScreeningDecision,
+			CreatedAt:         sub.CreatedAt.UTC(),
+		}
+		if sub.DocumentType != "" {
+			view.DocumentType = &sub.DocumentType
+		}
+		if sub.DocumentNumber != "" {
+			view.DocumentNumber = &sub.DocumentNumber
+		}
+		if sub.ScreeningReason != "" {
+			view.ScreeningReason = &sub.ScreeningReason
+		}
+		resp.KycSubmissions = append(resp.KycSubmissions, view)
+	}
+
+	resp.Wallets = make([]api.Wallet, 0, len(out.Wallets))
+	for _, wallet := range out.Wallets {
+		walletID, _ := uuid.Parse(wallet.ID)
+		walletUserID, _ := uuid.Parse(wallet.UserID)
+		resp.Wallets = append(resp.Wallets, api.Wallet{
+			Id:              openapi_types.UUID(walletID),
+			UserId:          openapi_types.UUID(walletUserID),
+			Currency:        wallet.Currency,
+			LedgerAccountId: wallet.LedgerAccountID,
+			Status:          wallet.Status,
+		})
+	}
+
+	return api.ExportUserGDPR200JSONResponse(resp), nil
+}
+
+func (s *Server) MaskUserGDPR(ctx context.Context, req api.MaskUserGDPRRequestObject) (api.MaskUserGDPRResponseObject, error) {
+	userID := req.UserId.String()
+	if err := s.maskGDPR.Execute(ctx, userID); err != nil {
+		if err.Error() == "user not found" {
+			return api.MaskUserGDPR404JSONResponse{Error: "user_not_found"}, nil
+		}
+		return nil, err
+	}
+	userUUID, _ := uuid.Parse(userID)
+	return api.MaskUserGDPR200JSONResponse{
+		UserId: openapi_types.UUID(userUUID),
+		Status: "masked",
 	}, nil
 }

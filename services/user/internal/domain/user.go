@@ -7,6 +7,7 @@ type UserStatus string
 const (
 	UserStatusActive    UserStatus = "active"
 	UserStatusSuspended UserStatus = "suspended"
+	UserStatusMasked    UserStatus = "masked"
 )
 
 type KYCStatus string

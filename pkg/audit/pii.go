@@ -28,6 +28,7 @@ const (
 	PIIResourceWalletTransactions = "wallet_transactions"
 	PIIResourceUserByPhone        = "user_by_phone"
 	PIIResourceInternalWallet     = "internal_wallet"
+	PIIResourceGDPRExport         = "gdpr_export"
 )
 
 // PIIAccessEntry is one append-only record of a successful read of customer PII.

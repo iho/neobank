@@ -243,6 +243,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/internal/users/{user_id}/gdpr/export:
+    post:
+      operationId: exportUserGDPR
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GDPRExportResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/internal/users/{user_id}/gdpr/mask:
+    post:
+      operationId: maskUserGDPR
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GDPRMaskResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/internal/wallets:
     get:
       operationId: getWallet
@@ -508,6 +556,61 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/WalletTransaction"
+    GDPRExportResponse:
+      type: object
+      required: [user_id, exported_at, profile, kyc_submissions, wallets, wallet_transaction_count]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        exported_at:
+          type: string
+          format: date-time
+        profile:
+          $ref: "#/components/schemas/Profile"
+        kyc_submissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/GDPRExportKYCSubmission"
+        wallets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Wallet"
+        wallet_transaction_count:
+          type: integer
+          format: int64
+    GDPRExportKYCSubmission:
+      type: object
+      required: [id, kyc_case_id, provider, screening_decision, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kyc_case_id:
+          type: string
+          format: uuid
+        document_type:
+          type: string
+        document_number:
+          type: string
+        provider:
+          type: string
+        screening_decision:
+          type: string
+        screening_reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    GDPRMaskResponse:
+      type: object
+      required: [user_id, status]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        status:
+          type: string
     EventEnvelope:
       type: object
       required: [event_id, event_type, aggregate_type, aggregate_id, payload]

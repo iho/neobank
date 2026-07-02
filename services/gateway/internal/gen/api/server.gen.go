@@ -43,16 +43,18 @@ type Card struct {
 
 // CardAuthorization defines model for CardAuthorization.
 type CardAuthorization struct {
-	Amount           string  `json:"amount"`
-	CardId           string  `json:"card_id"`
-	Currency         string  `json:"currency"`
-	FailureReason    *string `json:"failure_reason,omitempty"`
-	Id               string  `json:"id"`
-	LedgerHoldId     *string `json:"ledger_hold_id,omitempty"`
-	LedgerTransferId *string `json:"ledger_transfer_id,omitempty"`
-	MerchantName     *string `json:"merchant_name,omitempty"`
-	Status           string  `json:"status"`
-	UserId           string  `json:"user_id"`
+	Amount           string     `json:"amount"`
+	CapturedAt       *time.Time `json:"captured_at,omitempty"`
+	CardId           string     `json:"card_id"`
+	CreatedAt        *time.Time `json:"created_at,omitempty"`
+	Currency         string     `json:"currency"`
+	FailureReason    *string    `json:"failure_reason,omitempty"`
+	Id               string     `json:"id"`
+	LedgerHoldId     *string    `json:"ledger_hold_id,omitempty"`
+	LedgerTransferId *string    `json:"ledger_transfer_id,omitempty"`
+	MerchantName     *string    `json:"merchant_name,omitempty"`
+	Status           string     `json:"status"`
+	UserId           string     `json:"user_id"`
 }
 
 // CardList defines model for CardList.
@@ -120,6 +122,19 @@ type NotificationList struct {
 	Notifications []Notification `json:"notifications"`
 }
 
+// Profile defines model for Profile.
+type Profile struct {
+	CountryCode *string             `json:"country_code,omitempty"`
+	CreatedAt   time.Time           `json:"created_at"`
+	DateOfBirth *openapi_types.Date `json:"date_of_birth,omitempty"`
+	Email       string              `json:"email"`
+	FullName    *string             `json:"full_name,omitempty"`
+	KycStatus   string              `json:"kyc_status"`
+	Phone       string              `json:"phone"`
+	Status      string              `json:"status"`
+	UserId      string              `json:"user_id"`
+}
+
 // ProvisionWalletRequest defines model for ProvisionWalletRequest.
 type ProvisionWalletRequest struct {
 	Currency *string `json:"currency,omitempty"`
@@ -166,15 +181,17 @@ type SubmitKYCResponse struct {
 
 // Transfer defines model for Transfer.
 type Transfer struct {
-	Amount           *string `json:"amount,omitempty"`
-	Currency         *string `json:"currency,omitempty"`
-	FailureReason    *string `json:"failure_reason,omitempty"`
-	Id               *string `json:"id,omitempty"`
-	LedgerTransferId *string `json:"ledger_transfer_id,omitempty"`
-	Memo             *string `json:"memo,omitempty"`
-	RecipientUserId  *string `json:"recipient_user_id,omitempty"`
-	SenderUserId     *string `json:"sender_user_id,omitempty"`
-	Status           *string `json:"status,omitempty"`
+	Amount           *string    `json:"amount,omitempty"`
+	CompletedAt      *time.Time `json:"completed_at,omitempty"`
+	CreatedAt        *time.Time `json:"created_at,omitempty"`
+	Currency         *string    `json:"currency,omitempty"`
+	FailureReason    *string    `json:"failure_reason,omitempty"`
+	Id               *string    `json:"id,omitempty"`
+	LedgerTransferId *string    `json:"ledger_transfer_id,omitempty"`
+	Memo             *string    `json:"memo,omitempty"`
+	RecipientUserId  *string    `json:"recipient_user_id,omitempty"`
+	SenderUserId     *string    `json:"sender_user_id,omitempty"`
+	Status           *string    `json:"status,omitempty"`
 }
 
 // TransferList defines model for TransferList.
@@ -190,6 +207,29 @@ type WalletBalance struct {
 	EncumberedBalance *string `json:"encumbered_balance,omitempty"`
 	LedgerAccountId   *string `json:"ledger_account_id,omitempty"`
 	WalletId          string  `json:"wallet_id"`
+}
+
+// WalletTransaction defines model for WalletTransaction.
+type WalletTransaction struct {
+	Amount       string    `json:"amount"`
+	Counterparty *string   `json:"counterparty,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	Currency     string    `json:"currency"`
+
+	// Direction debit or credit
+	Direction   string  `json:"direction"`
+	Id          string  `json:"id"`
+	Memo        *string `json:"memo,omitempty"`
+	ReferenceId *string `json:"reference_id,omitempty"`
+	Status      string  `json:"status"`
+
+	// Type p2p_out, p2p_in, card_purchase, card_hold
+	Type string `json:"type"`
+}
+
+// WalletTransactionList defines model for WalletTransactionList.
+type WalletTransactionList struct {
+	Transactions []WalletTransaction `json:"transactions"`
 }
 
 // Authorization defines model for Authorization.
@@ -209,6 +249,12 @@ type RegisterParams struct {
 // ListAuthorizationsParams defines parameters for ListAuthorizations.
 type ListAuthorizationsParams struct {
 	Limit         *int           `form:"limit,omitempty" json:"limit,omitempty"`
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
+// GetAuthorizationParams defines parameters for GetAuthorization.
+type GetAuthorizationParams struct {
 	Authorization *Authorization `json:"Authorization,omitempty"`
 	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
 }
@@ -270,6 +316,12 @@ type GetKYCStatusParams struct {
 	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
 }
 
+// GetProfileParams defines parameters for GetProfile.
+type GetProfileParams struct {
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
 // ListNotificationsParams defines parameters for ListNotifications.
 type ListNotificationsParams struct {
 	Limit         *int           `form:"limit,omitempty" json:"limit,omitempty"`
@@ -291,9 +343,22 @@ type CreateTransferParams struct {
 	XUserId        *XUserId       `json:"X-User-Id,omitempty"`
 }
 
+// GetTransferParams defines parameters for GetTransfer.
+type GetTransferParams struct {
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
 // GetWalletBalanceParams defines parameters for GetWalletBalance.
 type GetWalletBalanceParams struct {
 	Currency      *string        `form:"currency,omitempty" json:"currency,omitempty"`
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
+// ListWalletTransactionsParams defines parameters for ListWalletTransactions.
+type ListWalletTransactionsParams struct {
+	Limit         *int           `form:"limit,omitempty" json:"limit,omitempty"`
 	Authorization *Authorization `json:"Authorization,omitempty"`
 	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
 }
@@ -347,6 +412,9 @@ type ServerInterface interface {
 	// (GET /v1/authorizations)
 	ListAuthorizations(w http.ResponseWriter, r *http.Request, params ListAuthorizationsParams)
 
+	// (GET /v1/authorizations/{id})
+	GetAuthorization(w http.ResponseWriter, r *http.Request, id string, params GetAuthorizationParams)
+
 	// (POST /v1/authorizations/{id}/capture)
 	CaptureAuthorization(w http.ResponseWriter, r *http.Request, id string, params CaptureAuthorizationParams)
 
@@ -374,6 +442,9 @@ type ServerInterface interface {
 	// (GET /v1/kyc/status)
 	GetKYCStatus(w http.ResponseWriter, r *http.Request, params GetKYCStatusParams)
 
+	// (GET /v1/me)
+	GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams)
+
 	// (GET /v1/notifications)
 	ListNotifications(w http.ResponseWriter, r *http.Request, params ListNotificationsParams)
 
@@ -383,8 +454,14 @@ type ServerInterface interface {
 	// (POST /v1/transfers)
 	CreateTransfer(w http.ResponseWriter, r *http.Request, params CreateTransferParams)
 
+	// (GET /v1/transfers/{id})
+	GetTransfer(w http.ResponseWriter, r *http.Request, id string, params GetTransferParams)
+
 	// (GET /v1/wallet)
 	GetWalletBalance(w http.ResponseWriter, r *http.Request, params GetWalletBalanceParams)
+
+	// (GET /v1/wallet/transactions)
+	ListWalletTransactions(w http.ResponseWriter, r *http.Request, params ListWalletTransactionsParams)
 
 	// (POST /v1/wallets)
 	ProvisionWallet(w http.ResponseWriter, r *http.Request, params ProvisionWalletParams)
@@ -416,6 +493,11 @@ func (_ Unimplemented) Register(w http.ResponseWriter, r *http.Request, params R
 
 // (GET /v1/authorizations)
 func (_ Unimplemented) ListAuthorizations(w http.ResponseWriter, r *http.Request, params ListAuthorizationsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /v1/authorizations/{id})
+func (_ Unimplemented) GetAuthorization(w http.ResponseWriter, r *http.Request, id string, params GetAuthorizationParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -464,6 +546,11 @@ func (_ Unimplemented) GetKYCStatus(w http.ResponseWriter, r *http.Request, para
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (GET /v1/me)
+func (_ Unimplemented) GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (GET /v1/notifications)
 func (_ Unimplemented) ListNotifications(w http.ResponseWriter, r *http.Request, params ListNotificationsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -479,8 +566,18 @@ func (_ Unimplemented) CreateTransfer(w http.ResponseWriter, r *http.Request, pa
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (GET /v1/transfers/{id})
+func (_ Unimplemented) GetTransfer(w http.ResponseWriter, r *http.Request, id string, params GetTransferParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (GET /v1/wallet)
 func (_ Unimplemented) GetWalletBalance(w http.ResponseWriter, r *http.Request, params GetWalletBalanceParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /v1/wallet/transactions)
+func (_ Unimplemented) ListWalletTransactions(w http.ResponseWriter, r *http.Request, params ListWalletTransactionsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -649,6 +746,75 @@ func (siw *ServerInterfaceWrapper) ListAuthorizations(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListAuthorizations(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAuthorization operation middleware
+func (siw *ServerInterfaceWrapper) GetAuthorization(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAuthorizationParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAuthorization(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1312,6 +1478,66 @@ func (siw *ServerInterfaceWrapper) GetKYCStatus(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
+// GetProfile operation middleware
+func (siw *ServerInterfaceWrapper) GetProfile(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProfileParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProfile(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListNotifications operation middleware
 func (siw *ServerInterfaceWrapper) ListNotifications(w http.ResponseWriter, r *http.Request) {
 
@@ -1541,6 +1767,75 @@ func (siw *ServerInterfaceWrapper) CreateTransfer(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// GetTransfer operation middleware
+func (siw *ServerInterfaceWrapper) GetTransfer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTransferParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetTransfer(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetWalletBalance operation middleware
 func (siw *ServerInterfaceWrapper) GetWalletBalance(w http.ResponseWriter, r *http.Request) {
 
@@ -1605,6 +1900,79 @@ func (siw *ServerInterfaceWrapper) GetWalletBalance(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetWalletBalance(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListWalletTransactions operation middleware
+func (siw *ServerInterfaceWrapper) ListWalletTransactions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListWalletTransactionsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWalletTransactions(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1826,6 +2194,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/v1/authorizations", wrapper.ListAuthorizations)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/authorizations/{id}", wrapper.GetAuthorization)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/authorizations/{id}/capture", wrapper.CaptureAuthorization)
 	})
 	r.Group(func(r chi.Router) {
@@ -1853,6 +2224,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/v1/kyc/status", wrapper.GetKYCStatus)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/me", wrapper.GetProfile)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/notifications", wrapper.ListNotifications)
 	})
 	r.Group(func(r chi.Router) {
@@ -1862,7 +2236,13 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/v1/transfers", wrapper.CreateTransfer)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/transfers/{id}", wrapper.GetTransfer)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/wallet", wrapper.GetWalletBalance)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/wallet/transactions", wrapper.ListWalletTransactions)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/wallets", wrapper.ProvisionWallet)
@@ -2082,6 +2462,71 @@ func (response ListAuthorizations401JSONResponse) VisitListAuthorizationsRespons
 type ListAuthorizations502JSONResponse ErrorResponse
 
 func (response ListAuthorizations502JSONResponse) VisitListAuthorizationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthorizationRequestObject struct {
+	Id     string `json:"id"`
+	Params GetAuthorizationParams
+}
+
+type GetAuthorizationResponseObject interface {
+	VisitGetAuthorizationResponse(w http.ResponseWriter) error
+}
+
+type GetAuthorization200JSONResponse CardAuthorization
+
+func (response GetAuthorization200JSONResponse) VisitGetAuthorizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthorization401JSONResponse ErrorResponse
+
+func (response GetAuthorization401JSONResponse) VisitGetAuthorizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthorization404JSONResponse ErrorResponse
+
+func (response GetAuthorization404JSONResponse) VisitGetAuthorizationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthorization502JSONResponse ErrorResponse
+
+func (response GetAuthorization502JSONResponse) VisitGetAuthorizationResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2677,6 +3122,70 @@ func (response GetKYCStatus502JSONResponse) VisitGetKYCStatusResponse(w http.Res
 	return err
 }
 
+type GetProfileRequestObject struct {
+	Params GetProfileParams
+}
+
+type GetProfileResponseObject interface {
+	VisitGetProfileResponse(w http.ResponseWriter) error
+}
+
+type GetProfile200JSONResponse Profile
+
+func (response GetProfile200JSONResponse) VisitGetProfileResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProfile401JSONResponse ErrorResponse
+
+func (response GetProfile401JSONResponse) VisitGetProfileResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProfile404JSONResponse ErrorResponse
+
+func (response GetProfile404JSONResponse) VisitGetProfileResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProfile502JSONResponse ErrorResponse
+
+func (response GetProfile502JSONResponse) VisitGetProfileResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListNotificationsRequestObject struct {
 	Params ListNotificationsParams
 }
@@ -2856,6 +3365,71 @@ func (response CreateTransfer502JSONResponse) VisitCreateTransferResponse(w http
 	return err
 }
 
+type GetTransferRequestObject struct {
+	Id     string `json:"id"`
+	Params GetTransferParams
+}
+
+type GetTransferResponseObject interface {
+	VisitGetTransferResponse(w http.ResponseWriter) error
+}
+
+type GetTransfer200JSONResponse Transfer
+
+func (response GetTransfer200JSONResponse) VisitGetTransferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTransfer401JSONResponse ErrorResponse
+
+func (response GetTransfer401JSONResponse) VisitGetTransferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTransfer404JSONResponse ErrorResponse
+
+func (response GetTransfer404JSONResponse) VisitGetTransferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTransfer502JSONResponse ErrorResponse
+
+func (response GetTransfer502JSONResponse) VisitGetTransferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetWalletBalanceRequestObject struct {
 	Params GetWalletBalanceParams
 }
@@ -2909,6 +3483,56 @@ func (response GetWalletBalance404JSONResponse) VisitGetWalletBalanceResponse(w 
 type GetWalletBalance502JSONResponse ErrorResponse
 
 func (response GetWalletBalance502JSONResponse) VisitGetWalletBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWalletTransactionsRequestObject struct {
+	Params ListWalletTransactionsParams
+}
+
+type ListWalletTransactionsResponseObject interface {
+	VisitListWalletTransactionsResponse(w http.ResponseWriter) error
+}
+
+type ListWalletTransactions200JSONResponse WalletTransactionList
+
+func (response ListWalletTransactions200JSONResponse) VisitListWalletTransactionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWalletTransactions401JSONResponse ErrorResponse
+
+func (response ListWalletTransactions401JSONResponse) VisitListWalletTransactionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWalletTransactions502JSONResponse ErrorResponse
+
+func (response ListWalletTransactions502JSONResponse) VisitListWalletTransactionsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2989,6 +3613,9 @@ type StrictServerInterface interface {
 	// (GET /v1/authorizations)
 	ListAuthorizations(ctx context.Context, request ListAuthorizationsRequestObject) (ListAuthorizationsResponseObject, error)
 
+	// (GET /v1/authorizations/{id})
+	GetAuthorization(ctx context.Context, request GetAuthorizationRequestObject) (GetAuthorizationResponseObject, error)
+
 	// (POST /v1/authorizations/{id}/capture)
 	CaptureAuthorization(ctx context.Context, request CaptureAuthorizationRequestObject) (CaptureAuthorizationResponseObject, error)
 
@@ -3016,6 +3643,9 @@ type StrictServerInterface interface {
 	// (GET /v1/kyc/status)
 	GetKYCStatus(ctx context.Context, request GetKYCStatusRequestObject) (GetKYCStatusResponseObject, error)
 
+	// (GET /v1/me)
+	GetProfile(ctx context.Context, request GetProfileRequestObject) (GetProfileResponseObject, error)
+
 	// (GET /v1/notifications)
 	ListNotifications(ctx context.Context, request ListNotificationsRequestObject) (ListNotificationsResponseObject, error)
 
@@ -3025,8 +3655,14 @@ type StrictServerInterface interface {
 	// (POST /v1/transfers)
 	CreateTransfer(ctx context.Context, request CreateTransferRequestObject) (CreateTransferResponseObject, error)
 
+	// (GET /v1/transfers/{id})
+	GetTransfer(ctx context.Context, request GetTransferRequestObject) (GetTransferResponseObject, error)
+
 	// (GET /v1/wallet)
 	GetWalletBalance(ctx context.Context, request GetWalletBalanceRequestObject) (GetWalletBalanceResponseObject, error)
+
+	// (GET /v1/wallet/transactions)
+	ListWalletTransactions(ctx context.Context, request ListWalletTransactionsRequestObject) (ListWalletTransactionsResponseObject, error)
 
 	// (POST /v1/wallets)
 	ProvisionWallet(ctx context.Context, request ProvisionWalletRequestObject) (ProvisionWalletResponseObject, error)
@@ -3199,6 +3835,33 @@ func (sh *strictHandler) ListAuthorizations(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListAuthorizationsResponseObject); ok {
 		if err := validResponse.VisitListAuthorizationsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetAuthorization operation middleware
+func (sh *strictHandler) GetAuthorization(w http.ResponseWriter, r *http.Request, id string, params GetAuthorizationParams) {
+	var request GetAuthorizationRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAuthorization(ctx, request.(GetAuthorizationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAuthorization")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAuthorizationResponseObject); ok {
+		if err := validResponse.VisitGetAuthorizationResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -3466,6 +4129,32 @@ func (sh *strictHandler) GetKYCStatus(w http.ResponseWriter, r *http.Request, pa
 	}
 }
 
+// GetProfile operation middleware
+func (sh *strictHandler) GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams) {
+	var request GetProfileRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProfile(ctx, request.(GetProfileRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProfile")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProfileResponseObject); ok {
+		if err := validResponse.VisitGetProfileResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListNotifications operation middleware
 func (sh *strictHandler) ListNotifications(w http.ResponseWriter, r *http.Request, params ListNotificationsParams) {
 	var request ListNotificationsRequestObject
@@ -3551,6 +4240,33 @@ func (sh *strictHandler) CreateTransfer(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
+// GetTransfer operation middleware
+func (sh *strictHandler) GetTransfer(w http.ResponseWriter, r *http.Request, id string, params GetTransferParams) {
+	var request GetTransferRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetTransfer(ctx, request.(GetTransferRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetTransfer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetTransferResponseObject); ok {
+		if err := validResponse.VisitGetTransferResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetWalletBalance operation middleware
 func (sh *strictHandler) GetWalletBalance(w http.ResponseWriter, r *http.Request, params GetWalletBalanceParams) {
 	var request GetWalletBalanceRequestObject
@@ -3570,6 +4286,32 @@ func (sh *strictHandler) GetWalletBalance(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetWalletBalanceResponseObject); ok {
 		if err := validResponse.VisitGetWalletBalanceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListWalletTransactions operation middleware
+func (sh *strictHandler) ListWalletTransactions(w http.ResponseWriter, r *http.Request, params ListWalletTransactionsParams) {
+	var request ListWalletTransactionsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListWalletTransactions(ctx, request.(ListWalletTransactionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListWalletTransactions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListWalletTransactionsResponseObject); ok {
+		if err := validResponse.VisitListWalletTransactionsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

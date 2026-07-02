@@ -20,6 +20,7 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	GetUserByPhone(ctx context.Context, phone pgtype.Text) (GetUserByPhoneRow, error)
+	GetUserProfile(ctx context.Context, id uuid.UUID) (GetUserProfileRow, error)
 	GetWalletByUserAndCurrency(ctx context.Context, arg GetWalletByUserAndCurrencyParams) (GetWalletByUserAndCurrencyRow, error)
 	UpsertProfile(ctx context.Context, arg UpsertProfileParams) error
 }

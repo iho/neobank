@@ -29,9 +29,14 @@ type User struct {
 
 type Profile struct {
 	UserID      string
+	Email       string
+	Phone       string
+	Status      string
 	FullName    string
 	DateOfBirth string
 	CountryCode string
+	KYCStatus   string
+	CreatedAt   time.Time
 }
 
 type KYCCase struct {

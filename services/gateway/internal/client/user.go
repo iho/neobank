@@ -75,6 +75,18 @@ type ProvisionWalletResponse struct {
 	LedgerAccountID string `json:"ledger_account_id"`
 }
 
+type ProfileView struct {
+	UserID      string `json:"user_id"`
+	Email       string `json:"email"`
+	Phone       string `json:"phone"`
+	Status      string `json:"status"`
+	FullName    string `json:"full_name,omitempty"`
+	DateOfBirth string `json:"date_of_birth,omitempty"`
+	CountryCode string `json:"country_code,omitempty"`
+	KYCStatus   string `json:"kyc_status"`
+	CreatedAt   string `json:"created_at"`
+}
+
 func (c *UserClient) RefreshToken(ctx context.Context, refreshToken string) (LoginResponse, error) {
 	body, err := json.Marshal(map[string]string{"refresh_token": refreshToken})
 	if err != nil {
@@ -209,6 +221,34 @@ func (c *UserClient) SubmitKYC(ctx context.Context, userID, idempotencyKey strin
 		return SubmitKYCResponse{}, err
 	}
 	return out, nil
+}
+
+func (c *UserClient) GetProfile(ctx context.Context, userID string) (ProfileView, int, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/me", nil)
+	if err != nil {
+		return ProfileView{}, 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return ProfileView{}, 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ProfileView{}, 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return ProfileView{}, resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var out ProfileView
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return ProfileView{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
 }
 
 func (c *UserClient) GetKYCStatus(ctx context.Context, userID string) (KYCStatusResponse, error) {

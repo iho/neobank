@@ -157,6 +157,8 @@ type AuthorizationView struct {
 	LedgerHoldID     string `json:"ledger_hold_id,omitempty"`
 	LedgerTransferID string `json:"ledger_transfer_id,omitempty"`
 	FailureReason    string `json:"failure_reason,omitempty"`
+	CreatedAt        string `json:"created_at,omitempty"`
+	CapturedAt       string `json:"captured_at,omitempty"`
 }
 
 type AuthorizationList struct {
@@ -226,6 +228,35 @@ func (c *CardClient) ListAuthorizations(ctx context.Context, userID string, limi
 		return AuthorizationList{}, err
 	}
 	return out, nil
+}
+
+func (c *CardClient) GetAuthorization(ctx context.Context, userID, authID string) (AuthorizationView, int, error) {
+	url := fmt.Sprintf("%s/api/v1/authorizations/%s", c.baseURL, authID)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return AuthorizationView{}, 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return AuthorizationView{}, 0, fmt.Errorf("card service request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return AuthorizationView{}, 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return AuthorizationView{}, resp.StatusCode, fmt.Errorf("card service status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var out AuthorizationView
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return AuthorizationView{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
 }
 
 func (c *CardClient) CaptureAuthorization(ctx context.Context, userID, authID string) (AuthorizationView, int, error) {

@@ -116,3 +116,55 @@ func (q *Queries) GetUserByPhone(ctx context.Context, phone pgtype.Text) (GetUse
 	)
 	return i, err
 }
+
+const getUserProfile = `-- name: GetUserProfile :one
+SELECT
+    u.id,
+    u.email,
+    COALESCE(u.phone, '') AS phone,
+    u.status,
+    u.created_at,
+    COALESCE(p.full_name, '') AS full_name,
+    p.date_of_birth,
+    COALESCE(p.country_code, '') AS country_code,
+    COALESCE(k.status, 'pending') AS kyc_status
+FROM "user".users u
+LEFT JOIN "user".profiles p ON p.user_id = u.id
+LEFT JOIN LATERAL (
+    SELECT status
+    FROM "user".kyc_cases
+    WHERE user_id = u.id
+    ORDER BY submitted_at DESC NULLS LAST, id DESC
+    LIMIT 1
+) k ON true
+WHERE u.id = $1
+`
+
+type GetUserProfileRow struct {
+	ID          uuid.UUID
+	Email       string
+	Phone       string
+	Status      string
+	CreatedAt   pgtype.Timestamptz
+	FullName    string
+	DateOfBirth pgtype.Date
+	CountryCode string
+	KycStatus   string
+}
+
+func (q *Queries) GetUserProfile(ctx context.Context, id uuid.UUID) (GetUserProfileRow, error) {
+	row := q.db.QueryRow(ctx, getUserProfile, id)
+	var i GetUserProfileRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Phone,
+		&i.Status,
+		&i.CreatedAt,
+		&i.FullName,
+		&i.DateOfBirth,
+		&i.CountryCode,
+		&i.KycStatus,
+	)
+	return i, err
+}

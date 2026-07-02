@@ -361,6 +361,12 @@ components:
           type: string
         failure_reason:
           type: string
+        created_at:
+          type: string
+          format: date-time
+        captured_at:
+          type: string
+          format: date-time
     AuthorizationList:
       type: object
       required: [authorizations]

@@ -101,6 +101,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /v1/me:
+    get:
+      operationId: getProfile
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/XUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /v1/kyc:
     post:
       operationId: submitKYC
@@ -190,6 +221,36 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/wallet/transactions:
+    get:
+      operationId: listWalletTransactions
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/XUserId"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletTransactionList"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -299,6 +360,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Transfer"
+        "502":
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/transfers/{id}:
+    get:
+      operationId: getTransfer
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "502":
           description: Bad Gateway
           content:
@@ -560,6 +657,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /v1/authorizations/{id}:
+    get:
+      operationId: getAuthorization
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardAuthorization"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /v1/authorizations/{id}/capture:
     post:
       operationId: captureAuthorization
@@ -736,6 +869,65 @@ components:
           type: string
         rejection_reason:
           type: string
+    Profile:
+      type: object
+      required: [user_id, email, phone, status, kyc_status, created_at]
+      properties:
+        user_id:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        status:
+          type: string
+        full_name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        country_code:
+          type: string
+        kyc_status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    WalletTransaction:
+      type: object
+      required: [id, type, amount, currency, direction, status, created_at]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: p2p_out, p2p_in, card_purchase, card_hold
+        amount:
+          type: string
+        currency:
+          type: string
+        direction:
+          type: string
+          description: debit or credit
+        status:
+          type: string
+        counterparty:
+          type: string
+        memo:
+          type: string
+        reference_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    WalletTransactionList:
+      type: object
+      required: [transactions]
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WalletTransaction"
     WalletBalance:
       type: object
       required: [wallet_id, currency, balance, available_balance]
@@ -798,6 +990,12 @@ components:
           type: string
         memo:
           type: string
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
     TransferList:
       type: object
       required: [transfers]
@@ -901,6 +1099,12 @@ components:
           type: string
         failure_reason:
           type: string
+        created_at:
+          type: string
+          format: date-time
+        captured_at:
+          type: string
+          format: date-time
     AuthorizationList:
       type: object
       required: [authorizations]

@@ -172,11 +172,14 @@ Base URL: `http://localhost:8080`
 | `POST` | `/v1/auth/register` | — | Create account |
 | `POST` | `/v1/auth/login` | — | Issue access + refresh tokens |
 | `POST` | `/v1/auth/refresh` | — | Rotate tokens |
+| `GET` | `/v1/me` | JWT | User profile + KYC status |
 | `POST` | `/v1/kyc` | JWT | Submit KYC (auto-approve MVP) |
 | `GET` | `/v1/kyc/status` | JWT | KYC status |
 | `GET` | `/v1/wallet` | JWT | Wallet balance |
+| `GET` | `/v1/wallet/transactions` | JWT | Unified transaction history (P2P + card) |
 | `POST` | `/v1/wallets` | JWT | Provision wallet |
 | `GET` | `/v1/transfers` | JWT | List transfers |
+| `GET` | `/v1/transfers/{id}` | JWT | Transfer details |
 | `POST` | `/v1/transfers` | JWT | P2P transfer |
 | `GET` | `/v1/cards` | JWT | List cards |
 | `POST` | `/v1/cards` | JWT | Issue virtual card |
@@ -185,6 +188,7 @@ Base URL: `http://localhost:8080`
 | `POST` | `/v1/cards/{id}/unfreeze` | JWT | Unfreeze card |
 | `POST` | `/v1/cards/{id}/authorize` | JWT | Authorize transaction (ledger hold) |
 | `GET` | `/v1/authorizations` | JWT | List authorizations |
+| `GET` | `/v1/authorizations/{id}` | JWT | Authorization details |
 | `POST` | `/v1/authorizations/{id}/capture` | JWT | Capture hold → settlement |
 | `GET` | `/v1/notifications` | JWT | Notification inbox |
 | `GET` | `/health` | — | Health check |

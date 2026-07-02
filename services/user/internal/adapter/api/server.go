@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -13,15 +14,16 @@ import (
 )
 
 type Server struct {
-	register      *usecase.RegisterUseCase
-	login         *usecase.LoginUseCase
-	refresh       *usecase.RefreshTokenUseCase
-	submitKYC     *usecase.SubmitKYCUseCase
-	getKYCStatus  *usecase.GetKYCStatusUseCase
-	walletBalance *usecase.GetWalletBalanceUseCase
-	provisionWallet *usecase.ProvisionWalletUseCase
-	users         *sqlcrepo.UserRepository
-	wallets       *sqlcrepo.WalletRepository
+	register        *usecase.RegisterUseCase
+	login           *usecase.LoginUseCase
+	refresh         *usecase.RefreshTokenUseCase
+	submitKYC         *usecase.SubmitKYCUseCase
+	getKYCStatus      *usecase.GetKYCStatusUseCase
+	getProfile        *usecase.GetProfileUseCase
+	walletBalance     *usecase.GetWalletBalanceUseCase
+	provisionWallet   *usecase.ProvisionWalletUseCase
+	users             *sqlcrepo.UserRepository
+	wallets           *sqlcrepo.WalletRepository
 }
 
 func NewServer(
@@ -30,6 +32,7 @@ func NewServer(
 	refresh *usecase.RefreshTokenUseCase,
 	submitKYC *usecase.SubmitKYCUseCase,
 	getKYCStatus *usecase.GetKYCStatusUseCase,
+	getProfile *usecase.GetProfileUseCase,
 	walletBalance *usecase.GetWalletBalanceUseCase,
 	provisionWallet *usecase.ProvisionWalletUseCase,
 	users *sqlcrepo.UserRepository,
@@ -41,6 +44,7 @@ func NewServer(
 		refresh:         refresh,
 		submitKYC:       submitKYC,
 		getKYCStatus:    getKYCStatus,
+		getProfile:      getProfile,
 		walletBalance:   walletBalance,
 		provisionWallet: provisionWallet,
 		users:           users,
@@ -119,6 +123,41 @@ func (s *Server) Register(ctx context.Context, req api.RegisterRequestObject) (a
 		AccessToken:  out.AccessToken,
 		RefreshToken: out.RefreshToken,
 	}, nil
+}
+
+func (s *Server) GetProfile(ctx context.Context, req api.GetProfileRequestObject) (api.GetProfileResponseObject, error) {
+	profile, err := s.getProfile.Execute(ctx, req.Params.XUserId.String())
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.GetProfile404JSONResponse{Error: "user_not_found"}, nil
+		}
+		return nil, err
+	}
+	userID, err := uuid.Parse(profile.UserID)
+	if err != nil {
+		return nil, err
+	}
+	resp := api.Profile{
+		UserId:    openapi_types.UUID(userID),
+		Email:     profile.Email,
+		Phone:     profile.Phone,
+		Status:    profile.Status,
+		KycStatus: profile.KYCStatus,
+		CreatedAt: profile.CreatedAt,
+	}
+	if profile.FullName != "" {
+		resp.FullName = &profile.FullName
+	}
+	if profile.CountryCode != "" {
+		resp.CountryCode = &profile.CountryCode
+	}
+	if profile.DateOfBirth != "" {
+		dob, err := time.Parse("2006-01-02", profile.DateOfBirth)
+		if err == nil {
+			resp.DateOfBirth = &openapi_types.Date{Time: dob}
+		}
+	}
+	return api.GetProfile200JSONResponse(resp), nil
 }
 
 func (s *Server) SubmitKYC(ctx context.Context, req api.SubmitKYCRequestObject) (api.SubmitKYCResponseObject, error) {

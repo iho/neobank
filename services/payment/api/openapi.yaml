@@ -83,6 +83,7 @@ paths:
     get:
       operationId: getTransfer
       parameters:
+        - $ref: "#/components/parameters/XUserId"
         - name: id
           in: path
           required: true
@@ -90,6 +91,12 @@ paths:
             type: string
             format: uuid
       responses:
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "200":
           description: OK
           content:
@@ -170,6 +177,12 @@ components:
           type: string
         memo:
           type: string
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
     TransferList:
       type: object
       required: [transfers]

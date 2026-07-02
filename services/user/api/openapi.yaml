@@ -83,6 +83,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/me:
+    get:
+      operationId: getProfile
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/kyc:
     post:
       operationId: submitKYC
@@ -363,6 +381,31 @@ components:
           format: uuid
         ledger_account_id:
           type: string
+    Profile:
+      type: object
+      required: [user_id, email, phone, status, kyc_status, created_at]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        phone:
+          type: string
+        status:
+          type: string
+        full_name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        country_code:
+          type: string
+        kyc_status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
     User:
       type: object
       required: [id, email, phone, status]

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/runtime"
@@ -38,6 +39,8 @@ type HealthResponse struct {
 // Transfer defines model for Transfer.
 type Transfer struct {
 	Amount           string             `json:"amount"`
+	CompletedAt      *time.Time         `json:"completed_at,omitempty"`
+	CreatedAt        *time.Time         `json:"created_at,omitempty"`
 	Currency         string             `json:"currency"`
 	FailureReason    *string            `json:"failure_reason,omitempty"`
 	Id               openapi_types.UUID `json:"id"`
@@ -72,6 +75,11 @@ type CreateP2PTransferParams struct {
 	XUserId        XUserId        `json:"X-User-Id"`
 }
 
+// GetTransferParams defines parameters for GetTransfer.
+type GetTransferParams struct {
+	XUserId XUserId `json:"X-User-Id"`
+}
+
 // CreateP2PTransferJSONRequestBody defines body for CreateP2PTransfer for application/json ContentType.
 type CreateP2PTransferJSONRequestBody = CreateTransferRequest
 
@@ -85,7 +93,7 @@ type ServerInterface interface {
 	CreateP2PTransfer(w http.ResponseWriter, r *http.Request, params CreateP2PTransferParams)
 
 	// (GET /api/v1/transfers/{id})
-	GetTransfer(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	GetTransfer(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params GetTransferParams)
 
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
@@ -106,7 +114,7 @@ func (_ Unimplemented) CreateP2PTransfer(w http.ResponseWriter, r *http.Request,
 }
 
 // (GET /api/v1/transfers/{id})
-func (_ Unimplemented) GetTransfer(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+func (_ Unimplemented) GetTransfer(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params GetTransferParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -278,8 +286,36 @@ func (siw *ServerInterfaceWrapper) GetTransfer(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTransferParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetTransfer(w, r, id)
+		siw.Handler.GetTransfer(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -534,7 +570,8 @@ func (response CreateP2PTransfer422JSONResponse) VisitCreateP2PTransferResponse(
 }
 
 type GetTransferRequestObject struct {
-	Id openapi_types.UUID `json:"id"`
+	Id     openapi_types.UUID `json:"id"`
+	Params GetTransferParams
 }
 
 type GetTransferResponseObject interface {
@@ -551,6 +588,20 @@ func (response GetTransfer200JSONResponse) VisitGetTransferResponse(w http.Respo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTransfer401JSONResponse ErrorResponse
+
+func (response GetTransfer401JSONResponse) VisitGetTransferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -695,10 +746,11 @@ func (sh *strictHandler) CreateP2PTransfer(w http.ResponseWriter, r *http.Reques
 }
 
 // GetTransfer operation middleware
-func (sh *strictHandler) GetTransfer(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+func (sh *strictHandler) GetTransfer(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params GetTransferParams) {
 	var request GetTransferRequestObject
 
 	request.Id = id
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetTransfer(ctx, request.(GetTransferRequestObject))

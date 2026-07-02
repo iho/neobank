@@ -237,5 +237,13 @@ func toAuthorization(a domain.Authorization) api.Authorization {
 	if a.FailureReason != "" {
 		out.FailureReason = &a.FailureReason
 	}
+	if !a.CreatedAt.IsZero() {
+		createdAt := a.CreatedAt.UTC()
+		out.CreatedAt = &createdAt
+	}
+	if a.CapturedAt != nil {
+		capturedAt := a.CapturedAt.UTC()
+		out.CapturedAt = &capturedAt
+	}
 	return out
 }

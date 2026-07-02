@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/runtime"
@@ -43,6 +44,19 @@ type LoginResponse struct {
 	AccessToken  string             `json:"access_token"`
 	RefreshToken string             `json:"refresh_token"`
 	UserId       openapi_types.UUID `json:"user_id"`
+}
+
+// Profile defines model for Profile.
+type Profile struct {
+	CountryCode *string             `json:"country_code,omitempty"`
+	CreatedAt   time.Time           `json:"created_at"`
+	DateOfBirth *openapi_types.Date `json:"date_of_birth,omitempty"`
+	Email       string              `json:"email"`
+	FullName    *string             `json:"full_name,omitempty"`
+	KycStatus   string              `json:"kyc_status"`
+	Phone       string              `json:"phone"`
+	Status      string              `json:"status"`
+	UserId      openapi_types.UUID  `json:"user_id"`
 }
 
 // ProvisionWalletRequest defines model for ProvisionWalletRequest.
@@ -145,6 +159,11 @@ type GetKYCStatusParams struct {
 	XUserId XUserId `json:"X-User-Id"`
 }
 
+// GetProfileParams defines parameters for GetProfile.
+type GetProfileParams struct {
+	XUserId XUserId `json:"X-User-Id"`
+}
+
 // ProvisionWalletParams defines parameters for ProvisionWallet.
 type ProvisionWalletParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
@@ -196,6 +215,9 @@ type ServerInterface interface {
 	// (GET /api/v1/kyc/status)
 	GetKYCStatus(w http.ResponseWriter, r *http.Request, params GetKYCStatusParams)
 
+	// (GET /api/v1/me)
+	GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams)
+
 	// (POST /api/v1/wallets)
 	ProvisionWallet(w http.ResponseWriter, r *http.Request, params ProvisionWalletParams)
 
@@ -242,6 +264,11 @@ func (_ Unimplemented) SubmitKYC(w http.ResponseWriter, r *http.Request, params 
 
 // (GET /api/v1/kyc/status)
 func (_ Unimplemented) GetKYCStatus(w http.ResponseWriter, r *http.Request, params GetKYCStatusParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /api/v1/me)
+func (_ Unimplemented) GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -527,6 +554,51 @@ func (siw *ServerInterfaceWrapper) GetKYCStatus(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
+// GetProfile operation middleware
+func (siw *ServerInterfaceWrapper) GetProfile(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProfileParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProfile(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ProvisionWallet operation middleware
 func (siw *ServerInterfaceWrapper) ProvisionWallet(w http.ResponseWriter, r *http.Request) {
 
@@ -802,6 +874,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/api/v1/kyc/status", wrapper.GetKYCStatus)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/me", wrapper.GetProfile)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/wallets", wrapper.ProvisionWallet)
 	})
 	r.Group(func(r chi.Router) {
@@ -1054,6 +1129,42 @@ func (response GetKYCStatus200JSONResponse) VisitGetKYCStatusResponse(w http.Res
 	return err
 }
 
+type GetProfileRequestObject struct {
+	Params GetProfileParams
+}
+
+type GetProfileResponseObject interface {
+	VisitGetProfileResponse(w http.ResponseWriter) error
+}
+
+type GetProfile200JSONResponse Profile
+
+func (response GetProfile200JSONResponse) VisitGetProfileResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProfile404JSONResponse ErrorResponse
+
+func (response GetProfile404JSONResponse) VisitGetProfileResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ProvisionWalletRequestObject struct {
 	Params ProvisionWalletParams
 	Body   *ProvisionWalletJSONRequestBody
@@ -1171,6 +1282,9 @@ type StrictServerInterface interface {
 
 	// (GET /api/v1/kyc/status)
 	GetKYCStatus(ctx context.Context, request GetKYCStatusRequestObject) (GetKYCStatusResponseObject, error)
+
+	// (GET /api/v1/me)
+	GetProfile(ctx context.Context, request GetProfileRequestObject) (GetProfileResponseObject, error)
 
 	// (POST /api/v1/wallets)
 	ProvisionWallet(ctx context.Context, request ProvisionWalletRequestObject) (ProvisionWalletResponseObject, error)
@@ -1410,6 +1524,32 @@ func (sh *strictHandler) GetKYCStatus(w http.ResponseWriter, r *http.Request, pa
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetKYCStatusResponseObject); ok {
 		if err := validResponse.VisitGetKYCStatusResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProfile operation middleware
+func (sh *strictHandler) GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams) {
+	var request GetProfileRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProfile(ctx, request.(GetProfileRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProfile")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProfileResponseObject); ok {
+		if err := validResponse.VisitGetProfileResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

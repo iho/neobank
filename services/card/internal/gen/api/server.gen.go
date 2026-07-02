@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/runtime"
@@ -19,7 +20,9 @@ import (
 // Authorization defines model for Authorization.
 type Authorization struct {
 	Amount           string             `json:"amount"`
+	CapturedAt       *time.Time         `json:"captured_at,omitempty"`
 	CardId           openapi_types.UUID `json:"card_id"`
+	CreatedAt        *time.Time         `json:"created_at,omitempty"`
 	Currency         string             `json:"currency"`
 	FailureReason    *string            `json:"failure_reason,omitempty"`
 	Id               openapi_types.UUID `json:"id"`

@@ -2,6 +2,7 @@ package sqlcrepo
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/iho/neobank/pkg/pgutil"
@@ -57,6 +58,33 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*domain.User, 
 		return nil, err
 	}
 	return rowToUser(row.ID, row.Email, row.Phone, row.PasswordHash, row.Status), nil
+}
+
+func (r *UserRepository) GetProfile(ctx context.Context, userID string) (*domain.Profile, error) {
+	uid, err := pgutil.ParseUUID(userID)
+	if err != nil {
+		return nil, err
+	}
+	row, err := r.q.GetUserProfile(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	out := &domain.Profile{
+		UserID:      row.ID.String(),
+		Email:       row.Email,
+		Phone:       row.Phone,
+		Status:      row.Status,
+		FullName:    row.FullName,
+		CountryCode: row.CountryCode,
+		KYCStatus:   row.KycStatus,
+	}
+	if row.CreatedAt.Valid {
+		out.CreatedAt = row.CreatedAt.Time
+	}
+	if row.DateOfBirth.Valid {
+		out.DateOfBirth = row.DateOfBirth.Time.Format(time.DateOnly)
+	}
+	return out, nil
 }
 
 func rowToUser(id uuid.UUID, email, phone, passwordHash, status string) *domain.User {

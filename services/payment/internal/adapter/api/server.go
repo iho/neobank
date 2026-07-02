@@ -69,6 +69,10 @@ func (s *Server) GetTransfer(ctx context.Context, req api.GetTransferRequestObje
 		}
 		return nil, err
 	}
+	userID := req.Params.XUserId.String()
+	if transfer.SenderUserID != userID && transfer.RecipientUserID != userID {
+		return api.GetTransfer404JSONResponse{Error: "transfer_not_found"}, nil
+	}
 	view := toTransfer(*transfer)
 	return api.GetTransfer200JSONResponse(view), nil
 }
@@ -116,6 +120,14 @@ func toTransfer(t domain.Transfer) api.Transfer {
 	}
 	if t.Memo != "" {
 		out.Memo = &t.Memo
+	}
+	if !t.CreatedAt.IsZero() {
+		createdAt := t.CreatedAt.UTC()
+		out.CreatedAt = &createdAt
+	}
+	if t.CompletedAt != nil {
+		completedAt := t.CompletedAt.UTC()
+		out.CompletedAt = &completedAt
 	}
 	return out
 }

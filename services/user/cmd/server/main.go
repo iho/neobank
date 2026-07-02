@@ -60,10 +60,11 @@ func main() {
 	provisionWalletUC := usecase.NewProvisionWalletUseCase(walletRepo, ledgerAdapter)
 	submitKYCUC := usecase.NewSubmitKYCUseCase(kycRepo, provisionWalletUC)
 	getKYCStatusUC := usecase.NewGetKYCStatusUseCase(kycRepo)
+	getProfileUC := usecase.NewGetProfileUseCase(userRepo)
 	walletBalanceUC := usecase.NewGetWalletBalanceUseCase(walletRepo, ledgerAdapter)
 
 	strictServer := apiadapter.NewServer(
-		registerUC, loginUC, refreshUC, submitKYCUC, getKYCStatusUC, walletBalanceUC,
+		registerUC, loginUC, refreshUC, submitKYCUC, getKYCStatusUC, getProfileUC, walletBalanceUC,
 		provisionWalletUC, userRepo, walletRepo,
 	)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)

@@ -78,7 +78,11 @@ type CardOutboxEvent struct {
 	CorrelationID pgtype.Text
 	CausationID   pgtype.Text
 	CreatedAt     pgtype.Timestamptz
-	PublishedAt   pgtype.Timestamptz
+}
+
+type CardOutboxPublication struct {
+	EventID     uuid.UUID
+	PublishedAt pgtype.Timestamptz
 }
 
 type CardReconciliationBreak struct {

@@ -80,7 +80,11 @@ type PaymentOutboxEvent struct {
 	CorrelationID pgtype.Text
 	CausationID   pgtype.Text
 	CreatedAt     pgtype.Timestamptz
-	PublishedAt   pgtype.Timestamptz
+}
+
+type PaymentOutboxPublication struct {
+	EventID     uuid.UUID
+	PublishedAt pgtype.Timestamptz
 }
 
 type PaymentReconciliationBreak struct {

@@ -35,7 +35,7 @@ type Querier interface {
 	InsertWalletTransaction(ctx context.Context, arg InsertWalletTransactionParams) error
 	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
 	ListWalletTransactionsByUser(ctx context.Context, arg ListWalletTransactionsByUserParams) ([]ListWalletTransactionsByUserRow, error)
-	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
+	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
 	RejectKYCCase(ctx context.Context, arg RejectKYCCaseParams) error
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
 	UpsertProfile(ctx context.Context, arg UpsertProfileParams) error

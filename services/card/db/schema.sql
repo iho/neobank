@@ -24,9 +24,16 @@ CREATE TABLE card.outbox_events (
     payload         JSONB NOT NULL,
     correlation_id  TEXT,
     causation_id    TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    published_at    TIMESTAMPTZ
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE card.outbox_publications (
+    event_id      UUID PRIMARY KEY REFERENCES card.outbox_events(id),
+    published_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_card_outbox_publications_published_at
+    ON card.outbox_publications (published_at DESC);
 
 CREATE TABLE card.authorizations (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),

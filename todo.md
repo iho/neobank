@@ -94,18 +94,18 @@ audit rows are now persisted.
       case creation, SAR/CTR export format) — `pkg/amlmonitor`, `payment.aml_evaluations` /
       `payment.aml_cases`, post-ledger hook in P2P transfer, `cmd/aml-export`.
 
-### 5. Outbox is not an archive — MEDIUM — still open
-`MarkPublished` mutates rows; nothing forbids deletion; retention is undefined. If the
-outbox doubles as the domain event history, it must be durable and tamper-evident.
+### 5. Outbox is not an archive — MEDIUM — partially done
+`outbox_events` rows are now append-only; publication state lives in
+`outbox_publications` (payment/user/card migration 007/008).
 
-- [ ] Define retention: keep events ≥ 5–7 years (typical financial retention); partition
-      `outbox_events` by month and archive partitions to object storage with WORM/object-lock.
-- [ ] Never `DELETE`; move `published_at` tracking to a separate table or accept the
-      single mutable column but revoke broader UPDATE.
+- [x] Never mutate event payloads — DB triggers block UPDATE/DELETE on `outbox_events`;
+      `MarkPublished` inserts into `outbox_publications` with idempotent `ON CONFLICT`.
+- [x] Retention constant — `pkg/outbox.DefaultRetentionYears` (7) documents the target;
+      enforcement via partition archival still needs infra.
+- [ ] Partition `outbox_events` by month and archive to object storage with WORM/object-lock.
 - [ ] Optional tamper evidence: per-stream hash chain or periodic Merkle root anchoring.
 
-This needs an infra/vendor decision (object storage + WORM policy, retention period per
-jurisdiction) that isn't ours to make in code — flagging for a product/compliance call.
+Partition archival and WORM policy still need a product/compliance + infra decision.
 
 ### 6. No reconciliation — MEDIUM — ✅ DONE
 Service tables and goledger can drift (saga compensation failures, crashes between steps).

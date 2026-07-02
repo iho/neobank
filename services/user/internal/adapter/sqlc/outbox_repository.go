@@ -52,7 +52,7 @@ func (r *OutboxRepository) FetchUnpublished(ctx context.Context, limit int) ([]o
 	}
 	records := make([]outbox.Record, 0, len(rows))
 	for _, row := range rows {
-		rec := outbox.Record{
+		records = append(records, outbox.Record{
 			ID:            row.ID.String(),
 			AggregateType: row.AggregateType,
 			AggregateID:   row.AggregateID,
@@ -62,12 +62,7 @@ func (r *OutboxRepository) FetchUnpublished(ctx context.Context, limit int) ([]o
 			CorrelationID: row.CorrelationID,
 			CausationID:   row.CausationID,
 			CreatedAt:     row.CreatedAt.Time,
-		}
-		if row.PublishedAt.Valid {
-			t := row.PublishedAt.Time
-			rec.PublishedAt = &t
-		}
-		records = append(records, rec)
+		})
 	}
 	return records, nil
 }

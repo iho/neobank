@@ -63,7 +63,11 @@ type UserOutboxEvent struct {
 	CorrelationID pgtype.Text
 	CausationID   pgtype.Text
 	CreatedAt     pgtype.Timestamptz
-	PublishedAt   pgtype.Timestamptz
+}
+
+type UserOutboxPublication struct {
+	EventID     uuid.UUID
+	PublishedAt pgtype.Timestamptz
 }
 
 type UserProfile struct {

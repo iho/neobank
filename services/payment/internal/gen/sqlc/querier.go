@@ -31,7 +31,7 @@ type Querier interface {
 	ListOpenReconciliationBreaks(ctx context.Context, limit int32) ([]ListOpenReconciliationBreaksRow, error)
 	ListTransfersByUser(ctx context.Context, arg ListTransfersByUserParams) ([]ListTransfersByUserRow, error)
 	ListTransfersForReconciliation(ctx context.Context, limit int32) ([]ListTransfersForReconciliationRow, error)
-	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
+	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
 	MarkTransferCompleted(ctx context.Context, arg MarkTransferCompletedParams) error
 	MarkTransferFailed(ctx context.Context, arg MarkTransferFailedParams) error
 	ResolveReconciliationBreak(ctx context.Context, arg ResolveReconciliationBreakParams) (int64, error)

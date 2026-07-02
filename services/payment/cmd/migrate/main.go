@@ -19,6 +19,7 @@ func main() {
 		"migrations/005_saga_alerts.sql",
 		"migrations/006_screening_checks.sql",
 		"migrations/007_aml_monitoring.sql",
+		"migrations/008_outbox_immutability.sql",
 	}
 
 	ctx := context.Background()

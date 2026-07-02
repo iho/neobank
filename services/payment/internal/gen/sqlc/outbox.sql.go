@@ -13,13 +13,14 @@ import (
 )
 
 const fetchUnpublishedOutboxEvents = `-- name: FetchUnpublishedOutboxEvents :many
-SELECT id, aggregate_type, aggregate_id, event_type, event_version, payload,
-       COALESCE(correlation_id, '') AS correlation_id,
-       COALESCE(causation_id, '') AS causation_id,
-       created_at, published_at
-FROM payment.outbox_events
-WHERE published_at IS NULL
-ORDER BY created_at
+SELECT e.id, e.aggregate_type, e.aggregate_id, e.event_type, e.event_version, e.payload,
+       COALESCE(e.correlation_id, '') AS correlation_id,
+       COALESCE(e.causation_id, '') AS causation_id,
+       e.created_at
+FROM payment.outbox_events e
+LEFT JOIN payment.outbox_publications p ON p.event_id = e.id
+WHERE p.event_id IS NULL
+ORDER BY e.created_at
 LIMIT $1
 `
 
@@ -33,7 +34,6 @@ type FetchUnpublishedOutboxEventsRow struct {
 	CorrelationID string
 	CausationID   string
 	CreatedAt     pgtype.Timestamptz
-	PublishedAt   pgtype.Timestamptz
 }
 
 func (q *Queries) FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error) {
@@ -55,7 +55,6 @@ func (q *Queries) FetchUnpublishedOutboxEvents(ctx context.Context, limit int32)
 			&i.CorrelationID,
 			&i.CausationID,
 			&i.CreatedAt,
-			&i.PublishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -100,10 +99,12 @@ func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventPa
 }
 
 const markOutboxEventPublished = `-- name: MarkOutboxEventPublished :exec
-UPDATE payment.outbox_events SET published_at = now() WHERE id = $1
+INSERT INTO payment.outbox_publications (event_id, published_at)
+VALUES ($1, now())
+ON CONFLICT (event_id) DO NOTHING
 `
 
-func (q *Queries) MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, markOutboxEventPublished, id)
+func (q *Queries) MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markOutboxEventPublished, eventID)
 	return err
 }

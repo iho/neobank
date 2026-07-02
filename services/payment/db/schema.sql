@@ -26,9 +26,16 @@ CREATE TABLE payment.outbox_events (
     payload         JSONB NOT NULL,
     correlation_id  TEXT,
     causation_id    TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    published_at    TIMESTAMPTZ
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE payment.outbox_publications (
+    event_id      UUID PRIMARY KEY REFERENCES payment.outbox_events(id),
+    published_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_payment_outbox_publications_published_at
+    ON payment.outbox_publications (published_at DESC);
 
 CREATE TABLE payment.saga_instances (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

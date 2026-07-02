@@ -34,7 +34,7 @@ type Querier interface {
 	MarkAuthorizationFailed(ctx context.Context, arg MarkAuthorizationFailedParams) error
 	MarkAuthorizationHold(ctx context.Context, arg MarkAuthorizationHoldParams) error
 	MarkCardCancelled(ctx context.Context, id uuid.UUID) error
-	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
+	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
 	ResolveReconciliationBreak(ctx context.Context, arg ResolveReconciliationBreakParams) (int64, error)
 	StartReconciliationRun(ctx context.Context, arg StartReconciliationRunParams) (uuid.UUID, error)
 	UpdateCardStatus(ctx context.Context, arg UpdateCardStatusParams) error

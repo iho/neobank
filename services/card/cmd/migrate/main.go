@@ -18,6 +18,7 @@ func main() {
 		"migrations/004_fraud_rule_version.sql",
 		"migrations/005_reconciliation_breaks.sql",
 		"migrations/006_saga_alerts.sql",
+		"migrations/007_outbox_immutability.sql",
 	}
 
 	ctx := context.Background()

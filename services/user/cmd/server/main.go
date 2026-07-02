@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
+	"github.com/iho/neobank/pkg/outbox"
 	apiadapter "github.com/iho/neobank/services/user/internal/adapter/api"
 	"github.com/iho/neobank/services/user/internal/adapter/auth"
 	ledgeradapter "github.com/iho/neobank/services/user/internal/adapter/ledger"
@@ -52,13 +53,27 @@ func main() {
 	userRepo := sqlcrepo.NewUserRepository(queries)
 	walletRepo := sqlcrepo.NewWalletRepository(queries)
 	kycRepo := sqlcrepo.NewKYCRepository(queries)
+	outboxRepo := sqlcrepo.NewOutboxRepository(queries)
+	sagaStore := sqlcrepo.NewSagaStore(queries)
+
+	producer := outbox.NewProducer(outbox.ProducerConfig{
+		KafkaBrokers:    cfg.KafkaBrokers,
+		NotificationURL: cfg.NotificationURL,
+		Logger:          logger,
+	})
+	outboxWorker := outbox.NewWorker(outboxRepo, producer, "user.events")
+	go func() {
+		if err := outboxWorker.Run(ctx); err != nil && err != context.Canceled {
+			logger.Error("outbox worker stopped", "error", err)
+		}
+	}()
 
 	tokenIssuer := auth.NewJWT(cfg.JWTSecret)
 	registerUC := usecase.NewRegisterUseCase(userRepo, tokenIssuer)
 	loginUC := usecase.NewLoginUseCase(userRepo, tokenIssuer)
 	refreshUC := usecase.NewRefreshTokenUseCase(tokenIssuer, userRepo)
-	provisionWalletUC := usecase.NewProvisionWalletUseCase(walletRepo, ledgerAdapter)
-	submitKYCUC := usecase.NewSubmitKYCUseCase(kycRepo, provisionWalletUC)
+	provisionWalletUC := usecase.NewProvisionWalletUseCase(walletRepo, ledgerAdapter, outboxRepo, sagaStore)
+	submitKYCUC := usecase.NewSubmitKYCUseCase(kycRepo, provisionWalletUC, outboxRepo)
 	getKYCStatusUC := usecase.NewGetKYCStatusUseCase(kycRepo)
 	getProfileUC := usecase.NewGetProfileUseCase(userRepo)
 	walletBalanceUC := usecase.NewGetWalletBalanceUseCase(walletRepo, ledgerAdapter)

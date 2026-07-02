@@ -6,3 +6,6 @@ VALUES ($1, $2, $3, $4, $5);
 SELECT id, user_id, currency, ledger_account_id, status
 FROM "user".wallets
 WHERE user_id = $1 AND currency = $2;
+
+-- name: DeleteWalletByID :exec
+DELETE FROM "user".wallets WHERE id = $1;

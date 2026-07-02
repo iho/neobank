@@ -35,3 +35,24 @@ CREATE TABLE "user".wallets (
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (user_id, currency)
 );
+
+CREATE TABLE "user".outbox_events (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aggregate_type  TEXT NOT NULL,
+    aggregate_id    TEXT NOT NULL,
+    event_type      TEXT NOT NULL,
+    payload         JSONB NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    published_at    TIMESTAMPTZ
+);
+
+CREATE TABLE "user".saga_instances (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    saga_type       TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    status          TEXT NOT NULL DEFAULT 'running',
+    completed_steps JSONB NOT NULL DEFAULT '{}',
+    context         JSONB NOT NULL DEFAULT '{}',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);

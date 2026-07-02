@@ -7,12 +7,12 @@ Production-oriented neobank backend monorepo in Go, built around the existing [g
 | Capability | Status |
 |------------|--------|
 | User registration, login, JWT refresh | Done |
-| KYC-lite (auto-approve) + wallet provisioning | Done |
+| KYC-lite (auto-approve) + wallet provisioning saga | Done |
 | Wallet balance (ledger `GetAccount`) | Done |
 | P2P transfers (saga: fraud → ledger → outbox) | Done |
 | Virtual cards (issue, freeze, unfreeze) | Done |
 | Card authorization + capture (hold → settle) | Done |
-| Notifications (HTTP ingest + optional Kafka) | Done |
+| Notifications (HTTP ingest + optional Kafka) | Done (incl. user.events) |
 | API Gateway BFF with JWT auth | Done |
 | Fraud rules (velocity, amount caps) | Done (`pkg/fraud`) |
 | Kafka event bus | Optional (HTTP fallback) |
@@ -117,7 +117,7 @@ In separate terminals (or use a process manager):
 ./bin/gateway
 ```
 
-Optional: set `KAFKA_BROKERS=localhost:9092` on Payment, Card, and Notification for Kafka-based event delivery instead of direct HTTP.
+Optional: set `KAFKA_BROKERS=localhost:9092` on User, Payment, Card, and Notification for Kafka-based event delivery instead of direct HTTP.
 
 For card capture, create a settlement account in goledger and set:
 
@@ -217,7 +217,7 @@ Shared defaults work for local development. Override as needed:
 | `PAYMENT_SERVICE_URL` | `http://localhost:8082` | gateway |
 | `CARD_SERVICE_URL` | `http://localhost:8084` | gateway |
 | `NOTIFICATION_SERVICE_URL` | `http://localhost:8083` | gateway |
-| `KAFKA_BROKERS` | _(empty)_ | payment, card, notification |
+| `KAFKA_BROKERS` | _(empty)_ | user, payment, card, notification |
 | `SETTLEMENT_LEDGER_ACCOUNT_ID` | _(empty)_ | card (required for capture) |
 
 ## Make targets

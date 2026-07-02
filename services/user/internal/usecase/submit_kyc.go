@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/iho/neobank/pkg/events"
 	"github.com/iho/neobank/services/user/internal/domain"
 	"github.com/jackc/pgx/v5"
 )
@@ -34,10 +35,11 @@ type SubmitKYCOutput struct {
 type SubmitKYCUseCase struct {
 	kyc       KYCRepository
 	provision *ProvisionWalletUseCase
+	outbox    OutboxPublisher
 }
 
-func NewSubmitKYCUseCase(kyc KYCRepository, provision *ProvisionWalletUseCase) *SubmitKYCUseCase {
-	return &SubmitKYCUseCase{kyc: kyc, provision: provision}
+func NewSubmitKYCUseCase(kyc KYCRepository, provision *ProvisionWalletUseCase, outbox OutboxPublisher) *SubmitKYCUseCase {
+	return &SubmitKYCUseCase{kyc: kyc, provision: provision, outbox: outbox}
 }
 
 func (uc *SubmitKYCUseCase) Execute(ctx context.Context, in SubmitKYCInput) (SubmitKYCOutput, error) {
@@ -50,7 +52,11 @@ func (uc *SubmitKYCUseCase) Execute(ctx context.Context, in SubmitKYCInput) (Sub
 		return SubmitKYCOutput{}, err
 	}
 	if existing != nil && existing.Status == domain.KYCStatusApproved {
-		wallet, wErr := uc.provision.Execute(ctx, ProvisionWalletInput{UserID: in.UserID, Currency: "USD"})
+		wallet, wErr := uc.provision.Execute(ctx, ProvisionWalletInput{
+			UserID:         in.UserID,
+			Currency:       "USD",
+			IdempotencyKey: walletProvisionKey(in.IdempotencyKey, in.UserID),
+		})
 		if wErr != nil {
 			return SubmitKYCOutput{}, wErr
 		}
@@ -76,18 +82,31 @@ func (uc *SubmitKYCUseCase) Execute(ctx context.Context, in SubmitKYCInput) (Sub
 	}
 
 	wallet, err := uc.provision.Execute(ctx, ProvisionWalletInput{
-		UserID:   in.UserID,
-		Currency: "USD",
+		UserID:         in.UserID,
+		Currency:       "USD",
+		IdempotencyKey: walletProvisionKey(in.IdempotencyKey, in.UserID),
 	})
 	if err != nil {
 		return SubmitKYCOutput{}, fmt.Errorf("provision wallet: %w", err)
 	}
+
+	_ = uc.outbox.Publish(ctx, events.KYCApproved{
+		UserID:    in.UserID,
+		KYCCaseID: kycCase.ID,
+	})
 
 	return SubmitKYCOutput{
 		KYCCaseID: kycCase.ID,
 		Status:    domain.KYCStatusApproved,
 		WalletID:  wallet.WalletID,
 	}, nil
+}
+
+func walletProvisionKey(idempotencyKey, userID string) string {
+	if idempotencyKey != "" {
+		return idempotencyKey + ":wallet"
+	}
+	return fmt.Sprintf("wallet:%s:USD", userID)
 }
 
 type GetKYCStatusUseCase struct {

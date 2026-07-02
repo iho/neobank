@@ -46,7 +46,7 @@ func main() {
 	if cfg.KafkaBrokers != "" {
 		consumer := kafkaadapter.NewConsumer(cfg.KafkaBrokers, "notification-service", ingestUC, logger)
 		go func() {
-			if err := consumer.Run(ctx, "payment.events", "card.events"); err != nil && err != context.Canceled {
+			if err := consumer.Run(ctx, "payment.events", "card.events", "user.events"); err != nil && err != context.Canceled {
 				logger.Error("kafka consumer stopped", "error", err)
 			}
 		}()

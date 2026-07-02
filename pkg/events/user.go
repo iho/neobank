@@ -18,6 +18,16 @@ func (e UserRegistered) AggregateType() string { return "user" }
 func (e UserRegistered) AggregateID() string { return e.UserID }
 func (e UserRegistered) Version() int          { return 1 }
 
+type KYCApproved struct {
+	UserID    string `json:"user_id"`
+	KYCCaseID string `json:"kyc_case_id"`
+}
+
+func (e KYCApproved) EventType() string     { return TypeKYCApproved }
+func (e KYCApproved) AggregateType() string { return "user" }
+func (e KYCApproved) AggregateID() string   { return e.UserID }
+func (e KYCApproved) Version() int          { return 1 }
+
 type WalletProvisioned struct {
 	UserID          string `json:"user_id"`
 	WalletID        string `json:"wallet_id"`

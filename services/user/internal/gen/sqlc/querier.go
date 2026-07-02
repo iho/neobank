@@ -14,14 +14,21 @@ import (
 type Querier interface {
 	ApproveKYCCase(ctx context.Context, id uuid.UUID) error
 	CreateKYCCase(ctx context.Context, arg CreateKYCCaseParams) (CreateKYCCaseRow, error)
+	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	CreateWallet(ctx context.Context, arg CreateWalletParams) error
+	DeleteWalletByID(ctx context.Context, id uuid.UUID) error
+	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]UserOutboxEvent, error)
 	GetLatestKYCCaseByUser(ctx context.Context, userID uuid.UUID) (GetLatestKYCCaseByUserRow, error)
+	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	GetUserByPhone(ctx context.Context, phone pgtype.Text) (GetUserByPhoneRow, error)
 	GetUserProfile(ctx context.Context, id uuid.UUID) (GetUserProfileRow, error)
 	GetWalletByUserAndCurrency(ctx context.Context, arg GetWalletByUserAndCurrencyParams) (GetWalletByUserAndCurrencyRow, error)
+	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error
+	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
+	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
 	UpsertProfile(ctx context.Context, arg UpsertProfileParams) error
 }
 

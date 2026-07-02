@@ -32,9 +32,41 @@ func (uc *IngestEventUseCase) Execute(ctx context.Context, envelope events.Envel
 		return uc.handleCardAuthApproved(ctx, envelope)
 	case events.TypeCardAuthCaptured:
 		return uc.handleCardAuthCaptured(ctx, envelope)
+	case events.TypeKYCApproved:
+		return uc.handleKYCApproved(ctx, envelope)
+	case events.TypeWalletProvisioned:
+		return uc.handleWalletProvisioned(ctx, envelope)
 	default:
 		return nil
 	}
+}
+
+func (uc *IngestEventUseCase) handleKYCApproved(ctx context.Context, envelope events.Envelope) error {
+	var payload events.KYCApproved
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return fmt.Errorf("parse kyc approved payload: %w", err)
+	}
+	return uc.repo.Create(ctx, domain.Notification{
+		ID:        uuid.NewString(),
+		UserID:    payload.UserID,
+		EventType: envelope.EventType,
+		Title:     "KYC approved",
+		Body:      "Your identity verification is complete. Your wallet is ready to use.",
+	}, envelope.EventID)
+}
+
+func (uc *IngestEventUseCase) handleWalletProvisioned(ctx context.Context, envelope events.Envelope) error {
+	var payload events.WalletProvisioned
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return fmt.Errorf("parse wallet provisioned payload: %w", err)
+	}
+	return uc.repo.Create(ctx, domain.Notification{
+		ID:        uuid.NewString(),
+		UserID:    payload.UserID,
+		EventType: envelope.EventType,
+		Title:     "Wallet ready",
+		Body:      fmt.Sprintf("Your %s wallet is active and ready for transfers.", payload.Currency),
+	}, envelope.EventID)
 }
 
 func (uc *IngestEventUseCase) handleCardIssued(ctx context.Context, envelope events.Envelope) error {

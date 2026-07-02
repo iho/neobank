@@ -18,11 +18,32 @@ type UserKycCase struct {
 	RejectionReason pgtype.Text
 }
 
+type UserOutboxEvent struct {
+	ID            uuid.UUID
+	AggregateType string
+	AggregateID   string
+	EventType     string
+	Payload       []byte
+	CreatedAt     pgtype.Timestamptz
+	PublishedAt   pgtype.Timestamptz
+}
+
 type UserProfile struct {
 	UserID      uuid.UUID
 	FullName    pgtype.Text
 	DateOfBirth pgtype.Date
 	CountryCode pgtype.Text
+}
+
+type UserSagaInstance struct {
+	ID             uuid.UUID
+	SagaType       string
+	IdempotencyKey string
+	Status         string
+	CompletedSteps []byte
+	Context        []byte
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
 }
 
 type UserUser struct {

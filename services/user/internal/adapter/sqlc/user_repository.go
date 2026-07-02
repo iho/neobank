@@ -123,6 +123,14 @@ func (r *WalletRepository) Create(ctx context.Context, wallet domain.Wallet) err
 	})
 }
 
+func (r *WalletRepository) DeleteByID(ctx context.Context, walletID string) error {
+	id, err := pgutil.ParseUUID(walletID)
+	if err != nil {
+		return err
+	}
+	return r.q.DeleteWalletByID(ctx, id)
+}
+
 func (r *WalletRepository) GetByUserAndCurrency(ctx context.Context, userID, currency string) (*domain.Wallet, error) {
 	uid, err := pgutil.ParseUUID(userID)
 	if err != nil {

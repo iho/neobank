@@ -231,8 +231,9 @@ func (s *Server) ProvisionWallet(ctx context.Context, req api.ProvisionWalletReq
 		currency = *req.Body.Currency
 	}
 	out, err := s.provisionWallet.Execute(ctx, usecase.ProvisionWalletInput{
-		UserID:   userID,
-		Currency: currency,
+		UserID:         userID,
+		Currency:       currency,
+		IdempotencyKey: req.Params.IdempotencyKey,
 	})
 	if err != nil {
 		return api.ProvisionWallet400JSONResponse{Error: err.Error()}, nil

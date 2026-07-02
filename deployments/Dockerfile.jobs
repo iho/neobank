@@ -6,8 +6,12 @@ COPY pkg ./pkg
 COPY services/payment ./services/payment
 COPY services/card ./services/card
 COPY tools/saga-watchdog ./tools/saga-watchdog
-
-ENV GOWORK=off
+RUN printf '%s\n' 'go 1.24.0' '' 'use (' \
+    '	./pkg' \
+    '	./services/payment' \
+    '	./services/card' \
+    '	./tools/saga-watchdog' \
+    ')' > go.work
 RUN cd services/payment && go build -o /out/payment-reconcile ./cmd/reconcile
 RUN cd services/payment && go build -o /out/payment-aml-export ./cmd/aml-export
 RUN cd services/card && go build -o /out/card-reconcile ./cmd/reconcile

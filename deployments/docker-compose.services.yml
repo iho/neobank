@@ -1,0 +1,218 @@
+# Application services overlay. Use with the infra stack:
+#
+#   make up-all        # infra + migrations + all five services
+#   make down-all
+#
+# goledger is still external — start it on the host (see services/ledger/README.md)
+# and reach it via host.docker.internal:50051 (Linux: host-gateway mapping below).
+
+x-build-args: &build-args
+  GIT_SHA: ${GIT_SHA:-dev}
+  BUILD_DATE: ${BUILD_DATE:-unknown}
+
+x-service-env: &service-env
+  DATABASE_URL: postgres://neobank:neobank@postgres:5432/neobank?sslmode=disable
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET: dev-secret-change-me
+  KAFKA_BROKERS: kafka:9092
+  OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+  LEDGER_GRPC_ADDR: host.docker.internal:50051
+
+x-http-healthcheck: &http-healthcheck
+  interval: 10s
+  timeout: 5s
+  retries: 8
+  start_period: 20s
+
+services:
+  vault-init:
+    image: hashicorp/vault:1.17
+    profiles: ["vault-pii"]
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: dev-root-token
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        until vault status -address=http://vault:8200 2>/dev/null; do sleep 1; done
+        vault secrets enable transit 2>/dev/null || true
+        vault write -f transit/keys/pii type=aes256-gcm96
+        vault write -f transit/keys/pii-phone type=hmac key_size=256
+        echo "vault transit keys ready"
+    depends_on:
+      vault:
+        condition: service_healthy
+    restart: "no"
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.migrate
+    environment:
+      DATABASE_URL: postgres://neobank:neobank@postgres:5432/neobank?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  user:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.service
+      args:
+        <<: *build-args
+        SERVICE: user
+    environment:
+      <<: *service-env
+      HTTP_PORT: "8081"
+      GRPC_PORT: "50052"
+      NOTIFICATION_SERVICE_URL: http://notification:8083/api/v1/internal/events
+    ports:
+      - "8081:8081"
+      - "50052:50052"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      <<: *http-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/health >/dev/null"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notification:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.service
+      args:
+        <<: *build-args
+        SERVICE: notification
+    environment:
+      <<: *service-env
+      HTTP_PORT: "8083"
+      GRPC_PORT: "50055"
+      USER_GRPC_ADDR: user:50052
+    ports:
+      - "8083:8083"
+      - "50055:50055"
+    healthcheck:
+      <<: *http-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8083/health >/dev/null"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+    restart: unless-stopped
+
+  payment:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.service
+      args:
+        <<: *build-args
+        SERVICE: payment
+    environment:
+      <<: *service-env
+      HTTP_PORT: "8082"
+      GRPC_PORT: "50053"
+      USER_SERVICE_URL: http://user:8081
+      USER_GRPC_ADDR: user:50052
+      NOTIFICATION_SERVICE_URL: http://notification:8083/api/v1/internal/events
+    ports:
+      - "8082:8082"
+      - "50053:50053"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      <<: *http-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/health >/dev/null"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      notification:
+        condition: service_healthy
+    restart: unless-stopped
+
+  card:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.service
+      args:
+        <<: *build-args
+        SERVICE: card
+    environment:
+      <<: *service-env
+      HTTP_PORT: "8084"
+      GRPC_PORT: "50054"
+      USER_SERVICE_URL: http://user:8081
+      USER_GRPC_ADDR: user:50052
+      NOTIFICATION_SERVICE_URL: http://notification:8083/api/v1/internal/events
+    ports:
+      - "8084:8084"
+      - "50054:50054"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      <<: *http-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8084/health >/dev/null"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      notification:
+        condition: service_healthy
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.service
+      args:
+        <<: *build-args
+        SERVICE: gateway
+    environment:
+      <<: *service-env
+      HTTP_PORT: "8080"
+      USER_GRPC_ADDR: user:50052
+      PAYMENT_GRPC_ADDR: payment:50053
+      CARD_GRPC_ADDR: card:50054
+      NOTIFICATION_GRPC_ADDR: notification:50055
+      APP_ENV: development
+    ports:
+      - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      <<: *http-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null"]
+    depends_on:
+      user:
+        condition: service_healthy
+      payment:
+        condition: service_healthy
+      card:
+        condition: service_healthy
+      notification:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped

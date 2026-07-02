@@ -1,0 +1,13 @@
+.git
+.github
+.claude
+bin/
+mobile/
+tests/
+*.md
+todo*.md
+**/*_test.go
+**/.DS_Store
+deployments/grpc-mtls/*.crt
+deployments/grpc-mtls/*.key
+deployments/grpc-mtls/*.srl

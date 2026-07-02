@@ -1,4 +1,10 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs
+.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-all down-all up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs
+
+COMPOSE_INFRA := docker compose -f deployments/docker-compose.yml
+COMPOSE_ALL   := docker compose -f deployments/docker-compose.yml -f deployments/docker-compose.services.yml
+COMPOSE_JOBS  := $(COMPOSE_ALL) -f deployments/docker-compose.jobs.yml
+GIT_SHA       ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
+BUILD_DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
 OAPI_CODEGEN ?= oapi-codegen
 SQLC ?= sqlc
@@ -73,16 +79,22 @@ lint:
 	cd tools/event-catalog && golangci-lint run --config=../../.golangci.yml ./...
 
 up:
-	docker compose -f deployments/docker-compose.yml up -d
+	$(COMPOSE_INFRA) up -d
 
 down:
-	docker compose -f deployments/docker-compose.yml down
+	$(COMPOSE_INFRA) down
+
+up-all:
+	GIT_SHA=$(GIT_SHA) BUILD_DATE=$(BUILD_DATE) $(COMPOSE_ALL) up -d --build
+
+down-all:
+	$(COMPOSE_ALL) down
 
 up-jobs:
-	docker compose -f deployments/docker-compose.yml -f deployments/docker-compose.jobs.yml up -d --build
+	GIT_SHA=$(GIT_SHA) BUILD_DATE=$(BUILD_DATE) $(COMPOSE_JOBS) up -d --build reconcile-jobs
 
 down-jobs:
-	docker compose -f deployments/docker-compose.yml -f deployments/docker-compose.jobs.yml down
+	$(COMPOSE_JOBS) stop reconcile-jobs
 
 migrate: migrate-user migrate-payment migrate-notification migrate-card
 

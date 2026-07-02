@@ -1,0 +1,37 @@
+ARG GO_VERSION=1.24
+
+FROM golang:${GO_VERSION}-alpine AS build
+WORKDIR /src
+RUN apk add --no-cache git
+
+COPY pkg ./pkg
+COPY services/user ./services/user
+COPY services/payment ./services/payment
+COPY services/notification ./services/notification
+COPY services/card ./services/card
+
+ENV CGO_ENABLED=0 GOOS=linux
+RUN printf '%s\n' 'go 1.24.0' '' 'use (' \
+    '	./pkg' \
+    '	./services/user' \
+    '	./services/payment' \
+    '	./services/notification' \
+    '	./services/card' \
+    ')' > go.work
+RUN cd services/user && go build -trimpath -ldflags="-s -w" -o /out/migrate-user ./cmd/migrate
+RUN cd services/payment && go build -trimpath -ldflags="-s -w" -o /out/migrate-payment ./cmd/migrate
+RUN cd services/notification && go build -trimpath -ldflags="-s -w" -o /out/migrate-notification ./cmd/migrate
+RUN cd services/card && go build -trimpath -ldflags="-s -w" -o /out/migrate-card ./cmd/migrate
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates
+
+COPY --from=build /out/migrate-user /out/migrate-payment /out/migrate-notification /out/migrate-card /usr/local/bin/
+COPY services/user/migrations /svc/user/migrations
+COPY services/payment/migrations /svc/payment/migrations
+COPY services/notification/migrations /svc/notification/migrations
+COPY services/card/migrations /svc/card/migrations
+COPY deployments/migrate-all.sh /migrate-all.sh
+RUN chmod +x /migrate-all.sh
+
+ENTRYPOINT ["/migrate-all.sh"]

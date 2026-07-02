@@ -1,0 +1,47 @@
+# Multi-stage build for neobank Go services.
+# Usage: docker build -f deployments/Dockerfile.service --build-arg SERVICE=user .
+#
+# SERVICE must be one of: user, payment, card, notification, gateway
+
+ARG GO_VERSION=1.24
+
+FROM golang:${GO_VERSION}-alpine AS build
+ARG SERVICE
+ARG GIT_SHA=dev
+ARG BUILD_DATE=unknown
+
+WORKDIR /src
+RUN apk add --no-cache git ca-certificates
+
+COPY pkg ./pkg
+COPY services/${SERVICE} ./services/${SERVICE}
+
+ENV CGO_ENABLED=0 GOOS=linux
+RUN printf 'go 1.24.0\n\nuse (\n\t./pkg\n\t./services/%s\n)\n' "${SERVICE}" > go.work
+RUN cd services/${SERVICE} && \
+    go build -trimpath -ldflags="-s -w" \
+    -o /out/server ./cmd/server
+
+FROM alpine:3.20
+ARG SERVICE
+ARG GIT_SHA=dev
+ARG BUILD_DATE=unknown
+
+RUN apk add --no-cache ca-certificates wget \
+    && addgroup -S -g 65532 nonroot \
+    && adduser -S -u 65532 -G nonroot nonroot
+
+COPY --from=build /out/server /server
+
+LABEL org.opencontainers.image.title="neobank-${SERVICE}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.source="https://github.com/iho/neobank"
+
+USER nonroot:nonroot
+EXPOSE 8080 8081 8082 8083 8084 50052 50053 50054 50055
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=5 \
+    CMD wget -qO- http://127.0.0.1:${HTTP_PORT:-8080}/health >/dev/null || exit 1
+
+ENTRYPOINT ["/server"]

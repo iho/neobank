@@ -1,10 +1,9 @@
-# Scheduled reconciliation jobs. Requires the base stack (Postgres) and goledger
-# reachable at LEDGER_GRPC_ADDR. Card reconciliation also needs the user service.
+# Scheduled reconciliation jobs. Requires Postgres, goledger, and the user gRPC service.
 #
-#   make up && make up-jobs
+#   make up-all && make up-jobs
 #
-# goledger and user/card/payment APIs run on the host by default; jobs reach them
-# via host.docker.internal (Linux: host-gateway mapping below).
+# goledger stays on the host (host.docker.internal:50051). User gRPC uses the
+# in-compose service DNS when up-all is running.
 services:
   reconcile-jobs:
     build:
@@ -13,10 +12,12 @@ services:
     environment:
       DATABASE_URL: postgres://neobank:neobank@postgres:5432/neobank?sslmode=disable
       LEDGER_GRPC_ADDR: host.docker.internal:50051
-      USER_GRPC_ADDR: host.docker.internal:50052
+      USER_GRPC_ADDR: user:50052
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
+        condition: service_healthy
+      user:
         condition: service_healthy
     restart: unless-stopped

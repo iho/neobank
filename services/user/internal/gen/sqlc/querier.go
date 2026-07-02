@@ -42,7 +42,6 @@ type Querier interface {
 	ListWalletTransactionsByUser(ctx context.Context, arg ListWalletTransactionsByUserParams) ([]ListWalletTransactionsByUserRow, error)
 	ListWalletsByUser(ctx context.Context, userID uuid.UUID) ([]ListWalletsByUserRow, error)
 	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
-	MaskKYCSubmissionsByUser(ctx context.Context, userID uuid.UUID) error
 	MaskUserAccount(ctx context.Context, arg MaskUserAccountParams) error
 	MaskUserProfile(ctx context.Context, userID uuid.UUID) error
 	RejectKYCCase(ctx context.Context, arg RejectKYCCaseParams) error

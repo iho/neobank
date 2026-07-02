@@ -148,17 +148,6 @@ func (q *Queries) ListWalletsByUser(ctx context.Context, userID uuid.UUID) ([]Li
 	return items, nil
 }
 
-const maskKYCSubmissionsByUser = `-- name: MaskKYCSubmissionsByUser :exec
-UPDATE "user".kyc_submissions
-SET document_number = 'REDACTED'
-WHERE user_id = $1
-`
-
-func (q *Queries) MaskKYCSubmissionsByUser(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, maskKYCSubmissionsByUser, userID)
-	return err
-}
-
 const maskUserAccount = `-- name: MaskUserAccount :exec
 UPDATE "user".users
 SET email = $2, phone = NULL, phone_lookup = NULL, password_hash = $3, status = 'masked', updated_at = now()

@@ -28,11 +28,6 @@ UPDATE "user".profiles
 SET full_name = 'REDACTED', date_of_birth = NULL, date_of_birth_encrypted = NULL, country_code = NULL
 WHERE user_id = $1;
 
--- name: MaskKYCSubmissionsByUser :exec
-UPDATE "user".kyc_submissions
-SET document_number = 'REDACTED'
-WHERE user_id = $1;
-
 -- name: InsertGDPRRequest :exec
 INSERT INTO "user".gdpr_requests (id, user_id, request_type, actor, correlation_id)
 VALUES ($1, $2, $3, $4, sqlc.narg(correlation_id));

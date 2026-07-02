@@ -34,6 +34,12 @@ func (r *GDPRRepository) ListKYCSubmissionsByUser(ctx context.Context, userID st
 	if err != nil {
 		return nil, err
 	}
+	user, err := r.q.GetUserByID(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	masked := user.Status == string(domain.UserStatusMasked)
+
 	rows, err := r.q.ListKYCSubmissionsByUser(ctx, uid)
 	if err != nil {
 		return nil, err
@@ -44,9 +50,14 @@ func (r *GDPRRepository) ListKYCSubmissionsByUser(ctx context.Context, userID st
 		if row.DocumentType.Valid {
 			docType = row.DocumentType.String
 		}
-		docNumber, err := piicrypto.Read(ctx, r.pii, row.DocumentNumber)
-		if err != nil {
-			return nil, err
+		var docNumber string
+		if masked {
+			docNumber = "REDACTED"
+		} else {
+			docNumber, err = piicrypto.Read(ctx, r.pii, row.DocumentNumber)
+			if err != nil {
+				return nil, err
+			}
 		}
 		out = append(out, port.KYCSubmission{
 			ID:                row.ID.String(),
@@ -123,8 +134,5 @@ func (r *GDPRRepository) MaskUserPII(ctx context.Context, userID, maskedEmail, p
 	}); err != nil {
 		return err
 	}
-	if err := r.q.MaskUserProfile(ctx, uid); err != nil {
-		return err
-	}
-	return r.q.MaskKYCSubmissionsByUser(ctx, uid)
+	return r.q.MaskUserProfile(ctx, uid)
 }

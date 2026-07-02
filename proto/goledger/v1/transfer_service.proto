@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package goledger.v1;
+
+option go_package = "github.com/iho/neobank/pkg/gen/goledger/v1;goledgerv1";
+
+import "goledger/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+service TransferService {
+  rpc CreateTransfer(CreateTransferRequest) returns (CreateTransferResponse);
+  rpc CreateBatchTransfer(CreateBatchTransferRequest) returns (CreateBatchTransferResponse);
+  rpc GetTransfer(GetTransferRequest) returns (GetTransferResponse);
+  rpc ListTransfersByAccount(ListTransfersByAccountRequest) returns (ListTransfersByAccountResponse);
+  rpc ReverseTransfer(ReverseTransferRequest) returns (ReverseTransferResponse);
+}
+
+message CreateTransferRequest {
+  string from_account_id = 1;
+  string to_account_id = 2;
+  string amount = 3;
+  optional google.protobuf.Timestamp event_at = 4;
+  map<string, string> metadata = 5;
+  optional string idempotency_key = 6;
+}
+
+message CreateTransferResponse {
+  Transfer transfer = 1;
+}
+
+message CreateBatchTransferRequest {
+  repeated CreateTransferRequest transfers = 1;
+  optional google.protobuf.Timestamp event_at = 2;
+  map<string, string> metadata = 3;
+}
+
+message CreateBatchTransferResponse {
+  repeated Transfer transfers = 1;
+}
+
+message GetTransferRequest {
+  string id = 1;
+}
+
+message GetTransferResponse {
+  Transfer transfer = 1;
+}
+
+message ListTransfersByAccountRequest {
+  string account_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListTransfersByAccountResponse {
+  repeated Transfer transfers = 1;
+}
+
+message ReverseTransferRequest {
+  string transfer_id = 1;
+  map<string, string> metadata = 2;
+}
+
+message ReverseTransferResponse {
+  Transfer transfer = 1;
+}

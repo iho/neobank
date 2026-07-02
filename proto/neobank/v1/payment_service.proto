@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package neobank.v1;
+
+option go_package = "github.com/iho/neobank/pkg/gen/neobank/v1;neobankv1";
+
+service PaymentService {
+  rpc CreateP2PTransfer(CreateP2PTransferRequest) returns (CreateP2PTransferResponse);
+  rpc GetTransfer(GetTransferRequest) returns (GetTransferResponse);
+  rpc ListTransfers(ListTransfersRequest) returns (ListTransfersResponse);
+}
+
+message CreateP2PTransferRequest {
+  string sender_user_id = 1;
+  string recipient_phone = 2;
+  string amount = 3;
+  string currency = 4;
+  string memo = 5;
+  string idempotency_key = 6;
+}
+
+message CreateP2PTransferResponse {
+  TransferView transfer = 1;
+}
+
+message GetTransferRequest {
+  string transfer_id = 1;
+}
+
+message GetTransferResponse {
+  TransferView transfer = 1;
+}
+
+message ListTransfersRequest {
+  string user_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListTransfersResponse {
+  repeated TransferView transfers = 1;
+}
+
+message TransferView {
+  string id = 1;
+  string status = 2;
+  string sender_user_id = 3;
+  string recipient_user_id = 4;
+  string amount = 5;
+  string currency = 6;
+  string ledger_transfer_id = 7;
+  string failure_reason = 8;
+  string memo = 9;
+}

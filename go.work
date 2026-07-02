@@ -1,0 +1,10 @@
+go 1.24.0
+
+use (
+	./pkg
+	./services/card
+	./services/gateway
+	./services/notification
+	./services/payment
+	./services/user
+)

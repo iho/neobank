@@ -1,0 +1,394 @@
+openapi: 3.0.3
+info:
+  title: User Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8081
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/auth/refresh:
+    post:
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/auth/register:
+    post:
+      operationId: register
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/kyc:
+    post:
+      operationId: submitKYC
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/XUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitKYCRequest"
+      responses:
+        "200":
+          description: Approved (MVP auto-approve)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmitKYCResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/kyc/status:
+    get:
+      operationId: getKYCStatus
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KYCStatusResponse"
+  /api/v1/wallets/balance:
+    get:
+      operationId: getWalletBalance
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: currency
+          in: query
+          schema:
+            type: string
+            default: USD
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletBalance"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/wallets:
+    post:
+      operationId: provisionWallet
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/XUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProvisionWalletRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProvisionWalletResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/internal/users/by-phone/{phone}:
+    get:
+      operationId: getUserByPhone
+      parameters:
+        - name: phone
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/internal/wallets:
+    get:
+      operationId: getWallet
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: currency
+          in: query
+          schema:
+            type: string
+            default: USD
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wallet"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+    XUserId:
+      name: X-User-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        password:
+          type: string
+          format: password
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    RefreshTokenRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+    LoginResponse:
+      type: object
+      required: [user_id, access_token, refresh_token]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+    SubmitKYCRequest:
+      type: object
+      required: [full_name, date_of_birth, country_code]
+      properties:
+        full_name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        country_code:
+          type: string
+          minLength: 2
+          maxLength: 2
+    SubmitKYCResponse:
+      type: object
+      required: [kyc_case_id, status, wallet_id]
+      properties:
+        kyc_case_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        wallet_id:
+          type: string
+          format: uuid
+    KYCStatusResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+        rejection_reason:
+          type: string
+    WalletBalance:
+      type: object
+      required: [wallet_id, currency, balance, available_balance]
+      properties:
+        wallet_id:
+          type: string
+          format: uuid
+        ledger_account_id:
+          type: string
+        currency:
+          type: string
+        balance:
+          type: string
+        encumbered_balance:
+          type: string
+        available_balance:
+          type: string
+    RegisterResponse:
+      type: object
+      required: [user_id, access_token, refresh_token]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+    ProvisionWalletRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        currency:
+          type: string
+          default: USD
+    ProvisionWalletResponse:
+      type: object
+      required: [wallet_id, ledger_account_id]
+      properties:
+        wallet_id:
+          type: string
+          format: uuid
+        ledger_account_id:
+          type: string
+    User:
+      type: object
+      required: [id, email, phone, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        phone:
+          type: string
+        status:
+          type: string
+    Wallet:
+      type: object
+      required: [id, user_id, currency, ledger_account_id, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        currency:
+          type: string
+        ledger_account_id:
+          type: string
+        status:
+          type: string

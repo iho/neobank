@@ -1,0 +1,258 @@
+package api
+
+import (
+	"context"
+	"errors"
+
+	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
+	sqlcrepo "github.com/iho/neobank/services/user/internal/adapter/sqlc"
+	"github.com/iho/neobank/services/user/internal/gen/api"
+	"github.com/iho/neobank/services/user/internal/usecase"
+	"github.com/jackc/pgx/v5"
+)
+
+type Server struct {
+	register      *usecase.RegisterUseCase
+	login         *usecase.LoginUseCase
+	refresh       *usecase.RefreshTokenUseCase
+	submitKYC     *usecase.SubmitKYCUseCase
+	getKYCStatus  *usecase.GetKYCStatusUseCase
+	walletBalance *usecase.GetWalletBalanceUseCase
+	provisionWallet *usecase.ProvisionWalletUseCase
+	users         *sqlcrepo.UserRepository
+	wallets       *sqlcrepo.WalletRepository
+}
+
+func NewServer(
+	register *usecase.RegisterUseCase,
+	login *usecase.LoginUseCase,
+	refresh *usecase.RefreshTokenUseCase,
+	submitKYC *usecase.SubmitKYCUseCase,
+	getKYCStatus *usecase.GetKYCStatusUseCase,
+	walletBalance *usecase.GetWalletBalanceUseCase,
+	provisionWallet *usecase.ProvisionWalletUseCase,
+	users *sqlcrepo.UserRepository,
+	wallets *sqlcrepo.WalletRepository,
+) *Server {
+	return &Server{
+		register:        register,
+		login:           login,
+		refresh:         refresh,
+		submitKYC:       submitKYC,
+		getKYCStatus:    getKYCStatus,
+		walletBalance:   walletBalance,
+		provisionWallet: provisionWallet,
+		users:           users,
+		wallets:         wallets,
+	}
+}
+
+func (s *Server) GetHealth(_ context.Context, _ api.GetHealthRequestObject) (api.GetHealthResponseObject, error) {
+	return api.GetHealth200JSONResponse{Status: "ok"}, nil
+}
+
+func (s *Server) Login(ctx context.Context, req api.LoginRequestObject) (api.LoginResponseObject, error) {
+	if req.Body == nil {
+		return api.Login401JSONResponse{Error: "invalid_json"}, nil
+	}
+	out, err := s.login.Execute(ctx, usecase.LoginInput{
+		Email:    string(req.Body.Email),
+		Password: req.Body.Password,
+	})
+	if err != nil {
+		return api.Login401JSONResponse{Error: err.Error()}, nil
+	}
+	userID, err := uuid.Parse(out.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return api.Login200JSONResponse{
+		UserId:       openapi_types.UUID(userID),
+		AccessToken:  out.AccessToken,
+		RefreshToken: out.RefreshToken,
+	}, nil
+}
+
+func (s *Server) RefreshToken(ctx context.Context, req api.RefreshTokenRequestObject) (api.RefreshTokenResponseObject, error) {
+	if req.Body == nil {
+		return api.RefreshToken401JSONResponse{Error: "invalid_json"}, nil
+	}
+	out, err := s.refresh.Execute(ctx, req.Body.RefreshToken)
+	if err != nil {
+		return api.RefreshToken401JSONResponse{Error: err.Error()}, nil
+	}
+	userID, err := uuid.Parse(out.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return api.RefreshToken200JSONResponse{
+		UserId:       openapi_types.UUID(userID),
+		AccessToken:  out.AccessToken,
+		RefreshToken: out.RefreshToken,
+	}, nil
+}
+
+func (s *Server) Register(ctx context.Context, req api.RegisterRequestObject) (api.RegisterResponseObject, error) {
+	if req.Body == nil {
+		return api.Register400JSONResponse{Error: "invalid_json"}, nil
+	}
+	phone := ""
+	if req.Body.Phone != nil {
+		phone = *req.Body.Phone
+	}
+	out, err := s.register.Execute(ctx, usecase.RegisterInput{
+		Email:          string(req.Body.Email),
+		Phone:          phone,
+		Password:       req.Body.Password,
+		IdempotencyKey: req.Params.IdempotencyKey,
+	})
+	if err != nil {
+		return api.Register400JSONResponse{Error: err.Error()}, nil
+	}
+	userID, err := uuid.Parse(out.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return api.Register201JSONResponse{
+		UserId:       openapi_types.UUID(userID),
+		AccessToken:  out.AccessToken,
+		RefreshToken: out.RefreshToken,
+	}, nil
+}
+
+func (s *Server) SubmitKYC(ctx context.Context, req api.SubmitKYCRequestObject) (api.SubmitKYCResponseObject, error) {
+	if req.Body == nil {
+		return api.SubmitKYC400JSONResponse{Error: "invalid_json"}, nil
+	}
+	out, err := s.submitKYC.Execute(ctx, usecase.SubmitKYCInput{
+		UserID:         req.Params.XUserId.String(),
+		FullName:       req.Body.FullName,
+		DateOfBirth:    req.Body.DateOfBirth.String(),
+		CountryCode:    req.Body.CountryCode,
+		IdempotencyKey: req.Params.IdempotencyKey,
+	})
+	if err != nil {
+		return api.SubmitKYC400JSONResponse{Error: err.Error()}, nil
+	}
+	caseID, _ := uuid.Parse(out.KYCCaseID)
+	walletID, _ := uuid.Parse(out.WalletID)
+	return api.SubmitKYC200JSONResponse{
+		KycCaseId: openapi_types.UUID(caseID),
+		Status:    string(out.Status),
+		WalletId:  openapi_types.UUID(walletID),
+	}, nil
+}
+
+func (s *Server) GetKYCStatus(ctx context.Context, req api.GetKYCStatusRequestObject) (api.GetKYCStatusResponseObject, error) {
+	kycCase, err := s.getKYCStatus.Execute(ctx, req.Params.XUserId.String())
+	if err != nil {
+		return nil, err
+	}
+	resp := api.KYCStatusResponse{Status: string(kycCase.Status)}
+	if kycCase.RejectionReason != "" {
+		resp.RejectionReason = &kycCase.RejectionReason
+	}
+	return api.GetKYCStatus200JSONResponse(resp), nil
+}
+
+func (s *Server) GetWalletBalance(ctx context.Context, req api.GetWalletBalanceRequestObject) (api.GetWalletBalanceResponseObject, error) {
+	currency := "USD"
+	if req.Params.Currency != nil {
+		currency = *req.Params.Currency
+	}
+	balance, err := s.walletBalance.Execute(ctx, usecase.GetWalletBalanceInput{
+		UserID:   req.Params.XUserId.String(),
+		Currency: currency,
+	})
+	if err != nil {
+		if err.Error() == "wallet not found" {
+			return api.GetWalletBalance404JSONResponse{Error: "wallet_not_found"}, nil
+		}
+		return api.GetWalletBalance404JSONResponse{Error: err.Error()}, nil
+	}
+	walletID, _ := uuid.Parse(balance.WalletID)
+	return api.GetWalletBalance200JSONResponse{
+		WalletId:          openapi_types.UUID(walletID),
+		LedgerAccountId:   &balance.LedgerAccountID,
+		Currency:          balance.Currency,
+		Balance:           balance.Balance,
+		EncumberedBalance: &balance.EncumberedBalance,
+		AvailableBalance:  balance.AvailableBalance,
+	}, nil
+}
+
+func (s *Server) ProvisionWallet(ctx context.Context, req api.ProvisionWalletRequestObject) (api.ProvisionWalletResponseObject, error) {
+	userID := req.Params.XUserId.String()
+	if req.Body != nil && req.Body.UserId != nil {
+		userID = req.Body.UserId.String()
+	}
+	currency := "USD"
+	if req.Body != nil && req.Body.Currency != nil {
+		currency = *req.Body.Currency
+	}
+	out, err := s.provisionWallet.Execute(ctx, usecase.ProvisionWalletInput{
+		UserID:   userID,
+		Currency: currency,
+	})
+	if err != nil {
+		return api.ProvisionWallet400JSONResponse{Error: err.Error()}, nil
+	}
+	walletID, err := uuid.Parse(out.WalletID)
+	if err != nil {
+		return nil, err
+	}
+	return api.ProvisionWallet201JSONResponse{
+		WalletId:        openapi_types.UUID(walletID),
+		LedgerAccountId: out.LedgerAccountID,
+	}, nil
+}
+
+func (s *Server) GetUserByPhone(ctx context.Context, req api.GetUserByPhoneRequestObject) (api.GetUserByPhoneResponseObject, error) {
+	user, err := s.users.GetByPhone(ctx, req.Phone)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.GetUserByPhone404JSONResponse{Error: "user_not_found"}, nil
+		}
+		return nil, err
+	}
+	id, err := uuid.Parse(user.ID)
+	if err != nil {
+		return nil, err
+	}
+	return api.GetUserByPhone200JSONResponse{
+		Id:     openapi_types.UUID(id),
+		Email:  user.Email,
+		Phone:  user.Phone,
+		Status: string(user.Status),
+	}, nil
+}
+
+func (s *Server) GetWallet(ctx context.Context, req api.GetWalletRequestObject) (api.GetWalletResponseObject, error) {
+	currency := "USD"
+	if req.Params.Currency != nil {
+		currency = *req.Params.Currency
+	}
+	wallet, err := s.wallets.GetByUserAndCurrency(ctx, req.Params.UserId.String(), currency)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.GetWallet404JSONResponse{Error: "wallet_not_found"}, nil
+		}
+		return nil, err
+	}
+	id, err := uuid.Parse(wallet.ID)
+	if err != nil {
+		return nil, err
+	}
+	userID, err := uuid.Parse(wallet.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return api.GetWallet200JSONResponse{
+		Id:              openapi_types.UUID(id),
+		UserId:          openapi_types.UUID(userID),
+		Currency:        wallet.Currency,
+		LedgerAccountId: wallet.LedgerAccountID,
+		Status:          wallet.Status,
+	}, nil
+}

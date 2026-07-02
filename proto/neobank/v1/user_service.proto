@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package neobank.v1;
+
+option go_package = "github.com/iho/neobank/pkg/gen/neobank/v1;neobankv1";
+
+service UserService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+  rpc SubmitKYC(SubmitKYCRequest) returns (SubmitKYCResponse);
+  rpc GetKYCStatus(GetKYCStatusRequest) returns (GetKYCStatusResponse);
+}
+
+message RegisterRequest {
+  string email = 1;
+  string phone = 2;
+  string password = 3;
+  string idempotency_key = 4;
+}
+
+message RegisterResponse {
+  string user_id = 1;
+  string access_token = 2;
+  string refresh_token = 3;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string user_id = 1;
+  string access_token = 2;
+  string refresh_token = 3;
+}
+
+message GetProfileRequest {
+  string user_id = 1;
+}
+
+message GetProfileResponse {
+  string user_id = 1;
+  string email = 2;
+  string phone = 3;
+  string full_name = 4;
+  KYCStatus kyc_status = 5;
+}
+
+message SubmitKYCRequest {
+  string user_id = 1;
+  string full_name = 2;
+  string date_of_birth = 3;
+  string country_code = 4;
+  string idempotency_key = 5;
+}
+
+message SubmitKYCResponse {
+  string kyc_case_id = 1;
+  KYCStatus status = 2;
+}
+
+message GetKYCStatusRequest {
+  string user_id = 1;
+}
+
+message GetKYCStatusResponse {
+  KYCStatus status = 1;
+  string rejection_reason = 2;
+}
+
+enum KYCStatus {
+  KYC_STATUS_UNSPECIFIED = 0;
+  KYC_STATUS_PENDING = 1;
+  KYC_STATUS_APPROVED = 2;
+  KYC_STATUS_REJECTED = 3;
+  KYC_STATUS_MANUAL_REVIEW = 4;
+}

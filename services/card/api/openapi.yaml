@@ -1,0 +1,371 @@
+openapi: 3.0.3
+info:
+  title: Card Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8084
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/v1/cards:
+    post:
+      operationId: issueCard
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/XUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IssueCardRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "200":
+          description: Idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Issuance failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      operationId: listCards
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardList"
+  /api/v1/cards/{id}:
+    get:
+      operationId: getCard
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/cards/{id}/freeze:
+    post:
+      operationId: freezeCard
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/authorizations:
+    get:
+      operationId: listAuthorizations
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthorizationList"
+  /api/v1/authorizations/{id}:
+    get:
+      operationId: getAuthorization
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Authorization"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/authorizations/{id}/capture:
+    post:
+      operationId: captureAuthorization
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Authorization"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/cards/{id}/authorize:
+    post:
+      operationId: authorizeTransaction
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthorizeRequest"
+      responses:
+        "201":
+          description: Authorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Authorization"
+        "200":
+          description: Idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Authorization"
+        "422":
+          description: Declined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Authorization"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/cards/{id}/unfreeze:
+    post:
+      operationId: unfreezeCard
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+    XUserId:
+      name: X-User-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    IssueCardRequest:
+      type: object
+      required: [cardholder_name]
+      properties:
+        wallet_id:
+          type: string
+          format: uuid
+        cardholder_name:
+          type: string
+    Card:
+      type: object
+      required: [id, user_id, wallet_id, last_four, status, expiry_month, expiry_year]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        wallet_id:
+          type: string
+          format: uuid
+        last_four:
+          type: string
+        status:
+          type: string
+        expiry_month:
+          type: integer
+        expiry_year:
+          type: integer
+    CardList:
+      type: object
+      required: [cards]
+      properties:
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/Card"
+    AuthorizeRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: string
+        currency:
+          type: string
+          default: USD
+        merchant_name:
+          type: string
+    Authorization:
+      type: object
+      required: [id, card_id, user_id, amount, currency, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        card_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        merchant_name:
+          type: string
+        amount:
+          type: string
+        currency:
+          type: string
+        status:
+          type: string
+        ledger_hold_id:
+          type: string
+        ledger_transfer_id:
+          type: string
+        failure_reason:
+          type: string
+    AuthorizationList:
+      type: object
+      required: [authorizations]
+      properties:
+        authorizations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Authorization"

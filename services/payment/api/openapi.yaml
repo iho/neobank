@@ -1,0 +1,180 @@
+openapi: 3.0.3
+info:
+  title: Payment Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8082
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/v1/transfers:
+    post:
+      operationId: createP2PTransfer
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/XUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransferRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+        "200":
+          description: Idempotent replay (completed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Transfer failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+    get:
+      operationId: listTransfers
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferList"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/transfers/{id}:
+    get:
+      operationId: getTransfer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+    XUserId:
+      name: X-User-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    CreateTransferRequest:
+      type: object
+      required: [recipient_phone, amount]
+      properties:
+        recipient_phone:
+          type: string
+        amount:
+          type: string
+        currency:
+          type: string
+          default: USD
+        memo:
+          type: string
+    Transfer:
+      type: object
+      required: [id, status, sender_user_id, recipient_user_id, amount, currency]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        sender_user_id:
+          type: string
+          format: uuid
+        recipient_user_id:
+          type: string
+          format: uuid
+        amount:
+          type: string
+        currency:
+          type: string
+        ledger_transfer_id:
+          type: string
+        failure_reason:
+          type: string
+        memo:
+          type: string
+    TransferList:
+      type: object
+      required: [transfers]
+      properties:
+        transfers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transfer"

@@ -1,0 +1,8 @@
+package: api
+output: internal/gen/api/server.gen.go
+generate:
+  models: true
+  chi-server: true
+  strict-server: true
+output-options:
+  skip-prune: true

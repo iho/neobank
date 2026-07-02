@@ -1,0 +1,130 @@
+openapi: 3.0.3
+info:
+  title: Notification Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8083
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/v1/internal/events:
+    post:
+      operationId: ingestEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventEnvelope"
+      responses:
+        "202":
+          description: Accepted
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/notifications:
+    get:
+      operationId: listNotifications
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationList"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  parameters:
+    XUserId:
+      name: X-User-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    EventEnvelope:
+      type: object
+      required: [event_id, event_type, aggregate_type, aggregate_id, payload]
+      properties:
+        event_id:
+          type: string
+        event_type:
+          type: string
+        event_version:
+          type: integer
+        occurred_at:
+          type: string
+          format: date-time
+        aggregate_type:
+          type: string
+        aggregate_id:
+          type: string
+        payload:
+          type: object
+    Notification:
+      type: object
+      required: [id, user_id, event_type, title, body, read, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    NotificationList:
+      type: object
+      required: [notifications]
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"

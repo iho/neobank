@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package goledger.v1;
+
+option go_package = "github.com/iho/neobank/pkg/gen/goledger/v1;goledgerv1";
+
+import "google/protobuf/timestamp.proto";
+
+message Account {
+  string id = 1;
+  string name = 2;
+  string currency = 3;
+  string balance = 4;
+  string encumbered_balance = 5;
+  int64 version = 6;
+  bool allow_negative_balance = 7;
+  bool allow_positive_balance = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message Transfer {
+  string id = 1;
+  string from_account_id = 2;
+  string to_account_id = 3;
+  string amount = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp event_at = 6;
+  map<string, string> metadata = 7;
+  optional string reversed_transfer_id = 8;
+}
+
+message Entry {
+  string id = 1;
+  string account_id = 2;
+  string transfer_id = 3;
+  string amount = 4;
+  string account_previous_balance = 5;
+  string account_current_balance = 6;
+  int64 account_version = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message Hold {
+  string id = 1;
+  string account_id = 2;
+  string amount = 3;
+  string status = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+  optional google.protobuf.Timestamp expires_at = 7;
+  map<string, string> metadata = 8;
+}

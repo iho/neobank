@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/iho/neobank/pkg/auth"
@@ -77,6 +78,24 @@ func (s *Server) RefreshToken(ctx context.Context, req api.RefreshTokenRequestOb
 		AccessToken:  resp.AccessToken,
 		RefreshToken: resp.RefreshToken,
 	}, nil
+}
+
+func (s *Server) ChangePassword(ctx context.Context, req api.ChangePasswordRequestObject) (api.ChangePasswordResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.ChangePassword401JSONResponse{Error: "unauthorized"}, nil
+	}
+	if req.Body == nil {
+		return api.ChangePassword400JSONResponse{Error: "invalid_json"}, nil
+	}
+	status, err := s.users.ChangePassword(ctx, userID, req.Body.CurrentPassword, req.Body.NewPassword)
+	if status == 401 {
+		return api.ChangePassword401JSONResponse{Error: err.Error()}, nil
+	}
+	if err != nil {
+		return api.ChangePassword502JSONResponse{Error: err.Error()}, nil
+	}
+	return api.ChangePassword204Response{}, nil
 }
 
 func (s *Server) Register(ctx context.Context, req api.RegisterRequestObject) (api.RegisterResponseObject, error) {
@@ -371,12 +390,22 @@ func (s *Server) CreateTransfer(ctx context.Context, req api.CreateTransferReque
 		memo = *req.Body.Memo
 	}
 
-	transfer, statusCode, err := s.payments.CreateP2PTransfer(ctx, userID, req.Params.IdempotencyKey, client.CreateTransferRequest{
-		RecipientPhone: req.Body.RecipientPhone,
-		Amount:         req.Body.Amount,
-		Currency:       currency,
-		Memo:           memo,
-	})
+	transferReq := client.CreateTransferRequest{
+		Amount:   req.Body.Amount,
+		Currency: currency,
+		Memo:     memo,
+	}
+	if req.Body.RecipientPhone != nil {
+		transferReq.RecipientPhone = *req.Body.RecipientPhone
+	}
+	if req.Body.RecipientEmail != nil {
+		transferReq.RecipientEmail = string(*req.Body.RecipientEmail)
+	}
+	if req.Body.RecipientUserId != nil {
+		transferReq.RecipientUserID = *req.Body.RecipientUserId
+	}
+
+	transfer, statusCode, err := s.payments.CreateP2PTransfer(ctx, userID, req.Params.IdempotencyKey, transferReq)
 	if statusCode == 0 {
 		return api.CreateTransfer502JSONResponse{Error: err.Error()}, nil
 	}
@@ -520,7 +549,89 @@ func (s *Server) ListNotifications(ctx context.Context, req api.ListNotification
 			CreatedAt: createdAt,
 		})
 	}
-	return api.ListNotifications200JSONResponse{Notifications: notifications}, nil
+	return api.ListNotifications200JSONResponse{
+		Notifications: notifications,
+		UnreadCount:   list.UnreadCount,
+	}, nil
+}
+
+func (s *Server) MarkNotificationRead(ctx context.Context, req api.MarkNotificationReadRequestObject) (api.MarkNotificationReadResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.MarkNotificationRead401JSONResponse{Error: "unauthorized"}, nil
+	}
+	n, statusCode, err := s.notifications.MarkNotificationRead(ctx, userID, req.Id.String())
+	if statusCode == 404 {
+		return api.MarkNotificationRead404JSONResponse{Error: "notification_not_found"}, nil
+	}
+	if err != nil {
+		return api.MarkNotificationRead502JSONResponse{Error: err.Error()}, nil
+	}
+	createdAt, _ := time.Parse(time.RFC3339, n.CreatedAt)
+	return api.MarkNotificationRead200JSONResponse{
+		Id:        n.ID,
+		UserId:    n.UserID,
+		EventType: n.EventType,
+		Title:     n.Title,
+		Body:      n.Body,
+		Read:      n.Read,
+		CreatedAt: createdAt,
+	}, nil
+}
+
+func (s *Server) MarkAllNotificationsRead(ctx context.Context, req api.MarkAllNotificationsReadRequestObject) (api.MarkAllNotificationsReadResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.MarkAllNotificationsRead401JSONResponse{Error: "unauthorized"}, nil
+	}
+	count, err := s.notifications.MarkAllNotificationsRead(ctx, userID)
+	if err != nil {
+		return api.MarkAllNotificationsRead502JSONResponse{Error: err.Error()}, nil
+	}
+	return api.MarkAllNotificationsRead200JSONResponse{MarkedCount: count}, nil
+}
+
+func (s *Server) DepositWallet(ctx context.Context, req api.DepositWalletRequestObject) (api.DepositWalletResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.DepositWallet401JSONResponse{Error: "unauthorized"}, nil
+	}
+	if req.Body == nil {
+		return api.DepositWallet400JSONResponse{Error: "invalid_json"}, nil
+	}
+	currency := "USD"
+	if req.Body.Currency != nil {
+		currency = *req.Body.Currency
+	}
+	out, statusCode, err := s.users.DepositWallet(ctx, userID, req.Params.IdempotencyKey, client.DepositWalletRequest{
+		Amount:   req.Body.Amount,
+		Currency: currency,
+	})
+	if err != nil {
+		if statusCode == 400 {
+			return api.DepositWallet400JSONResponse{Error: err.Error()}, nil
+		}
+		return api.DepositWallet502JSONResponse{Error: err.Error()}, nil
+	}
+	view := api.DepositWalletResponse{
+		Id:       out.ID,
+		WalletId: out.WalletID,
+		Amount:   out.Amount,
+		Currency: out.Currency,
+		Status:   out.Status,
+	}
+	if out.LedgerTransferID != "" {
+		view.LedgerTransferId = &out.LedgerTransferID
+	}
+	if out.CreatedAt != "" {
+		if createdAt, parseErr := time.Parse(time.RFC3339, out.CreatedAt); parseErr == nil {
+			view.CreatedAt = &createdAt
+		}
+	}
+	if statusCode == http.StatusCreated {
+		return api.DepositWallet201JSONResponse(view), nil
+	}
+	return api.DepositWallet200JSONResponse(view), nil
 }
 
 func (s *Server) AuthorizeTransaction(ctx context.Context, req api.AuthorizeTransactionRequestObject) (api.AuthorizeTransactionResponseObject, error) {

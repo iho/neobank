@@ -28,6 +28,19 @@ type UserConsumerInbox struct {
 	ProcessedAt pgtype.Timestamptz
 }
 
+type UserDeposit struct {
+	ID               uuid.UUID
+	UserID           uuid.UUID
+	WalletID         uuid.UUID
+	Amount           pgtype.Numeric
+	Currency         string
+	LedgerTransferID pgtype.Text
+	Status           string
+	IdempotencyKey   string
+	CreatedAt        pgtype.Timestamptz
+	CompletedAt      pgtype.Timestamptz
+}
+
 type UserGdprRequest struct {
 	ID            uuid.UUID
 	UserID        uuid.UUID

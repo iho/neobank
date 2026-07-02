@@ -5,14 +5,16 @@ import (
 )
 
 type Config struct {
-	DatabaseURL     string
-	HTTPPort        string
-	GRPCPort        string
-	LedgerAddr      string
-	RedisURL        string
-	JWTSecret       string
-	KafkaBrokers    string
-	NotificationURL string
+	DatabaseURL              string
+	HTTPPort                 string
+	GRPCPort                 string
+	LedgerAddr               string
+	RedisURL                 string
+	JWTSecret                string
+	KafkaBrokers             string
+	NotificationURL          string
+	DepositSourceAccountID   string
+	DepositMaxAmount         string
 }
 
 func Load() Config {
@@ -24,7 +26,9 @@ func Load() Config {
 		RedisURL:        env("REDIS_URL", "redis://localhost:6379/0"),
 		JWTSecret:       env("JWT_SECRET", "dev-secret-change-me"),
 		KafkaBrokers:    env("KAFKA_BROKERS", ""),
-		NotificationURL: env("NOTIFICATION_SERVICE_URL", "http://localhost:8083/api/v1/internal/events"),
+		NotificationURL:        env("NOTIFICATION_SERVICE_URL", "http://localhost:8083/api/v1/internal/events"),
+		DepositSourceAccountID: env("DEPOSIT_SOURCE_LEDGER_ACCOUNT_ID", ""),
+		DepositMaxAmount:       env("DEPOSIT_MAX_AMOUNT", "10000.00"),
 	}
 }
 

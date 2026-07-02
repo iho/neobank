@@ -11,6 +11,7 @@ import (
 	"github.com/iho/neobank/pkg/events"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	sqlcrepo "github.com/iho/neobank/services/user/internal/adapter/sqlc"
+	"github.com/iho/neobank/services/user/internal/domain"
 	"github.com/iho/neobank/services/user/internal/gen/api"
 	"github.com/iho/neobank/services/user/internal/usecase"
 	"github.com/jackc/pgx/v5"
@@ -29,6 +30,8 @@ type Server struct {
 	provisionWallet     *usecase.ProvisionWalletUseCase
 	exportGDPR          *usecase.ExportGDPRUseCase
 	maskGDPR            *usecase.MaskGDPRUseCase
+	depositWallet       *usecase.DepositWalletUseCase
+	changePassword      *usecase.ChangePasswordUseCase
 	users               *sqlcrepo.UserRepository
 	wallets             *sqlcrepo.WalletRepository
 	piiAccess           audit.PIIAccessRecorder
@@ -47,6 +50,8 @@ func NewServer(
 	provisionWallet *usecase.ProvisionWalletUseCase,
 	exportGDPR *usecase.ExportGDPRUseCase,
 	maskGDPR *usecase.MaskGDPRUseCase,
+	depositWallet *usecase.DepositWalletUseCase,
+	changePassword *usecase.ChangePasswordUseCase,
 	users *sqlcrepo.UserRepository,
 	wallets *sqlcrepo.WalletRepository,
 	piiAccess audit.PIIAccessRecorder,
@@ -64,6 +69,8 @@ func NewServer(
 		provisionWallet:    provisionWallet,
 		exportGDPR:         exportGDPR,
 		maskGDPR:           maskGDPR,
+		depositWallet:      depositWallet,
+		changePassword:     changePassword,
 		users:              users,
 		wallets:            wallets,
 		piiAccess:          piiAccess,
@@ -360,6 +367,121 @@ func (s *Server) ProvisionWallet(ctx context.Context, req api.ProvisionWalletReq
 	}, nil
 }
 
+func (s *Server) ChangePassword(ctx context.Context, req api.ChangePasswordRequestObject) (api.ChangePasswordResponseObject, error) {
+	if req.Body == nil {
+		return api.ChangePassword400JSONResponse{Error: "invalid_json"}, nil
+	}
+	if err := s.changePassword.Execute(ctx, usecase.ChangePasswordInput{
+		UserID:          req.Params.XUserId.String(),
+		CurrentPassword: req.Body.CurrentPassword,
+		NewPassword:     req.Body.NewPassword,
+	}); err != nil {
+		if err.Error() == "invalid current password" {
+			return api.ChangePassword401JSONResponse{Error: err.Error()}, nil
+		}
+		return api.ChangePassword400JSONResponse{Error: err.Error()}, nil
+	}
+	return api.ChangePassword204Response{}, nil
+}
+
+func (s *Server) DepositWallet(ctx context.Context, req api.DepositWalletRequestObject) (api.DepositWalletResponseObject, error) {
+	currency := "USD"
+	if req.Body.Currency != nil {
+		currency = *req.Body.Currency
+	}
+	out, err := s.depositWallet.Execute(ctx, usecase.DepositWalletInput{
+		UserID:         req.Params.XUserId.String(),
+		Amount:         req.Body.Amount,
+		Currency:       currency,
+		IdempotencyKey: req.Params.IdempotencyKey,
+	})
+	if err != nil {
+		return api.DepositWallet400JSONResponse{Error: err.Error()}, nil
+	}
+	view, err := toDepositView(out.Deposit)
+	if err != nil {
+		return nil, err
+	}
+	if out.Created {
+		return api.DepositWallet201JSONResponse(view), nil
+	}
+	return api.DepositWallet200JSONResponse(view), nil
+}
+
+func toDepositView(out domain.Deposit) (api.DepositWalletResponse, error) {
+	id, err := uuid.Parse(out.ID)
+	if err != nil {
+		return api.DepositWalletResponse{}, err
+	}
+	walletID, err := uuid.Parse(out.WalletID)
+	if err != nil {
+		return api.DepositWalletResponse{}, err
+	}
+	view := api.DepositWalletResponse{
+		Id:       openapi_types.UUID(id),
+		WalletId: openapi_types.UUID(walletID),
+		Amount:   out.Amount,
+		Currency: out.Currency,
+		Status:   string(out.Status),
+	}
+	if out.LedgerTransferID != "" {
+		view.LedgerTransferId = &out.LedgerTransferID
+	}
+	if !out.CreatedAt.IsZero() {
+		view.CreatedAt = &out.CreatedAt
+	}
+	return view, nil
+}
+
+func (s *Server) GetUserByEmail(ctx context.Context, req api.GetUserByEmailRequestObject) (api.GetUserByEmailResponseObject, error) {
+	user, err := s.users.GetByEmail(ctx, req.Email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.GetUserByEmail404JSONResponse{Error: "user_not_found"}, nil
+		}
+		return nil, err
+	}
+	if err := s.recordPIIAccess(ctx, user.ID, audit.PIIResourceInternalUserLookup, map[string]any{"lookup": "email"}); err != nil {
+		return nil, err
+	}
+	view, err := toUserView(user)
+	if err != nil {
+		return nil, err
+	}
+	return api.GetUserByEmail200JSONResponse(view), nil
+}
+
+func (s *Server) GetInternalUser(ctx context.Context, req api.GetInternalUserRequestObject) (api.GetInternalUserResponseObject, error) {
+	user, err := s.users.GetByID(ctx, req.UserId.String())
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.GetInternalUser404JSONResponse{Error: "user_not_found"}, nil
+		}
+		return nil, err
+	}
+	if err := s.recordPIIAccess(ctx, user.ID, audit.PIIResourceInternalUserLookup, map[string]any{"lookup": "id"}); err != nil {
+		return nil, err
+	}
+	view, err := toUserView(user)
+	if err != nil {
+		return nil, err
+	}
+	return api.GetInternalUser200JSONResponse(view), nil
+}
+
+func toUserView(user *domain.User) (api.User, error) {
+	id, err := uuid.Parse(user.ID)
+	if err != nil {
+		return api.User{}, err
+	}
+	return api.User{
+		Id:     openapi_types.UUID(id),
+		Email:  user.Email,
+		Phone:  user.Phone,
+		Status: string(user.Status),
+	}, nil
+}
+
 func (s *Server) GetUserByPhone(ctx context.Context, req api.GetUserByPhoneRequestObject) (api.GetUserByPhoneResponseObject, error) {
 	user, err := s.users.GetByPhone(ctx, req.Phone)
 	if err != nil {
@@ -368,19 +490,14 @@ func (s *Server) GetUserByPhone(ctx context.Context, req api.GetUserByPhoneReque
 		}
 		return nil, err
 	}
-	id, err := uuid.Parse(user.ID)
-	if err != nil {
-		return nil, err
-	}
 	if err := s.recordPIIAccess(ctx, user.ID, audit.PIIResourceUserByPhone, nil); err != nil {
 		return nil, err
 	}
-	return api.GetUserByPhone200JSONResponse{
-		Id:     openapi_types.UUID(id),
-		Email:  user.Email,
-		Phone:  user.Phone,
-		Status: string(user.Status),
-	}, nil
+	view, err := toUserView(user)
+	if err != nil {
+		return nil, err
+	}
+	return api.GetUserByPhone200JSONResponse(view), nil
 }
 
 func (s *Server) GetWallet(ctx context.Context, req api.GetWalletRequestObject) (api.GetWalletResponseObject, error) {

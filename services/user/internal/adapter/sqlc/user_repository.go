@@ -81,6 +81,17 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*domain.User, 
 	return r.rowToUser(ctx, row.ID, row.Email, row.Phone, row.PasswordHash, row.Status)
 }
 
+func (r *UserRepository) UpdatePasswordHash(ctx context.Context, userID, passwordHash string) error {
+	uid, err := pgutil.ParseUUID(userID)
+	if err != nil {
+		return err
+	}
+	return r.q.UpdatePasswordHash(ctx, sqlc.UpdatePasswordHashParams{
+		ID:           uid,
+		PasswordHash: passwordHash,
+	})
+}
+
 func (r *UserRepository) GetProfile(ctx context.Context, userID string) (*domain.Profile, error) {
 	uid, err := pgutil.ParseUUID(userID)
 	if err != nil {

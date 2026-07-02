@@ -73,6 +73,20 @@ CREATE TABLE "user".wallets (
     UNIQUE (user_id, currency)
 );
 
+CREATE TABLE "user".deposits (
+    id                 UUID PRIMARY KEY,
+    user_id            UUID NOT NULL REFERENCES "user".users (id),
+    wallet_id          UUID NOT NULL,
+    amount             NUMERIC(20, 2) NOT NULL,
+    currency           TEXT NOT NULL,
+    ledger_transfer_id TEXT,
+    status             TEXT NOT NULL,
+    idempotency_key    TEXT NOT NULL,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed_at       TIMESTAMPTZ,
+    UNIQUE (user_id, idempotency_key)
+);
+
 CREATE TABLE "user".outbox_events (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     aggregate_type  TEXT NOT NULL,
@@ -192,7 +206,7 @@ CREATE TABLE "user".wallet_transactions (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, id),
     CONSTRAINT user_wallet_tx_type_check
-        CHECK (tx_type IN ('p2p_out', 'p2p_in', 'card_hold', 'card_purchase')),
+        CHECK (tx_type IN ('p2p_out', 'p2p_in', 'card_hold', 'card_purchase', 'deposit')),
     CONSTRAINT user_wallet_tx_direction_check
         CHECK (direction IN ('debit', 'credit'))
 );

@@ -56,6 +56,16 @@ func (c *Client) GetByPhone(ctx context.Context, phone string) (User, error) {
 	return c.getUser(ctx, path)
 }
 
+func (c *Client) GetByEmail(ctx context.Context, email string) (User, error) {
+	path := fmt.Sprintf("%s/api/v1/internal/users/by-email/%s", c.baseURL, url.PathEscape(email))
+	return c.getUser(ctx, path)
+}
+
+func (c *Client) GetByID(ctx context.Context, userID string) (User, error) {
+	path := fmt.Sprintf("%s/api/v1/internal/users/%s", c.baseURL, url.PathEscape(userID))
+	return c.getUser(ctx, path)
+}
+
 func (c *Client) GetWallet(ctx context.Context, userID, currency string) (Wallet, error) {
 	u, err := url.Parse(c.baseURL + "/api/v1/internal/wallets")
 	if err != nil {

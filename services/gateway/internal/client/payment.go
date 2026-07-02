@@ -24,10 +24,12 @@ func NewPaymentClient(baseURL string) *PaymentClient {
 }
 
 type CreateTransferRequest struct {
-	RecipientPhone string `json:"recipient_phone"`
-	Amount         string `json:"amount"`
-	Currency       string `json:"currency"`
-	Memo           string `json:"memo"`
+	RecipientPhone   string `json:"recipient_phone,omitempty"`
+	RecipientEmail   string `json:"recipient_email,omitempty"`
+	RecipientUserID  string `json:"recipient_user_id,omitempty"`
+	Amount           string `json:"amount"`
+	Currency         string `json:"currency"`
+	Memo             string `json:"memo"`
 }
 
 type TransferView struct {

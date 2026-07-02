@@ -27,6 +27,7 @@ const (
 	PIIResourceWalletBalance      = "wallet_balance"
 	PIIResourceWalletTransactions = "wallet_transactions"
 	PIIResourceUserByPhone        = "user_by_phone"
+	PIIResourceInternalUserLookup = "internal_user_lookup"
 	PIIResourceInternalWallet     = "internal_wallet"
 	PIIResourceGDPRExport         = "gdpr_export"
 )

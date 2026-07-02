@@ -123,12 +123,17 @@ type walletTransactionListResponse struct {
 	} `json:"transactions"`
 }
 
+type notificationResponse struct {
+	ID        string `json:"id"`
+	EventType string `json:"event_type"`
+	Title     string `json:"title"`
+	Body      string `json:"body"`
+	Read      bool   `json:"read"`
+}
+
 type notificationListResponse struct {
-	Notifications []struct {
-		ID        string `json:"id"`
-		EventType string `json:"event_type"`
-		Title     string `json:"title"`
-	} `json:"notifications"`
+	Notifications []notificationResponse `json:"notifications"`
+	UnreadCount   int64                  `json:"unread_count"`
 }
 
 func (h *Harness) registerUser(t *testing.T, email, phone string) registerResponse {

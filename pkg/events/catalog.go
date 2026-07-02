@@ -68,6 +68,14 @@ func Catalog() []CatalogEntry {
 			PayloadFields: []string{"user_id", "wallet_id", "ledger_account_id", "currency"},
 		},
 		{
+			EventType:     TypeDepositCompleted,
+			EventVersion:  1,
+			AggregateType: "deposit",
+			Description:   "Simulated deposit credited to a user wallet",
+			Topics:        []string{"user.events"},
+			PayloadFields: []string{"deposit_id", "user_id", "wallet_id", "ledger_transfer_id", "amount", "currency"},
+		},
+		{
 			EventType:     TypeTransferCompleted,
 			EventVersion:  1,
 			AggregateType: "transfer",
@@ -149,6 +157,10 @@ func RegisteredEvents() []Event {
 		UserRegistered{UserID: "user-1", Email: "a@example.com"},
 		KYCApproved{UserID: "user-1", KYCCaseID: "kyc-1"},
 		WalletProvisioned{UserID: "user-1", WalletID: "wallet-1", LedgerAccountID: "acct-1", Currency: "USD"},
+		DepositCompleted{
+			DepositID: "dep-1", UserID: "user-1", WalletID: "wallet-1",
+			LedgerTransferID: "ltx-dep-1", Amount: "100.00", Currency: "USD",
+		},
 		TransferCompleted{
 			TransferID: "tx-1", LedgerTransferID: "ltx-1",
 			SenderUserID: "user-1", RecipientUserID: "user-2",

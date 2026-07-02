@@ -65,3 +65,46 @@ func (r *NotificationRepository) ListByUser(ctx context.Context, userID string, 
 	}
 	return out, nil
 }
+
+func (r *NotificationRepository) CountUnread(ctx context.Context, userID string) (int64, error) {
+	uid, err := pgutil.ParseUUID(userID)
+	if err != nil {
+		return 0, err
+	}
+	return r.q.CountUnreadNotificationsByUser(ctx, uid)
+}
+
+func (r *NotificationRepository) MarkRead(ctx context.Context, userID, notificationID string) (domain.Notification, error) {
+	uid, err := pgutil.ParseUUID(userID)
+	if err != nil {
+		return domain.Notification{}, err
+	}
+	nid, err := pgutil.ParseUUID(notificationID)
+	if err != nil {
+		return domain.Notification{}, err
+	}
+	row, err := r.q.MarkNotificationRead(ctx, sqlc.MarkNotificationReadParams{
+		ID:     nid,
+		UserID: uid,
+	})
+	if err != nil {
+		return domain.Notification{}, err
+	}
+	return domain.Notification{
+		ID:        row.ID.String(),
+		UserID:    row.UserID.String(),
+		EventType: row.EventType,
+		Title:     row.Title,
+		Body:      row.Body,
+		Read:      row.Read,
+		CreatedAt: row.CreatedAt.Time,
+	}, nil
+}
+
+func (r *NotificationRepository) MarkAllRead(ctx context.Context, userID string) (int64, error) {
+	uid, err := pgutil.ParseUUID(userID)
+	if err != nil {
+		return 0, err
+	}
+	return r.q.MarkAllNotificationsRead(ctx, uid)
+}

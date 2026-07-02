@@ -12,6 +12,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countUnreadNotificationsByUser = `-- name: CountUnreadNotificationsByUser :one
+SELECT COUNT(*)::bigint AS count
+FROM notification.notifications
+WHERE user_id = $1 AND read = false
+`
+
+func (q *Queries) CountUnreadNotificationsByUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnreadNotificationsByUser, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const insertNotification = `-- name: InsertNotification :exec
 INSERT INTO notification.notifications (id, user_id, event_id, event_type, title, body)
 VALUES ($1, $2, $3, $4, $5, $6)
@@ -88,4 +101,55 @@ func (q *Queries) ListNotificationsByUser(ctx context.Context, arg ListNotificat
 		return nil, err
 	}
 	return items, nil
+}
+
+const markAllNotificationsRead = `-- name: MarkAllNotificationsRead :execrows
+UPDATE notification.notifications
+SET read = true
+WHERE user_id = $1 AND read = false
+`
+
+func (q *Queries) MarkAllNotificationsRead(ctx context.Context, userID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markAllNotificationsRead, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const markNotificationRead = `-- name: MarkNotificationRead :one
+UPDATE notification.notifications
+SET read = true
+WHERE id = $1 AND user_id = $2
+RETURNING id, user_id, event_type, title, body, read, created_at
+`
+
+type MarkNotificationReadParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+type MarkNotificationReadRow struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	EventType string
+	Title     string
+	Body      string
+	Read      bool
+	CreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) (MarkNotificationReadRow, error) {
+	row := q.db.QueryRow(ctx, markNotificationRead, arg.ID, arg.UserID)
+	var i MarkNotificationReadRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EventType,
+		&i.Title,
+		&i.Body,
+		&i.Read,
+		&i.CreatedAt,
+	)
+	return i, err
 }

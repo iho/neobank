@@ -64,6 +64,8 @@ func (uc *IngestEventUseCase) dispatch(ctx context.Context, envelope events.Enve
 		return uc.handleKYCApproved(ctx, envelope)
 	case events.TypeWalletProvisioned:
 		return uc.handleWalletProvisioned(ctx, envelope)
+	case events.TypeDepositCompleted:
+		return uc.handleDepositCompleted(ctx, envelope)
 	default:
 		return nil
 	}
@@ -94,6 +96,20 @@ func (uc *IngestEventUseCase) handleWalletProvisioned(ctx context.Context, envel
 		EventType: envelope.EventType,
 		Title:     "Wallet ready",
 		Body:      fmt.Sprintf("Your %s wallet is active and ready for transfers.", payload.Currency),
+	}, envelope.EventID)
+}
+
+func (uc *IngestEventUseCase) handleDepositCompleted(ctx context.Context, envelope events.Envelope) error {
+	var payload events.DepositCompleted
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return fmt.Errorf("parse deposit completed payload: %w", err)
+	}
+	return uc.repo.Create(ctx, domain.Notification{
+		ID:        uuid.NewString(),
+		UserID:    payload.UserID,
+		EventType: envelope.EventType,
+		Title:     "Deposit received",
+		Body:      fmt.Sprintf("%s %s was added to your wallet.", payload.Amount, payload.Currency),
 	}, envelope.EventID)
 }
 

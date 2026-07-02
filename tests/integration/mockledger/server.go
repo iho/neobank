@@ -103,6 +103,20 @@ func (s *Server) CreditAccount(accountID, amount string) error {
 	return nil
 }
 
+// CreateTreasuryAccount provisions the simulated deposit source account.
+func (s *Server) CreateTreasuryAccount() (*goledgerv1.Account, error) {
+	resp, err := s.CreateAccount(context.Background(), &goledgerv1.CreateAccountRequest{
+		Name:                 "TREASURY:USD",
+		Currency:             "USD",
+		AllowNegativeBalance: true,
+		AllowPositiveBalance: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Account, nil
+}
+
 // CreateSettlementAccount provisions the merchant settlement account used by card capture.
 func (s *Server) CreateSettlementAccount() (*goledgerv1.Account, error) {
 	resp, err := s.CreateAccount(context.Background(), &goledgerv1.CreateAccountRequest{

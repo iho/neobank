@@ -17,6 +17,29 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// ChangePasswordRequest defines model for ChangePasswordRequest.
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+// DepositWalletRequest defines model for DepositWalletRequest.
+type DepositWalletRequest struct {
+	Amount   string  `json:"amount"`
+	Currency *string `json:"currency,omitempty"`
+}
+
+// DepositWalletResponse defines model for DepositWalletResponse.
+type DepositWalletResponse struct {
+	Amount           string             `json:"amount"`
+	CreatedAt        *time.Time         `json:"created_at,omitempty"`
+	Currency         string             `json:"currency"`
+	Id               openapi_types.UUID `json:"id"`
+	LedgerTransferId *string            `json:"ledger_transfer_id,omitempty"`
+	Status           string             `json:"status"`
+	WalletId         openapi_types.UUID `json:"wallet_id"`
+}
+
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
 	Error string `json:"error"`
@@ -199,6 +222,11 @@ type IdempotencyKey = string
 // XUserId defines model for XUserId.
 type XUserId = openapi_types.UUID
 
+// ChangePasswordParams defines parameters for ChangePassword.
+type ChangePasswordParams struct {
+	XUserId XUserId `json:"X-User-Id"`
+}
+
 // RegisterParams defines parameters for Register.
 type RegisterParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
@@ -254,6 +282,15 @@ type GetWalletBalanceParams struct {
 	XUserId  XUserId `json:"X-User-Id"`
 }
 
+// DepositWalletParams defines parameters for DepositWallet.
+type DepositWalletParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+	XUserId        XUserId        `json:"X-User-Id"`
+}
+
+// ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
+type ChangePasswordJSONRequestBody = ChangePasswordRequest
+
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
 
@@ -272,8 +309,14 @@ type SubmitKYCJSONRequestBody = SubmitKYCRequest
 // ProvisionWalletJSONRequestBody defines body for ProvisionWallet for application/json ContentType.
 type ProvisionWalletJSONRequestBody = ProvisionWalletRequest
 
+// DepositWalletJSONRequestBody defines body for DepositWallet for application/json ContentType.
+type DepositWalletJSONRequestBody = DepositWalletRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+
+	// (POST /api/v1/auth/change-password)
+	ChangePassword(w http.ResponseWriter, r *http.Request, params ChangePasswordParams)
 
 	// (POST /api/v1/auth/login)
 	Login(w http.ResponseWriter, r *http.Request)
@@ -287,8 +330,14 @@ type ServerInterface interface {
 	// (POST /api/v1/internal/events)
 	IngestEvent(w http.ResponseWriter, r *http.Request)
 
+	// (GET /api/v1/internal/users/by-email/{email})
+	GetUserByEmail(w http.ResponseWriter, r *http.Request, email string)
+
 	// (GET /api/v1/internal/users/by-phone/{phone})
 	GetUserByPhone(w http.ResponseWriter, r *http.Request, phone string)
+
+	// (GET /api/v1/internal/users/{user_id})
+	GetInternalUser(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID)
 
 	// (POST /api/v1/internal/users/{user_id}/gdpr/export)
 	ExportUserGDPR(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID, params ExportUserGDPRParams)
@@ -317,6 +366,9 @@ type ServerInterface interface {
 	// (GET /api/v1/wallets/balance)
 	GetWalletBalance(w http.ResponseWriter, r *http.Request, params GetWalletBalanceParams)
 
+	// (POST /api/v1/wallets/deposit)
+	DepositWallet(w http.ResponseWriter, r *http.Request, params DepositWalletParams)
+
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
 }
@@ -324,6 +376,11 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// (POST /api/v1/auth/change-password)
+func (_ Unimplemented) ChangePassword(w http.ResponseWriter, r *http.Request, params ChangePasswordParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // (POST /api/v1/auth/login)
 func (_ Unimplemented) Login(w http.ResponseWriter, r *http.Request) {
@@ -345,8 +402,18 @@ func (_ Unimplemented) IngestEvent(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (GET /api/v1/internal/users/by-email/{email})
+func (_ Unimplemented) GetUserByEmail(w http.ResponseWriter, r *http.Request, email string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (GET /api/v1/internal/users/by-phone/{phone})
 func (_ Unimplemented) GetUserByPhone(w http.ResponseWriter, r *http.Request, phone string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /api/v1/internal/users/{user_id})
+func (_ Unimplemented) GetInternalUser(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -395,6 +462,11 @@ func (_ Unimplemented) GetWalletBalance(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (POST /api/v1/wallets/deposit)
+func (_ Unimplemented) DepositWallet(w http.ResponseWriter, r *http.Request, params DepositWalletParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (GET /health)
 func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -408,6 +480,51 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ChangePassword operation middleware
+func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ChangePasswordParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangePassword(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // Login operation middleware
 func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request) {
@@ -496,6 +613,32 @@ func (siw *ServerInterfaceWrapper) IngestEvent(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// GetUserByEmail operation middleware
+func (siw *ServerInterfaceWrapper) GetUserByEmail(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "email" -------------
+	var email string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "email", chi.URLParam(r, "email"), &email, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "email", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetUserByEmail(w, r, email)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetUserByPhone operation middleware
 func (siw *ServerInterfaceWrapper) GetUserByPhone(w http.ResponseWriter, r *http.Request) {
 
@@ -513,6 +656,32 @@ func (siw *ServerInterfaceWrapper) GetUserByPhone(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetUserByPhone(w, r, phone)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetInternalUser operation middleware
+func (siw *ServerInterfaceWrapper) GetInternalUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "user_id" -------------
+	var userId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", chi.URLParam(r, "user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetInternalUser(w, r, userId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1018,6 +1187,74 @@ func (siw *ServerInterfaceWrapper) GetWalletBalance(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// DepositWallet operation middleware
+func (siw *ServerInterfaceWrapper) DepositWallet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DepositWalletParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DepositWallet(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
 
@@ -1146,6 +1383,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/auth/change-password", wrapper.ChangePassword)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/auth/login", wrapper.Login)
 	})
 	r.Group(func(r chi.Router) {
@@ -1158,7 +1398,13 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/api/v1/internal/events", wrapper.IngestEvent)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/internal/users/by-email/{email}", wrapper.GetUserByEmail)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/internal/users/by-phone/{phone}", wrapper.GetUserByPhone)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/internal/users/{user_id}", wrapper.GetInternalUser)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/internal/users/{user_id}/gdpr/export", wrapper.ExportUserGDPR)
@@ -1188,10 +1434,58 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/api/v1/wallets/balance", wrapper.GetWalletBalance)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/wallets/deposit", wrapper.DepositWallet)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/health", wrapper.GetHealth)
 	})
 
 	return r
+}
+
+type ChangePasswordRequestObject struct {
+	Params ChangePasswordParams
+	Body   *ChangePasswordJSONRequestBody
+}
+
+type ChangePasswordResponseObject interface {
+	VisitChangePasswordResponse(w http.ResponseWriter) error
+}
+
+type ChangePassword204Response struct {
+}
+
+func (response ChangePassword204Response) VisitChangePasswordResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ChangePassword400JSONResponse ErrorResponse
+
+func (response ChangePassword400JSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangePassword401JSONResponse ErrorResponse
+
+func (response ChangePassword401JSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type LoginRequestObject struct {
@@ -1333,6 +1627,42 @@ func (response IngestEvent400JSONResponse) VisitIngestEventResponse(w http.Respo
 	return err
 }
 
+type GetUserByEmailRequestObject struct {
+	Email string `json:"email"`
+}
+
+type GetUserByEmailResponseObject interface {
+	VisitGetUserByEmailResponse(w http.ResponseWriter) error
+}
+
+type GetUserByEmail200JSONResponse User
+
+func (response GetUserByEmail200JSONResponse) VisitGetUserByEmailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUserByEmail404JSONResponse ErrorResponse
+
+func (response GetUserByEmail404JSONResponse) VisitGetUserByEmailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetUserByPhoneRequestObject struct {
 	Phone string `json:"phone"`
 }
@@ -1358,6 +1688,42 @@ func (response GetUserByPhone200JSONResponse) VisitGetUserByPhoneResponse(w http
 type GetUserByPhone404JSONResponse ErrorResponse
 
 func (response GetUserByPhone404JSONResponse) VisitGetUserByPhoneResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetInternalUserRequestObject struct {
+	UserId openapi_types.UUID `json:"user_id"`
+}
+
+type GetInternalUserResponseObject interface {
+	VisitGetInternalUserResponse(w http.ResponseWriter) error
+}
+
+type GetInternalUser200JSONResponse User
+
+func (response GetInternalUser200JSONResponse) VisitGetInternalUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetInternalUser404JSONResponse ErrorResponse
+
+func (response GetInternalUser404JSONResponse) VisitGetInternalUserResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -1669,6 +2035,57 @@ func (response GetWalletBalance404JSONResponse) VisitGetWalletBalanceResponse(w 
 	return err
 }
 
+type DepositWalletRequestObject struct {
+	Params DepositWalletParams
+	Body   *DepositWalletJSONRequestBody
+}
+
+type DepositWalletResponseObject interface {
+	VisitDepositWalletResponse(w http.ResponseWriter) error
+}
+
+type DepositWallet200JSONResponse DepositWalletResponse
+
+func (response DepositWallet200JSONResponse) VisitDepositWalletResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DepositWallet201JSONResponse DepositWalletResponse
+
+func (response DepositWallet201JSONResponse) VisitDepositWalletResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DepositWallet400JSONResponse ErrorResponse
+
+func (response DepositWallet400JSONResponse) VisitDepositWalletResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetHealthRequestObject struct {
 }
 
@@ -1693,6 +2110,9 @@ func (response GetHealth200JSONResponse) VisitGetHealthResponse(w http.ResponseW
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
+	// (POST /api/v1/auth/change-password)
+	ChangePassword(ctx context.Context, request ChangePasswordRequestObject) (ChangePasswordResponseObject, error)
+
 	// (POST /api/v1/auth/login)
 	Login(ctx context.Context, request LoginRequestObject) (LoginResponseObject, error)
 
@@ -1705,8 +2125,14 @@ type StrictServerInterface interface {
 	// (POST /api/v1/internal/events)
 	IngestEvent(ctx context.Context, request IngestEventRequestObject) (IngestEventResponseObject, error)
 
+	// (GET /api/v1/internal/users/by-email/{email})
+	GetUserByEmail(ctx context.Context, request GetUserByEmailRequestObject) (GetUserByEmailResponseObject, error)
+
 	// (GET /api/v1/internal/users/by-phone/{phone})
 	GetUserByPhone(ctx context.Context, request GetUserByPhoneRequestObject) (GetUserByPhoneResponseObject, error)
+
+	// (GET /api/v1/internal/users/{user_id})
+	GetInternalUser(ctx context.Context, request GetInternalUserRequestObject) (GetInternalUserResponseObject, error)
 
 	// (POST /api/v1/internal/users/{user_id}/gdpr/export)
 	ExportUserGDPR(ctx context.Context, request ExportUserGDPRRequestObject) (ExportUserGDPRResponseObject, error)
@@ -1734,6 +2160,9 @@ type StrictServerInterface interface {
 
 	// (GET /api/v1/wallets/balance)
 	GetWalletBalance(ctx context.Context, request GetWalletBalanceRequestObject) (GetWalletBalanceResponseObject, error)
+
+	// (POST /api/v1/wallets/deposit)
+	DepositWallet(ctx context.Context, request DepositWalletRequestObject) (DepositWalletResponseObject, error)
 
 	// (GET /health)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
@@ -1766,6 +2195,39 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ChangePassword operation middleware
+func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, params ChangePasswordParams) {
+	var request ChangePasswordRequestObject
+
+	request.Params = params
+
+	var body ChangePasswordJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ChangePassword(ctx, request.(ChangePasswordRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ChangePassword")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ChangePasswordResponseObject); ok {
+		if err := validResponse.VisitChangePasswordResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // Login operation middleware
@@ -1894,6 +2356,32 @@ func (sh *strictHandler) IngestEvent(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetUserByEmail operation middleware
+func (sh *strictHandler) GetUserByEmail(w http.ResponseWriter, r *http.Request, email string) {
+	var request GetUserByEmailRequestObject
+
+	request.Email = email
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetUserByEmail(ctx, request.(GetUserByEmailRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetUserByEmail")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetUserByEmailResponseObject); ok {
+		if err := validResponse.VisitGetUserByEmailResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetUserByPhone operation middleware
 func (sh *strictHandler) GetUserByPhone(w http.ResponseWriter, r *http.Request, phone string) {
 	var request GetUserByPhoneRequestObject
@@ -1913,6 +2401,32 @@ func (sh *strictHandler) GetUserByPhone(w http.ResponseWriter, r *http.Request, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetUserByPhoneResponseObject); ok {
 		if err := validResponse.VisitGetUserByPhoneResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetInternalUser operation middleware
+func (sh *strictHandler) GetInternalUser(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
+	var request GetInternalUserRequestObject
+
+	request.UserId = userId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetInternalUser(ctx, request.(GetInternalUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetInternalUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetInternalUserResponseObject); ok {
+		if err := validResponse.VisitGetInternalUserResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -2163,6 +2677,39 @@ func (sh *strictHandler) GetWalletBalance(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetWalletBalanceResponseObject); ok {
 		if err := validResponse.VisitGetWalletBalanceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DepositWallet operation middleware
+func (sh *strictHandler) DepositWallet(w http.ResponseWriter, r *http.Request, params DepositWalletParams) {
+	var request DepositWalletRequestObject
+
+	request.Params = params
+
+	var body DepositWalletJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DepositWallet(ctx, request.(DepositWalletRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DepositWallet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DepositWalletResponseObject); ok {
+		if err := validResponse.VisitDepositWalletResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

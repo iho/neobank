@@ -62,12 +62,37 @@ type CardList struct {
 	Cards []Card `json:"cards"`
 }
 
+// ChangePasswordRequest defines model for ChangePasswordRequest.
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
 // CreateTransferRequest defines model for CreateTransferRequest.
 type CreateTransferRequest struct {
-	Amount         string  `json:"amount"`
-	Currency       *string `json:"currency,omitempty"`
-	Memo           *string `json:"memo,omitempty"`
-	RecipientPhone string  `json:"recipient_phone"`
+	Amount          string               `json:"amount"`
+	Currency        *string              `json:"currency,omitempty"`
+	Memo            *string              `json:"memo,omitempty"`
+	RecipientEmail  *openapi_types.Email `json:"recipient_email,omitempty"`
+	RecipientPhone  *string              `json:"recipient_phone,omitempty"`
+	RecipientUserId *string              `json:"recipient_user_id,omitempty"`
+}
+
+// DepositWalletRequest defines model for DepositWalletRequest.
+type DepositWalletRequest struct {
+	Amount   string  `json:"amount"`
+	Currency *string `json:"currency,omitempty"`
+}
+
+// DepositWalletResponse defines model for DepositWalletResponse.
+type DepositWalletResponse struct {
+	Amount           string     `json:"amount"`
+	CreatedAt        *time.Time `json:"created_at,omitempty"`
+	Currency         string     `json:"currency"`
+	Id               string     `json:"id"`
+	LedgerTransferId *string    `json:"ledger_transfer_id,omitempty"`
+	Status           string     `json:"status"`
+	WalletId         string     `json:"wallet_id"`
 }
 
 // ErrorResponse defines model for ErrorResponse.
@@ -106,6 +131,11 @@ type LoginResponse struct {
 	UserId       string `json:"user_id"`
 }
 
+// MarkNotificationsReadResponse defines model for MarkNotificationsReadResponse.
+type MarkNotificationsReadResponse struct {
+	MarkedCount int64 `json:"marked_count"`
+}
+
 // Notification defines model for Notification.
 type Notification struct {
 	Body      string    `json:"body"`
@@ -120,6 +150,7 @@ type Notification struct {
 // NotificationList defines model for NotificationList.
 type NotificationList struct {
 	Notifications []Notification `json:"notifications"`
+	UnreadCount   int64          `json:"unread_count"`
 }
 
 // Profile defines model for Profile.
@@ -243,6 +274,12 @@ type IdempotencyKey = string
 // XUserId defines model for XUserId.
 type XUserId = string
 
+// ChangePasswordParams defines parameters for ChangePassword.
+type ChangePasswordParams struct {
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
 // RegisterParams defines parameters for Register.
 type RegisterParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
@@ -331,6 +368,18 @@ type ListNotificationsParams struct {
 	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
 }
 
+// MarkAllNotificationsReadParams defines parameters for MarkAllNotificationsRead.
+type MarkAllNotificationsReadParams struct {
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
+// MarkNotificationReadParams defines parameters for MarkNotificationRead.
+type MarkNotificationReadParams struct {
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
 // ListTransfersParams defines parameters for ListTransfers.
 type ListTransfersParams struct {
 	Limit         *int           `form:"limit,omitempty" json:"limit,omitempty"`
@@ -358,6 +407,13 @@ type GetWalletBalanceParams struct {
 	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
 }
 
+// DepositWalletParams defines parameters for DepositWallet.
+type DepositWalletParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+	Authorization  *Authorization `json:"Authorization,omitempty"`
+	XUserId        *XUserId       `json:"X-User-Id,omitempty"`
+}
+
 // ListWalletTransactionsParams defines parameters for ListWalletTransactions.
 type ListWalletTransactionsParams struct {
 	Limit         *int           `form:"limit,omitempty" json:"limit,omitempty"`
@@ -371,6 +427,9 @@ type ProvisionWalletParams struct {
 	Authorization  *Authorization `json:"Authorization,omitempty"`
 	XUserId        *XUserId       `json:"X-User-Id,omitempty"`
 }
+
+// ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
+type ChangePasswordJSONRequestBody = ChangePasswordRequest
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
@@ -393,6 +452,9 @@ type SubmitKYCJSONRequestBody = SubmitKYCRequest
 // CreateTransferJSONRequestBody defines body for CreateTransfer for application/json ContentType.
 type CreateTransferJSONRequestBody = CreateTransferRequest
 
+// DepositWalletJSONRequestBody defines body for DepositWallet for application/json ContentType.
+type DepositWalletJSONRequestBody = DepositWalletRequest
+
 // ProvisionWalletJSONRequestBody defines body for ProvisionWallet for application/json ContentType.
 type ProvisionWalletJSONRequestBody = ProvisionWalletRequest
 
@@ -401,6 +463,9 @@ type ServerInterface interface {
 
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
+
+	// (POST /v1/auth/change-password)
+	ChangePassword(w http.ResponseWriter, r *http.Request, params ChangePasswordParams)
 
 	// (POST /v1/auth/login)
 	Login(w http.ResponseWriter, r *http.Request)
@@ -450,6 +515,12 @@ type ServerInterface interface {
 	// (GET /v1/notifications)
 	ListNotifications(w http.ResponseWriter, r *http.Request, params ListNotificationsParams)
 
+	// (POST /v1/notifications/read-all)
+	MarkAllNotificationsRead(w http.ResponseWriter, r *http.Request, params MarkAllNotificationsReadParams)
+
+	// (POST /v1/notifications/{id}/read)
+	MarkNotificationRead(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params MarkNotificationReadParams)
+
 	// (GET /v1/transfers)
 	ListTransfers(w http.ResponseWriter, r *http.Request, params ListTransfersParams)
 
@@ -461,6 +532,9 @@ type ServerInterface interface {
 
 	// (GET /v1/wallet)
 	GetWalletBalance(w http.ResponseWriter, r *http.Request, params GetWalletBalanceParams)
+
+	// (POST /v1/wallet/deposit)
+	DepositWallet(w http.ResponseWriter, r *http.Request, params DepositWalletParams)
 
 	// (GET /v1/wallet/transactions)
 	ListWalletTransactions(w http.ResponseWriter, r *http.Request, params ListWalletTransactionsParams)
@@ -475,6 +549,11 @@ type Unimplemented struct{}
 
 // (GET /health)
 func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /v1/auth/change-password)
+func (_ Unimplemented) ChangePassword(w http.ResponseWriter, r *http.Request, params ChangePasswordParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -558,6 +637,16 @@ func (_ Unimplemented) ListNotifications(w http.ResponseWriter, r *http.Request,
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (POST /v1/notifications/read-all)
+func (_ Unimplemented) MarkAllNotificationsRead(w http.ResponseWriter, r *http.Request, params MarkAllNotificationsReadParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /v1/notifications/{id}/read)
+func (_ Unimplemented) MarkNotificationRead(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params MarkNotificationReadParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (GET /v1/transfers)
 func (_ Unimplemented) ListTransfers(w http.ResponseWriter, r *http.Request, params ListTransfersParams) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -575,6 +664,11 @@ func (_ Unimplemented) GetTransfer(w http.ResponseWriter, r *http.Request, id st
 
 // (GET /v1/wallet)
 func (_ Unimplemented) GetWalletBalance(w http.ResponseWriter, r *http.Request, params GetWalletBalanceParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /v1/wallet/deposit)
+func (_ Unimplemented) DepositWallet(w http.ResponseWriter, r *http.Request, params DepositWalletParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -602,6 +696,66 @@ func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ChangePassword operation middleware
+func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ChangePasswordParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangePassword(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1613,6 +1767,135 @@ func (siw *ServerInterfaceWrapper) ListNotifications(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
+// MarkAllNotificationsRead operation middleware
+func (siw *ServerInterfaceWrapper) MarkAllNotificationsRead(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params MarkAllNotificationsReadParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MarkAllNotificationsRead(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MarkNotificationRead operation middleware
+func (siw *ServerInterfaceWrapper) MarkNotificationRead(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params MarkNotificationReadParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MarkNotificationRead(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListTransfers operation middleware
 func (siw *ServerInterfaceWrapper) ListTransfers(w http.ResponseWriter, r *http.Request) {
 
@@ -1911,6 +2194,89 @@ func (siw *ServerInterfaceWrapper) GetWalletBalance(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// DepositWallet operation middleware
+func (siw *ServerInterfaceWrapper) DepositWallet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DepositWalletParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DepositWallet(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListWalletTransactions operation middleware
 func (siw *ServerInterfaceWrapper) ListWalletTransactions(w http.ResponseWriter, r *http.Request) {
 
@@ -2184,6 +2550,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/health", wrapper.GetHealth)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/auth/change-password", wrapper.ChangePassword)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/auth/login", wrapper.Login)
 	})
 	r.Group(func(r chi.Router) {
@@ -2232,6 +2601,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/v1/notifications", wrapper.ListNotifications)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/notifications/read-all", wrapper.MarkAllNotificationsRead)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/notifications/{id}/read", wrapper.MarkNotificationRead)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/transfers", wrapper.ListTransfers)
 	})
 	r.Group(func(r chi.Router) {
@@ -2242,6 +2617,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/wallet", wrapper.GetWalletBalance)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/wallet/deposit", wrapper.DepositWallet)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/wallet/transactions", wrapper.ListWalletTransactions)
@@ -2270,6 +2648,65 @@ func (response GetHealth200JSONResponse) VisitGetHealthResponse(w http.ResponseW
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangePasswordRequestObject struct {
+	Params ChangePasswordParams
+	Body   *ChangePasswordJSONRequestBody
+}
+
+type ChangePasswordResponseObject interface {
+	VisitChangePasswordResponse(w http.ResponseWriter) error
+}
+
+type ChangePassword204Response struct {
+}
+
+func (response ChangePassword204Response) VisitChangePasswordResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ChangePassword400JSONResponse ErrorResponse
+
+func (response ChangePassword400JSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangePassword401JSONResponse ErrorResponse
+
+func (response ChangePassword401JSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangePassword502JSONResponse ErrorResponse
+
+func (response ChangePassword502JSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -3238,6 +3675,121 @@ func (response ListNotifications502JSONResponse) VisitListNotificationsResponse(
 	return err
 }
 
+type MarkAllNotificationsReadRequestObject struct {
+	Params MarkAllNotificationsReadParams
+}
+
+type MarkAllNotificationsReadResponseObject interface {
+	VisitMarkAllNotificationsReadResponse(w http.ResponseWriter) error
+}
+
+type MarkAllNotificationsRead200JSONResponse MarkNotificationsReadResponse
+
+func (response MarkAllNotificationsRead200JSONResponse) VisitMarkAllNotificationsReadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkAllNotificationsRead401JSONResponse ErrorResponse
+
+func (response MarkAllNotificationsRead401JSONResponse) VisitMarkAllNotificationsReadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkAllNotificationsRead502JSONResponse ErrorResponse
+
+func (response MarkAllNotificationsRead502JSONResponse) VisitMarkAllNotificationsReadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkNotificationReadRequestObject struct {
+	Id     openapi_types.UUID `json:"id"`
+	Params MarkNotificationReadParams
+}
+
+type MarkNotificationReadResponseObject interface {
+	VisitMarkNotificationReadResponse(w http.ResponseWriter) error
+}
+
+type MarkNotificationRead200JSONResponse Notification
+
+func (response MarkNotificationRead200JSONResponse) VisitMarkNotificationReadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkNotificationRead401JSONResponse ErrorResponse
+
+func (response MarkNotificationRead401JSONResponse) VisitMarkNotificationReadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkNotificationRead404JSONResponse ErrorResponse
+
+func (response MarkNotificationRead404JSONResponse) VisitMarkNotificationReadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkNotificationRead502JSONResponse ErrorResponse
+
+func (response MarkNotificationRead502JSONResponse) VisitMarkNotificationReadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListTransfersRequestObject struct {
 	Params ListTransfersParams
 }
@@ -3496,6 +4048,85 @@ func (response GetWalletBalance502JSONResponse) VisitGetWalletBalanceResponse(w 
 	return err
 }
 
+type DepositWalletRequestObject struct {
+	Params DepositWalletParams
+	Body   *DepositWalletJSONRequestBody
+}
+
+type DepositWalletResponseObject interface {
+	VisitDepositWalletResponse(w http.ResponseWriter) error
+}
+
+type DepositWallet200JSONResponse DepositWalletResponse
+
+func (response DepositWallet200JSONResponse) VisitDepositWalletResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DepositWallet201JSONResponse DepositWalletResponse
+
+func (response DepositWallet201JSONResponse) VisitDepositWalletResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DepositWallet400JSONResponse ErrorResponse
+
+func (response DepositWallet400JSONResponse) VisitDepositWalletResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DepositWallet401JSONResponse ErrorResponse
+
+func (response DepositWallet401JSONResponse) VisitDepositWalletResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DepositWallet502JSONResponse ErrorResponse
+
+func (response DepositWallet502JSONResponse) VisitDepositWalletResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListWalletTransactionsRequestObject struct {
 	Params ListWalletTransactionsParams
 }
@@ -3603,6 +4234,9 @@ type StrictServerInterface interface {
 	// (GET /health)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
 
+	// (POST /v1/auth/change-password)
+	ChangePassword(ctx context.Context, request ChangePasswordRequestObject) (ChangePasswordResponseObject, error)
+
 	// (POST /v1/auth/login)
 	Login(ctx context.Context, request LoginRequestObject) (LoginResponseObject, error)
 
@@ -3651,6 +4285,12 @@ type StrictServerInterface interface {
 	// (GET /v1/notifications)
 	ListNotifications(ctx context.Context, request ListNotificationsRequestObject) (ListNotificationsResponseObject, error)
 
+	// (POST /v1/notifications/read-all)
+	MarkAllNotificationsRead(ctx context.Context, request MarkAllNotificationsReadRequestObject) (MarkAllNotificationsReadResponseObject, error)
+
+	// (POST /v1/notifications/{id}/read)
+	MarkNotificationRead(ctx context.Context, request MarkNotificationReadRequestObject) (MarkNotificationReadResponseObject, error)
+
 	// (GET /v1/transfers)
 	ListTransfers(ctx context.Context, request ListTransfersRequestObject) (ListTransfersResponseObject, error)
 
@@ -3662,6 +4302,9 @@ type StrictServerInterface interface {
 
 	// (GET /v1/wallet)
 	GetWalletBalance(ctx context.Context, request GetWalletBalanceRequestObject) (GetWalletBalanceResponseObject, error)
+
+	// (POST /v1/wallet/deposit)
+	DepositWallet(ctx context.Context, request DepositWalletRequestObject) (DepositWalletResponseObject, error)
 
 	// (GET /v1/wallet/transactions)
 	ListWalletTransactions(ctx context.Context, request ListWalletTransactionsRequestObject) (ListWalletTransactionsResponseObject, error)
@@ -3716,6 +4359,39 @@ func (sh *strictHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetHealthResponseObject); ok {
 		if err := validResponse.VisitGetHealthResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ChangePassword operation middleware
+func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, params ChangePasswordParams) {
+	var request ChangePasswordRequestObject
+
+	request.Params = params
+
+	var body ChangePasswordJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ChangePassword(ctx, request.(ChangePasswordRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ChangePassword")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ChangePasswordResponseObject); ok {
+		if err := validResponse.VisitChangePasswordResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -4183,6 +4859,59 @@ func (sh *strictHandler) ListNotifications(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// MarkAllNotificationsRead operation middleware
+func (sh *strictHandler) MarkAllNotificationsRead(w http.ResponseWriter, r *http.Request, params MarkAllNotificationsReadParams) {
+	var request MarkAllNotificationsReadRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MarkAllNotificationsRead(ctx, request.(MarkAllNotificationsReadRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MarkAllNotificationsRead")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MarkAllNotificationsReadResponseObject); ok {
+		if err := validResponse.VisitMarkAllNotificationsReadResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// MarkNotificationRead operation middleware
+func (sh *strictHandler) MarkNotificationRead(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params MarkNotificationReadParams) {
+	var request MarkNotificationReadRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MarkNotificationRead(ctx, request.(MarkNotificationReadRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MarkNotificationRead")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MarkNotificationReadResponseObject); ok {
+		if err := validResponse.VisitMarkNotificationReadResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListTransfers operation middleware
 func (sh *strictHandler) ListTransfers(w http.ResponseWriter, r *http.Request, params ListTransfersParams) {
 	var request ListTransfersRequestObject
@@ -4288,6 +5017,39 @@ func (sh *strictHandler) GetWalletBalance(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetWalletBalanceResponseObject); ok {
 		if err := validResponse.VisitGetWalletBalanceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DepositWallet operation middleware
+func (sh *strictHandler) DepositWallet(w http.ResponseWriter, r *http.Request, params DepositWalletParams) {
+	var request DepositWalletRequestObject
+
+	request.Params = params
+
+	var body DepositWalletJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DepositWallet(ctx, request.(DepositWalletRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DepositWallet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DepositWalletResponseObject); ok {
+		if err := validResponse.VisitDepositWalletResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

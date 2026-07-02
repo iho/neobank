@@ -34,6 +34,7 @@ type NotificationView struct {
 
 type NotificationList struct {
 	Notifications []NotificationView `json:"notifications"`
+	UnreadCount   int64              `json:"unread_count"`
 }
 
 func (c *NotificationClient) ListNotifications(ctx context.Context, userID string, limit int) (NotificationList, error) {
@@ -63,4 +64,64 @@ func (c *NotificationClient) ListNotifications(ctx context.Context, userID strin
 		return NotificationList{}, err
 	}
 	return out, nil
+}
+
+func (c *NotificationClient) MarkNotificationRead(ctx context.Context, userID, notificationID string) (NotificationView, int, error) {
+	url := fmt.Sprintf("%s/api/v1/notifications/%s/read", c.baseURL, notificationID)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return NotificationView{}, 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return NotificationView{}, 0, fmt.Errorf("notification service request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return NotificationView{}, 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return NotificationView{}, resp.StatusCode, fmt.Errorf("notification service status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var out NotificationView
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return NotificationView{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
+}
+
+func (c *NotificationClient) MarkAllNotificationsRead(ctx context.Context, userID string) (int64, error) {
+	url := c.baseURL + "/api/v1/notifications/read-all"
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return 0, fmt.Errorf("notification service request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("notification service status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var out struct {
+		MarkedCount int64 `json:"marked_count"`
+	}
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return 0, err
+	}
+	return out.MarkedCount, nil
 }

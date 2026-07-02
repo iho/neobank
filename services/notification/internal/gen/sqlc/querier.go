@@ -12,9 +12,12 @@ import (
 
 type Querier interface {
 	ConsumerInboxExists(ctx context.Context, eventID uuid.UUID) (bool, error)
+	CountUnreadNotificationsByUser(ctx context.Context, userID uuid.UUID) (int64, error)
 	InsertConsumerInbox(ctx context.Context, arg InsertConsumerInboxParams) error
 	InsertNotification(ctx context.Context, arg InsertNotificationParams) error
 	ListNotificationsByUser(ctx context.Context, arg ListNotificationsByUserParams) ([]ListNotificationsByUserRow, error)
+	MarkAllNotificationsRead(ctx context.Context, userID uuid.UUID) (int64, error)
+	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) (MarkNotificationReadRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

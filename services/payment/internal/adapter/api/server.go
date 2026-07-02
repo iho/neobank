@@ -38,14 +38,24 @@ func (s *Server) CreateP2PTransfer(ctx context.Context, req api.CreateP2PTransfe
 		memo = *req.Body.Memo
 	}
 
-	transfer, err := s.p2p.Execute(ctx, usecase.P2PTransferInput{
+	in := usecase.P2PTransferInput{
 		SenderUserID:   req.Params.XUserId.String(),
-		RecipientPhone: req.Body.RecipientPhone,
 		Amount:         req.Body.Amount,
 		Currency:       currency,
 		Memo:           memo,
 		IdempotencyKey: req.Params.IdempotencyKey,
-	})
+	}
+	if req.Body.RecipientPhone != nil {
+		in.RecipientPhone = *req.Body.RecipientPhone
+	}
+	if req.Body.RecipientEmail != nil {
+		in.RecipientEmail = string(*req.Body.RecipientEmail)
+	}
+	if req.Body.RecipientUserId != nil {
+		in.RecipientUserID = req.Body.RecipientUserId.String()
+	}
+
+	transfer, err := s.p2p.Execute(ctx, in)
 	if err != nil {
 		return api.CreateP2PTransfer400JSONResponse{Error: err.Error()}, nil
 	}

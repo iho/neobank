@@ -21,6 +21,7 @@ type Querier interface {
 	CreateWallet(ctx context.Context, arg CreateWalletParams) error
 	DeleteWalletByID(ctx context.Context, id uuid.UUID) error
 	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error)
+	GetDepositByUserAndIdempotencyKey(ctx context.Context, arg GetDepositByUserAndIdempotencyKeyParams) (GetDepositByUserAndIdempotencyKeyRow, error)
 	GetLatestKYCCaseByUser(ctx context.Context, userID uuid.UUID) (GetLatestKYCCaseByUserRow, error)
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
@@ -30,6 +31,7 @@ type Querier interface {
 	GetWalletByUserAndCurrency(ctx context.Context, arg GetWalletByUserAndCurrencyParams) (GetWalletByUserAndCurrencyRow, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	InsertConsumerInbox(ctx context.Context, arg InsertConsumerInboxParams) error
+	InsertDeposit(ctx context.Context, arg InsertDepositParams) error
 	InsertGDPRRequest(ctx context.Context, arg InsertGDPRRequestParams) error
 	InsertKYCSubmission(ctx context.Context, arg InsertKYCSubmissionParams) error
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error
@@ -45,6 +47,7 @@ type Querier interface {
 	MaskUserAccount(ctx context.Context, arg MaskUserAccountParams) error
 	MaskUserProfile(ctx context.Context, userID uuid.UUID) error
 	RejectKYCCase(ctx context.Context, arg RejectKYCCaseParams) error
+	UpdatePasswordHash(ctx context.Context, arg UpdatePasswordHashParams) error
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
 	UpsertProfile(ctx context.Context, arg UpsertProfileParams) error
 	UpsertWalletTransactionCapture(ctx context.Context, arg UpsertWalletTransactionCaptureParams) error

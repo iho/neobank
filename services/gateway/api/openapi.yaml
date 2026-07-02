@@ -101,6 +101,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /v1/auth/change-password:
+    post:
+      operationId: changePassword
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/XUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: Password updated
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /v1/me:
     get:
       operationId: getProfile
@@ -249,6 +282,50 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WalletTransactionList"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/wallet/deposit:
+    post:
+      operationId: depositWallet
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/XUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepositWalletRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepositWalletResponse"
+        "200":
+          description: Idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepositWalletResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "401":
           description: Unauthorized
           content:
@@ -729,6 +806,68 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /v1/notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/XUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarkNotificationsReadResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/notifications/{id}/read:
+    post:
+      operationId: markNotificationRead
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /v1/notifications:
     get:
       operationId: listNotifications
@@ -807,6 +946,16 @@ components:
       properties:
         refresh_token:
           type: string
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+        new_password:
+          type: string
+          format: password
+          minLength: 8
     LoginResponse:
       type: object
       required: [user_id, access_token, refresh_token]
@@ -948,6 +1097,34 @@ components:
           type: string
         available_balance:
           type: string
+    DepositWalletRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: string
+        currency:
+          type: string
+          default: USD
+    DepositWalletResponse:
+      type: object
+      required: [id, wallet_id, amount, currency, status]
+      properties:
+        id:
+          type: string
+        wallet_id:
+          type: string
+        amount:
+          type: string
+        currency:
+          type: string
+        ledger_transfer_id:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
     ProvisionWalletRequest:
       type: object
       properties:
@@ -963,9 +1140,14 @@ components:
           type: string
     CreateTransferRequest:
       type: object
-      required: [recipient_phone, amount]
+      required: [amount]
       properties:
         recipient_phone:
+          type: string
+        recipient_email:
+          type: string
+          format: email
+        recipient_user_id:
           type: string
         amount:
           type: string
@@ -1063,12 +1245,22 @@ components:
           format: date-time
     NotificationList:
       type: object
-      required: [notifications]
+      required: [notifications, unread_count]
       properties:
         notifications:
           type: array
           items:
             $ref: "#/components/schemas/Notification"
+        unread_count:
+          type: integer
+          format: int64
+    MarkNotificationsReadResponse:
+      type: object
+      required: [marked_count]
+      properties:
+        marked_count:
+          type: integer
+          format: int64
     AuthorizeRequest:
       type: object
       required: [amount]

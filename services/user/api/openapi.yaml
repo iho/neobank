@@ -59,6 +59,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/auth/change-password:
+    post:
+      operationId: changePassword
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: Password updated
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/register:
     post:
       operationId: register
@@ -178,6 +204,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/wallets/deposit:
+    post:
+      operationId: depositWallet
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/XUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepositWalletRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepositWalletResponse"
+        "200":
+          description: Idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepositWalletResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/wallets:
     post:
       operationId: provisionWallet
@@ -217,6 +274,51 @@ paths:
           description: Accepted
         "400":
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/internal/users/by-email/{email}:
+    get:
+      operationId: getUserByEmail
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/internal/users/{user_id}:
+    get:
+      operationId: getInternalUser
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not Found
           content:
             application/json:
               schema:
@@ -374,6 +476,16 @@ components:
       properties:
         refresh_token:
           type: string
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+        new_password:
+          type: string
+          format: password
+          minLength: 8
     LoginResponse:
       type: object
       required: [user_id, access_token, refresh_token]
@@ -451,6 +563,36 @@ components:
           type: string
         refresh_token:
           type: string
+    DepositWalletRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: string
+        currency:
+          type: string
+          default: USD
+    DepositWalletResponse:
+      type: object
+      required: [id, wallet_id, amount, currency, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        wallet_id:
+          type: string
+          format: uuid
+        amount:
+          type: string
+        currency:
+          type: string
+        ledger_transfer_id:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
     ProvisionWalletRequest:
       type: object
       properties:

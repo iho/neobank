@@ -44,6 +44,7 @@ type Harness struct {
 	NotificationURL string
 
 	SettlementAccountID string
+	TreasuryAccountID   string
 
 	pgContainer    testcontainers.Container
 	redisContainer testcontainers.Container
@@ -178,6 +179,15 @@ func (h *Harness) startLedger() {
 	}
 	h.LedgerAddr = addr
 
+	treasury, err := h.Ledger.CreateTreasuryAccount()
+	if err != nil {
+		h.t.Fatalf("treasury account: %v", err)
+	}
+	h.TreasuryAccountID = treasury.Id
+	if err := h.Ledger.CreditAccount(h.TreasuryAccountID, "1000000.00"); err != nil {
+		h.t.Fatalf("credit treasury: %v", err)
+	}
+
 	settlement, err := h.Ledger.CreateSettlementAccount()
 	if err != nil {
 		h.t.Fatalf("settlement account: %v", err)
@@ -227,12 +237,13 @@ func (h *Harness) startServiceProcesses() {
 		"HTTP_PORT":    notifPort,
 	})
 	h.startProcess("user", map[string]string{
-		"DATABASE_URL":            h.DatabaseURL,
-		"REDIS_URL":               h.RedisURL,
-		"LEDGER_GRPC_ADDR":        h.LedgerAddr,
-		"HTTP_PORT":               userPort,
-		"JWT_SECRET":              jwtSecret,
-		"NOTIFICATION_SERVICE_URL": notificationIngest,
+		"DATABASE_URL":                    h.DatabaseURL,
+		"REDIS_URL":                       h.RedisURL,
+		"LEDGER_GRPC_ADDR":                h.LedgerAddr,
+		"HTTP_PORT":                       userPort,
+		"JWT_SECRET":                      jwtSecret,
+		"NOTIFICATION_SERVICE_URL":        notificationIngest,
+		"DEPOSIT_SOURCE_LEDGER_ACCOUNT_ID": h.TreasuryAccountID,
 	})
 	h.startProcess("payment", map[string]string{
 		"DATABASE_URL":            h.DatabaseURL,

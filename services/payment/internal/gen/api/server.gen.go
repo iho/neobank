@@ -19,10 +19,12 @@ import (
 
 // CreateTransferRequest defines model for CreateTransferRequest.
 type CreateTransferRequest struct {
-	Amount         string  `json:"amount"`
-	Currency       *string `json:"currency,omitempty"`
-	Memo           *string `json:"memo,omitempty"`
-	RecipientPhone string  `json:"recipient_phone"`
+	Amount          string               `json:"amount"`
+	Currency        *string              `json:"currency,omitempty"`
+	Memo            *string              `json:"memo,omitempty"`
+	RecipientEmail  *openapi_types.Email `json:"recipient_email,omitempty"`
+	RecipientPhone  *string              `json:"recipient_phone,omitempty"`
+	RecipientUserId *openapi_types.UUID  `json:"recipient_user_id,omitempty"`
 }
 
 // ErrorResponse defines model for ErrorResponse.

@@ -50,8 +50,10 @@ func main() {
 
 	ingestUC := usecase.NewIngestEventUseCase(notificationRepo, inboxRepo)
 	listUC := usecase.NewListNotificationsUseCase(notificationRepo)
+	markReadUC := usecase.NewMarkNotificationReadUseCase(notificationRepo)
+	markAllUC := usecase.NewMarkAllNotificationsReadUseCase(notificationRepo)
 
-	strictServer := apiadapter.NewServer(ingestUC, listUC)
+	strictServer := apiadapter.NewServer(ingestUC, listUC, markReadUC, markAllUC)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
 
 	if cfg.KafkaBrokers != "" {

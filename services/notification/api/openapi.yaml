@@ -33,6 +33,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarkNotificationsReadResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/notifications/{id}/read:
+    post:
+      operationId: markNotificationRead
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/notifications:
     get:
       operationId: listNotifications
@@ -122,9 +164,19 @@ components:
           format: date-time
     NotificationList:
       type: object
-      required: [notifications]
+      required: [notifications, unread_count]
       properties:
         notifications:
           type: array
           items:
             $ref: "#/components/schemas/Notification"
+        unread_count:
+          type: integer
+          format: int64
+    MarkNotificationsReadResponse:
+      type: object
+      required: [marked_count]
+      properties:
+        marked_count:
+          type: integer
+          format: int64

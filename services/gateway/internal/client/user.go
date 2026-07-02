@@ -388,3 +388,83 @@ func (c *UserClient) ProvisionWallet(ctx context.Context, userID, idempotencyKey
 	}
 	return out, nil
 }
+
+type DepositWalletRequest struct {
+	Amount   string `json:"amount"`
+	Currency string `json:"currency,omitempty"`
+}
+
+type DepositWalletResponse struct {
+	ID               string `json:"id"`
+	WalletID         string `json:"wallet_id"`
+	Amount           string `json:"amount"`
+	Currency         string `json:"currency"`
+	LedgerTransferID string `json:"ledger_transfer_id,omitempty"`
+	Status           string `json:"status"`
+	CreatedAt        string `json:"created_at,omitempty"`
+}
+
+func (c *UserClient) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) (int, error) {
+	body, err := json.Marshal(map[string]string{
+		"current_password": currentPassword,
+		"new_password":     newPassword,
+	})
+	if err != nil {
+		return 0, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/auth/change-password", bytes.NewReader(body))
+	if err != nil {
+		return 0, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-User-Id", userID)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	return resp.StatusCode, nil
+}
+
+func (c *UserClient) DepositWallet(ctx context.Context, userID, idempotencyKey string, req DepositWalletRequest) (DepositWalletResponse, int, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return DepositWalletResponse{}, 0, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/wallets/deposit", bytes.NewReader(body))
+	if err != nil {
+		return DepositWalletResponse{}, 0, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Idempotency-Key", idempotencyKey)
+	httpReq.Header.Set("X-User-Id", userID)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return DepositWalletResponse{}, 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return DepositWalletResponse{}, 0, err
+	}
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		return DepositWalletResponse{}, resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var out DepositWalletResponse
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return DepositWalletResponse{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
+}

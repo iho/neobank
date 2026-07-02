@@ -3,21 +3,30 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/iho/neobank/pkg/events"
 	"github.com/iho/neobank/services/notification/internal/gen/api"
 	"github.com/iho/neobank/services/notification/internal/usecase"
+	"github.com/jackc/pgx/v5"
 )
 
 type Server struct {
-	ingest *usecase.IngestEventUseCase
-	list   *usecase.ListNotificationsUseCase
+	ingest    *usecase.IngestEventUseCase
+	list      *usecase.ListNotificationsUseCase
+	markRead  *usecase.MarkNotificationReadUseCase
+	markAll   *usecase.MarkAllNotificationsReadUseCase
 }
 
-func NewServer(ingest *usecase.IngestEventUseCase, list *usecase.ListNotificationsUseCase) *Server {
-	return &Server{ingest: ingest, list: list}
+func NewServer(
+	ingest *usecase.IngestEventUseCase,
+	list *usecase.ListNotificationsUseCase,
+	markRead *usecase.MarkNotificationReadUseCase,
+	markAll *usecase.MarkAllNotificationsReadUseCase,
+) *Server {
+	return &Server{ingest: ingest, list: list, markRead: markRead, markAll: markAll}
 }
 
 func (s *Server) GetHealth(_ context.Context, _ api.GetHealthRequestObject) (api.GetHealthResponseObject, error) {
@@ -60,13 +69,13 @@ func (s *Server) ListNotifications(ctx context.Context, req api.ListNotification
 		limit = *req.Params.Limit
 	}
 
-	notifications, err := s.list.Execute(ctx, req.Params.XUserId.String(), limit)
+	out, err := s.list.Execute(ctx, req.Params.XUserId.String(), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	views := make([]api.Notification, 0, len(notifications))
-	for _, n := range notifications {
+	views := make([]api.Notification, 0, len(out.Notifications))
+	for _, n := range out.Notifications {
 		id, _ := uuid.Parse(n.ID)
 		userID, _ := uuid.Parse(n.UserID)
 		views = append(views, api.Notification{
@@ -79,5 +88,37 @@ func (s *Server) ListNotifications(ctx context.Context, req api.ListNotification
 			CreatedAt: n.CreatedAt.UTC(),
 		})
 	}
-	return api.ListNotifications200JSONResponse{Notifications: views}, nil
+	return api.ListNotifications200JSONResponse{
+		Notifications: views,
+		UnreadCount:   out.UnreadCount,
+	}, nil
+}
+
+func (s *Server) MarkNotificationRead(ctx context.Context, req api.MarkNotificationReadRequestObject) (api.MarkNotificationReadResponseObject, error) {
+	n, err := s.markRead.Execute(ctx, req.Params.XUserId.String(), req.Id.String())
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.MarkNotificationRead404JSONResponse{Error: "notification_not_found"}, nil
+		}
+		return nil, err
+	}
+	id, _ := uuid.Parse(n.ID)
+	userID, _ := uuid.Parse(n.UserID)
+	return api.MarkNotificationRead200JSONResponse{
+		Id:        openapi_types.UUID(id),
+		UserId:    openapi_types.UUID(userID),
+		EventType: n.EventType,
+		Title:     n.Title,
+		Body:      n.Body,
+		Read:      n.Read,
+		CreatedAt: n.CreatedAt.UTC(),
+	}, nil
+}
+
+func (s *Server) MarkAllNotificationsRead(ctx context.Context, req api.MarkAllNotificationsReadRequestObject) (api.MarkAllNotificationsReadResponseObject, error) {
+	count, err := s.markAll.Execute(ctx, req.Params.XUserId.String())
+	if err != nil {
+		return nil, err
+	}
+	return api.MarkAllNotificationsRead200JSONResponse{MarkedCount: count}, nil
 }

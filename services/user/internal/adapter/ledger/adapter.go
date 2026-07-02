@@ -28,3 +28,10 @@ func (a *Adapter) GetAccount(ctx context.Context, id string) (*goledgerv1.Accoun
 	}
 	return a.client.GetAccount(ctx, id)
 }
+
+func (a *Adapter) CreateTransfer(ctx context.Context, in ledgerclient.CreateTransferInput) (*goledgerv1.Transfer, error) {
+	if a == nil || a.client == nil {
+		return nil, ledgerclient.ErrUnavailable
+	}
+	return a.client.CreateTransfer(ctx, in)
+}

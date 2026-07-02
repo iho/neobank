@@ -28,12 +28,14 @@ import (
 )
 
 type P2PTransferInput struct {
-	SenderUserID   string
-	RecipientPhone string
-	Amount         string
-	Currency       string
-	Memo           string
-	IdempotencyKey string
+	SenderUserID      string
+	RecipientPhone    string
+	RecipientEmail    string
+	RecipientUserID   string
+	Amount            string
+	Currency          string
+	Memo              string
+	IdempotencyKey    string
 }
 
 type P2PTransferUseCase struct {
@@ -85,8 +87,8 @@ func NewP2PTransferUseCase(
 }
 
 func (uc *P2PTransferUseCase) Execute(ctx context.Context, in P2PTransferInput) (*domain.Transfer, error) {
-	if in.SenderUserID == "" || in.RecipientPhone == "" || in.IdempotencyKey == "" {
-		return nil, fmt.Errorf("sender_user_id, recipient_phone, and idempotency_key are required")
+	if in.SenderUserID == "" || in.IdempotencyKey == "" {
+		return nil, fmt.Errorf("sender_user_id and idempotency_key are required")
 	}
 	if in.Currency == "" {
 		in.Currency = "USD"
@@ -108,9 +110,9 @@ func (uc *P2PTransferUseCase) Execute(ctx context.Context, in P2PTransferInput) 
 		return nil, fmt.Errorf("sender wallet: %w", err)
 	}
 
-	recipient, err := uc.users.GetByPhone(ctx, in.RecipientPhone)
+	recipient, err := uc.resolveRecipient(ctx, in)
 	if err != nil {
-		return nil, fmt.Errorf("recipient: %w", err)
+		return nil, err
 	}
 	if recipient.ID == in.SenderUserID {
 		return nil, saga.NewBusinessError("self_transfer", "cannot transfer to yourself")
@@ -129,7 +131,7 @@ func (uc *P2PTransferUseCase) Execute(ctx context.Context, in P2PTransferInput) 
 	}
 	screenResult, err := uc.screener.ScreenCounterparty(screening.Counterparty{
 		UserID: recipient.ID,
-		Phone:  in.RecipientPhone,
+		Phone:  recipient.Phone,
 	}, screenCtx)
 	if err != nil {
 		return nil, fmt.Errorf("counterparty screening: %w", err)
@@ -312,6 +314,43 @@ func amlCaseType(result amlmonitor.Result) string {
 		return "review"
 	default:
 		return ""
+	}
+}
+
+func (uc *P2PTransferUseCase) resolveRecipient(ctx context.Context, in P2PTransferInput) (userclient.User, error) {
+	provided := 0
+	if in.RecipientPhone != "" {
+		provided++
+	}
+	if in.RecipientEmail != "" {
+		provided++
+	}
+	if in.RecipientUserID != "" {
+		provided++
+	}
+	if provided != 1 {
+		return userclient.User{}, fmt.Errorf("exactly one of recipient_phone, recipient_email, or recipient_user_id is required")
+	}
+
+	switch {
+	case in.RecipientPhone != "":
+		user, err := uc.users.GetByPhone(ctx, in.RecipientPhone)
+		if err != nil {
+			return userclient.User{}, fmt.Errorf("recipient: %w", err)
+		}
+		return user, nil
+	case in.RecipientEmail != "":
+		user, err := uc.users.GetByEmail(ctx, in.RecipientEmail)
+		if err != nil {
+			return userclient.User{}, fmt.Errorf("recipient: %w", err)
+		}
+		return user, nil
+	default:
+		user, err := uc.users.GetByID(ctx, in.RecipientUserID)
+		if err != nil {
+			return userclient.User{}, fmt.Errorf("recipient: %w", err)
+		}
+		return user, nil
 	}
 }
 

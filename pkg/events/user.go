@@ -19,6 +19,7 @@ const (
 	TypeUserRegistered    = "user.registered"
 	TypeKYCApproved       = "user.kyc.approved"
 	TypeWalletProvisioned = "user.wallet.provisioned"
+	TypeDepositCompleted  = "user.deposit.completed"
 )
 
 type UserRegistered struct {
@@ -52,6 +53,20 @@ func (e WalletProvisioned) EventType() string     { return TypeWalletProvisioned
 func (e WalletProvisioned) AggregateType() string { return "wallet" }
 func (e WalletProvisioned) AggregateID() string   { return e.WalletID }
 func (e WalletProvisioned) Version() int          { return 1 }
+
+type DepositCompleted struct {
+	DepositID        string `json:"deposit_id"`
+	UserID           string `json:"user_id"`
+	WalletID         string `json:"wallet_id"`
+	LedgerTransferID string `json:"ledger_transfer_id"`
+	Amount           string `json:"amount"`
+	Currency         string `json:"currency"`
+}
+
+func (e DepositCompleted) EventType() string     { return TypeDepositCompleted }
+func (e DepositCompleted) AggregateType() string { return "deposit" }
+func (e DepositCompleted) AggregateID() string   { return e.DepositID }
+func (e DepositCompleted) Version() int          { return 1 }
 
 func MarshalPayload(evt Event) (json.RawMessage, error) {
 	return json.Marshal(evt)

@@ -141,10 +141,16 @@ components:
           type: string
     CreateTransferRequest:
       type: object
-      required: [recipient_phone, amount]
+      required: [amount]
       properties:
         recipient_phone:
           type: string
+        recipient_email:
+          type: string
+          format: email
+        recipient_user_id:
+          type: string
+          format: uuid
         amount:
           type: string
         currency:

@@ -1,4 +1,4 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-all down-all up-ledger down-ledger up-all-ledger down-all-ledger up-ghcr down-ghcr up-ghcr-ledger down-ghcr-ledger up-observability up-obs-all down-obs up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs helm-lint helm-template helm-lint-platform helm-template-platform
+.PHONY: deps build test test-integration lint proto sqlc oapi generate mobile-generate up down up-all down-all up-ledger down-ledger up-all-ledger down-all-ledger up-ghcr down-ghcr up-ghcr-ledger down-ghcr-ledger up-observability up-obs-all down-obs up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs helm-lint helm-template helm-lint-platform helm-template-platform
 
 HELM_CHART := deploy/helm/neobank
 HELM_PLATFORM := deploy/helm/platform
@@ -46,6 +46,13 @@ oapi:
 	cd services/card && $(OAPI_CODEGEN) -config api/oapi-codegen.yaml api/openapi.yaml
 
 generate: proto sqlc oapi
+
+# Not chained into `generate`/`build`: mobile/ has its own toolchain (Flutter/Dart)
+# that Go-only CI runners don't have installed. Regenerates the Dart gateway
+# client from services/gateway/api/openapi.yaml — see mobile/TODO.md.
+mobile-generate:
+	cd mobile && dart run swagger_parser
+	cd mobile && dart run build_runner build --delete-conflicting-outputs
 
 grpc-mtls-certs:
 	chmod +x deployments/grpc-mtls/gen-certs.sh

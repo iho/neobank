@@ -1,0 +1,10 @@
+swagger_parser:
+  schema_path: ../services/gateway/api/openapi.yaml
+  output_directory: lib/core/api/generated
+  name: Gateway
+  json_serializer: json_serializable
+  root_client: true
+  root_client_name: GatewayApiClient
+  export_file: true
+  put_in_folder: true
+  mark_files_as_generated: true

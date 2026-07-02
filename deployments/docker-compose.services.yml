@@ -14,7 +14,7 @@ x-service-env: &service-env
   DATABASE_URL: postgres://neobank:neobank@postgres:5432/neobank?sslmode=disable
   REDIS_URL: redis://redis:6379/0
   JWT_SECRET: dev-secret-change-me
-  KAFKA_BROKERS: kafka:9092
+  KAFKA_BROKERS: redpanda:9092
   OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
   LEDGER_GRPC_ADDR: host.docker.internal:50051
 

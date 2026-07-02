@@ -158,7 +158,7 @@ Run these in order on a fresh machine:
 
 | Step | Command | Notes |
 |------|---------|-------|
-| 1 | `make up` | Postgres, Redis, Kafka, Vault dev, OTel collector |
+| 1 | `make up` | Postgres, Redis, Redpanda, Vault dev, OTel collector |
 | 2 | Start goledger | See [services/ledger/README.md](services/ledger/README.md) |
 | 3 | `make tools && make generate && make migrate && make build` | First-time codegen + migrations |
 | 4 | Run five binaries | See [Run services](#run-services) |
@@ -170,7 +170,7 @@ Run these in order on a fresh machine:
 make up
 ```
 
-Starts PostgreSQL (`:5432`), Redis (`:6379`), Kafka (`:9092`), Vault dev server (`:8200`), and an OpenTelemetry collector (`:4317` gRPC / `:4318` HTTP).
+Starts PostgreSQL (`:5432`), Redis (`:6379`), Redpanda (`:19092` Kafka API from host, `redpanda:9092` in compose), Vault dev server (`:8200`), and an OpenTelemetry collector (`:4317` gRPC / `:4318` HTTP).
 
 Optional PII encryption at rest:
 
@@ -237,10 +237,12 @@ Start each binary in its own terminal (or use a process manager):
 ./bin/gateway
 ```
 
-Optional Kafka (instead of HTTP outbox fan-out):
+Optional Redpanda event bus (Kafka API; instead of HTTP outbox fan-out):
 
 ```bash
-export KAFKA_BROKERS=localhost:9092
+# Host binaries: Redpanda external listener
+export KAFKA_BROKERS=localhost:19092
+# In compose (make up-all): KAFKA_BROKERS=redpanda:9092 is set automatically
 ```
 
 Card capture requires a goledger settlement account:
@@ -449,7 +451,7 @@ Contract source: [pkg/events/catalog.go](pkg/events/catalog.go). Export with `ma
 | `PAYMENT_SERVICE_URL` | `http://localhost:8082` | gateway |
 | `CARD_SERVICE_URL` | `http://localhost:8084` | gateway |
 | `NOTIFICATION_SERVICE_URL` | `http://localhost:8083` | gateway, outbox |
-| `KAFKA_BROKERS` | _(empty)_ | user, payment, card, notification |
+| `KAFKA_BROKERS` | _(empty)_ | user, payment, card, notification; `localhost:19092` on host, `redpanda:9092` in compose |
 | `SETTLEMENT_LEDGER_ACCOUNT_ID` | _(empty)_ | card (capture) |
 | `APP_ENV` | `development` | gateway (dev-auth gate) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | _(empty)_ | all services (tracing off if unset) |

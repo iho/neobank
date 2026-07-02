@@ -17,6 +17,7 @@ import (
 	"github.com/iho/neobank/pkg/fraud"
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
+	"github.com/iho/neobank/pkg/metrics"
 	neobankv1 "github.com/iho/neobank/pkg/gen/neobank/v1"
 	"github.com/iho/neobank/pkg/grpcutil"
 	"github.com/iho/neobank/pkg/otel"
@@ -105,7 +106,9 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	r.Use(metrics.HTTPMiddleware("payment"))
 	r.Use(otel.HTTPMiddleware("payment"))
+	metrics.Mount(r)
 	r.Use(reqctx.Middleware)
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
 	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("payment")))

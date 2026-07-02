@@ -1,0 +1,13 @@
+route:
+  receiver: default
+  group_by: [alertname, service, schema]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: default
+    # Replace with PagerDuty/Slack webhook in production.
+    webhook_configs:
+      - url: http://127.0.0.1:65535/discard
+        send_resolved: true

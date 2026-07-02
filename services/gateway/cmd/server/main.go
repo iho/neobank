@@ -16,6 +16,7 @@ import (
 	"github.com/iho/neobank/pkg/grpcutil"
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
+	"github.com/iho/neobank/pkg/metrics"
 	"github.com/iho/neobank/pkg/otel"
 	"github.com/iho/neobank/pkg/reqctx"
 	"github.com/iho/neobank/pkg/runtime"
@@ -94,7 +95,9 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	r.Use(metrics.HTTPMiddleware("gateway"))
 	r.Use(otel.HTTPMiddleware("gateway"))
+	metrics.Mount(r)
 	r.Use(reqctx.Middleware)
 	r.Use(gwmiddleware.Actor(jwtAuth, cfg.AllowDevAuth))
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))

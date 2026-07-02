@@ -1,6 +1,8 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-all down-all up-ghcr down-ghcr up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs helm-lint helm-template
+.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-all down-all up-ghcr down-ghcr up-observability up-obs-all down-obs up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs helm-lint helm-template
 
 HELM_CHART := deploy/helm/neobank
+COMPOSE_OBS := $(COMPOSE_INFRA) -f deployments/docker-compose.observability.yml
+COMPOSE_OBS_ALL := $(COMPOSE_ALL) -f deployments/docker-compose.observability.yml
 
 COMPOSE_INFRA := docker compose -f deployments/docker-compose.yml
 COMPOSE_ALL   := docker compose -f deployments/docker-compose.yml -f deployments/docker-compose.services.yml
@@ -58,6 +60,8 @@ build: generate
 	go build -o bin/saga-watchdog ./tools/saga-watchdog
 	go build -o bin/payment-aml-export ./services/payment/cmd/aml-export
 	go build -o bin/event-catalog ./tools/event-catalog
+	go build -o bin/ops-metrics ./tools/ops-metrics
+	go build -o bin/outbox-archiver ./tools/outbox-archiver
 
 test:
 	cd pkg && go test ./...
@@ -98,6 +102,15 @@ up-ghcr:
 
 down-ghcr:
 	$(COMPOSE_GHCR) down
+
+up-observability:
+	$(COMPOSE_OBS) up -d --build
+
+up-obs-all:
+	$(COMPOSE_OBS_ALL) up -d --build
+
+down-obs:
+	$(COMPOSE_OBS_ALL) down
 
 up-jobs:
 	GIT_SHA=$(GIT_SHA) BUILD_DATE=$(BUILD_DATE) $(COMPOSE_JOBS) up -d --build reconcile-jobs

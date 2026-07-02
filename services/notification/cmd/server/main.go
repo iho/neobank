@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	neobankv1 "github.com/iho/neobank/pkg/gen/neobank/v1"
 	"github.com/iho/neobank/pkg/grpcutil"
+	"github.com/iho/neobank/pkg/metrics"
 	"github.com/iho/neobank/pkg/notify"
 	"github.com/iho/neobank/pkg/otel"
 	"github.com/iho/neobank/pkg/reqctx"
@@ -90,7 +91,9 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	r.Use(metrics.HTTPMiddleware("notification"))
 	r.Use(otel.HTTPMiddleware("notification"))
+	metrics.Mount(r)
 	r.Use(reqctx.Middleware)
 	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("notification")))
 	genapi.HandlerFromMux(strictHandler, r)

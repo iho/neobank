@@ -1,0 +1,57 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8889"]
+
+  - job_name: ops-metrics
+    static_configs:
+      - targets: ["ops-metrics:9091"]
+
+  - job_name: neobank-services
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - gateway:8080
+          - user:8081
+          - payment:8082
+          - notification:8083
+          - card:8084
+        labels:
+          env: local
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: 'gateway:.*'
+        target_label: service
+        replacement: gateway
+      - source_labels: [__address__]
+        regex: 'user:.*'
+        target_label: service
+        replacement: user
+      - source_labels: [__address__]
+        regex: 'payment:.*'
+        target_label: service
+        replacement: payment
+      - source_labels: [__address__]
+        regex: 'notification:.*'
+        target_label: service
+        replacement: notification
+      - source_labels: [__address__]
+        regex: 'card:.*'
+        target_label: service
+        replacement: card

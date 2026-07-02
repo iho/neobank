@@ -9,5 +9,7 @@ use (
 	./services/user
 	./tests/integration
 	./tools/event-catalog
+	./tools/ops-metrics
+	./tools/outbox-archiver
 	./tools/saga-watchdog
 )

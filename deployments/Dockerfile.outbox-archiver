@@ -1,0 +1,19 @@
+ARG GO_VERSION=1.24
+
+FROM golang:${GO_VERSION}-alpine AS build
+WORKDIR /src
+RUN apk add --no-cache git
+
+COPY tools/outbox-archiver ./tools/outbox-archiver
+ENV CGO_ENABLED=0 GOOS=linux
+RUN cd tools/outbox-archiver && go mod tidy && \
+    go build -trimpath -ldflags="-s -w" -o /out/outbox-archiver .
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates \
+    && addgroup -S -g 65532 nonroot \
+    && adduser -S -u 65532 -G nonroot nonroot
+
+COPY --from=build /out/outbox-archiver /outbox-archiver
+USER nonroot:nonroot
+ENTRYPOINT ["/outbox-archiver"]

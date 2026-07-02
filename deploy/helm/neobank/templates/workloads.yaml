@@ -71,6 +71,10 @@ metadata:
   labels:
     {{- include "neobank.labels" $ | nindent 4 }}
     app.kubernetes.io/component: {{ $name }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: {{ $wl.httpPort | quote }}
+    prometheus.io/path: "/metrics"
 spec:
   type: ClusterIP
   selector:

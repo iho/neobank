@@ -77,6 +77,30 @@ migration:
       cpu: 200m
       memory: 128Mi
 
+opsMetrics:
+  enabled: true
+  scrapeInterval: 30s
+  image:
+    repository: ""
+    tag: ""
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+outboxArchiver:
+  enabled: false
+  schedule: "0 3 1 * *"
+  retentionMonths: 12
+  image:
+    repository: ""
+    tag: ""
+  persistence:
+    enabled: false
+
 cronJobs:
   image:
     repository: ""

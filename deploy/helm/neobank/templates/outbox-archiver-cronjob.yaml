@@ -1,0 +1,44 @@
+{{- if .Values.outboxArchiver.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "neobank.fullname" . }}-outbox-archiver
+  labels:
+    {{- include "neobank.labels" . | nindent 4 }}
+    app.kubernetes.io/component: outbox-archiver
+spec:
+  schedule: {{ .Values.outboxArchiver.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ include "neobank.serviceAccountName" . }}
+          containers:
+            - name: archiver
+              image: {{ include "neobank.image" (dict "Values" .Values "image" "outbox-archiver" "repository" .Values.outboxArchiver.image.repository "tag" .Values.outboxArchiver.image.tag) }}
+              args:
+                - -months={{ .Values.outboxArchiver.retentionMonths }}
+                - -out=/archive
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "neobank.secretName" . }}
+                      key: database-url
+              volumeMounts:
+                - name: archive
+                  mountPath: /archive
+          volumes:
+            - name: archive
+              {{- if .Values.outboxArchiver.persistence.enabled }}
+              persistentVolumeClaim:
+                claimName: {{ include "neobank.fullname" . }}-outbox-archive
+              {{- else }}
+              emptyDir: {}
+              {{- end }}
+{{- end }}

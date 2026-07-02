@@ -1,0 +1,66 @@
+{{- if .Values.opsMetrics.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "neobank.fullname" . }}-ops-metrics
+  labels:
+    {{- include "neobank.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ops-metrics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "neobank.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ops-metrics
+  template:
+    metadata:
+      labels:
+        {{- include "neobank.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ops-metrics
+    spec:
+      serviceAccountName: {{ include "neobank.serviceAccountName" . }}
+      containers:
+        - name: ops-metrics
+          image: {{ include "neobank.image" (dict "Values" .Values "image" "ops-metrics" "repository" .Values.opsMetrics.image.repository "tag" .Values.opsMetrics.image.tag) }}
+          ports:
+            - name: http
+              containerPort: 9091
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "neobank.secretName" . }}
+                  key: database-url
+            - name: SCRAPE_INTERVAL
+              value: {{ .Values.opsMetrics.scrapeInterval | quote }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            {{- toYaml .Values.opsMetrics.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "neobank.fullname" . }}-ops-metrics
+  labels:
+    {{- include "neobank.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ops-metrics
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9091"
+    prometheus.io/path: "/metrics"
+spec:
+  selector:
+    {{- include "neobank.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: ops-metrics
+  ports:
+    - name: http
+      port: 9091
+      targetPort: http
+{{- end }}

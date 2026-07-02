@@ -79,18 +79,18 @@ deployable beyond a laptop, and building the mobile client the BFF was designed 
 
 ### Phase 4: Observability & operations
 
-- [ ] Tracing backend: point OTel collector at Tempo/Jaeger instead of `debug` exporter;
+- [x] Tracing backend: point OTel collector at Tempo/Jaeger instead of `debug` exporter;
       trace across gateway → services → goledger (propagation already wired via `pkg/reqctx`/otel).
-- [ ] Metrics: Prometheus scrape (add `/metrics` via OTel metrics or promhttp to services),
+- [x] Metrics: Prometheus scrape (add `/metrics` via OTel metrics or promhttp to services),
       Grafana dashboards — RED per service, saga latency/failures, outbox lag
       (unpublished `outbox_events` age), reconciliation break count, Kafka consumer lag.
-- [ ] Alerting (Alertmanager/PagerDuty): saga_alerts rows, reconciliation exit 1, outbox
+- [x] Alerting (Alertmanager/PagerDuty): saga_alerts rows, reconciliation exit 1, outbox
       lag threshold, 5xx rate, cert expiry, DB disk.
-- [ ] Log shipping (Loki/ELK) with retention — `pkg/sloghttp` already emits structured
+- [x] Log shipping (Loki/ELK) with retention — `pkg/sloghttp` already emits structured
       JSON with `correlation_id` (closes todo.md #9 "retained log shipping" note).
-- [ ] Outbox archival infra (todo.md #5): monthly partitions + export to object storage
+- [x] Outbox archival infra (todo.md #5): monthly partitions + export to object storage
       with WORM/object-lock; 7-year retention (`outbox.DefaultRetentionYears`).
-- [ ] Runbooks in `docs/`: deploy/rollback, break resolution, stuck saga, Vault unseal,
+- [x] Runbooks in `docs/`: deploy/rollback, break resolution, stuck saga, Vault unseal,
       DB restore drill.
 
 ---

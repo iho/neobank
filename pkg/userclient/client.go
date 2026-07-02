@@ -107,6 +107,40 @@ func (c *Client) GetWallet(ctx context.Context, userID, currency string) (Wallet
 	return wallet, nil
 }
 
+type DeviceToken struct {
+	ID       string `json:"id"`
+	UserID   string `json:"user_id"`
+	Platform string `json:"platform"`
+	Token    string `json:"token"`
+}
+
+func (c *Client) ListDeviceTokens(ctx context.Context, userID string) ([]DeviceToken, error) {
+	path := fmt.Sprintf("%s/api/v1/internal/users/%s/device-tokens", c.baseURL, url.PathEscape(userID))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, path, http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(body))
+	}
+	var out struct {
+		DeviceTokens []DeviceToken `json:"device_tokens"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return nil, err
+	}
+	return out.DeviceTokens, nil
+}
+
 func (c *Client) UpsertPayee(ctx context.Context, userID, payeeUserID, nickname, idempotencyKey string) error {
 	body, err := json.Marshal(map[string]string{
 		"user_id":       userID,

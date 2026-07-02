@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/iho/neobank/pkg/events"
+	"github.com/iho/neobank/services/notification/internal/domain"
 	"github.com/iho/neobank/services/notification/internal/gen/api"
 	"github.com/iho/neobank/services/notification/internal/usecase"
 	"github.com/jackc/pgx/v5"
@@ -18,6 +19,8 @@ type Server struct {
 	list      *usecase.ListNotificationsUseCase
 	markRead  *usecase.MarkNotificationReadUseCase
 	markAll   *usecase.MarkAllNotificationsReadUseCase
+	getPrefs  *usecase.GetNotificationPreferencesUseCase
+	updatePrefs *usecase.UpdateNotificationPreferencesUseCase
 }
 
 func NewServer(
@@ -25,8 +28,17 @@ func NewServer(
 	list *usecase.ListNotificationsUseCase,
 	markRead *usecase.MarkNotificationReadUseCase,
 	markAll *usecase.MarkAllNotificationsReadUseCase,
+	getPrefs *usecase.GetNotificationPreferencesUseCase,
+	updatePrefs *usecase.UpdateNotificationPreferencesUseCase,
 ) *Server {
-	return &Server{ingest: ingest, list: list, markRead: markRead, markAll: markAll}
+	return &Server{
+		ingest:      ingest,
+		list:        list,
+		markRead:    markRead,
+		markAll:     markAll,
+		getPrefs:    getPrefs,
+		updatePrefs: updatePrefs,
+	}
 }
 
 func (s *Server) GetHealth(_ context.Context, _ api.GetHealthRequestObject) (api.GetHealthResponseObject, error) {
@@ -129,4 +141,40 @@ func (s *Server) MarkAllNotificationsRead(ctx context.Context, req api.MarkAllNo
 		return nil, err
 	}
 	return api.MarkAllNotificationsRead200JSONResponse{MarkedCount: count}, nil
+}
+
+func (s *Server) GetNotificationPreferences(ctx context.Context, req api.GetNotificationPreferencesRequestObject) (api.GetNotificationPreferencesResponseObject, error) {
+	prefs, err := s.getPrefs.Execute(ctx, req.Params.XUserId.String())
+	if err != nil {
+		return nil, err
+	}
+	return api.GetNotificationPreferences200JSONResponse(toNotificationPreferences(prefs)), nil
+}
+
+func (s *Server) UpdateNotificationPreferences(ctx context.Context, req api.UpdateNotificationPreferencesRequestObject) (api.UpdateNotificationPreferencesResponseObject, error) {
+	if req.Body == nil {
+		return api.UpdateNotificationPreferences400JSONResponse{Error: "invalid_json"}, nil
+	}
+	prefs, err := s.updatePrefs.Execute(ctx, usecase.UpdateNotificationPreferencesInput{
+		UserID:    req.Params.XUserId.String(),
+		Transfers: req.Body.Transfers,
+		Cards:     req.Body.Cards,
+		KYC:       req.Body.Kyc,
+		Push:      req.Body.Push,
+		Email:     req.Body.Email,
+	})
+	if err != nil {
+		return api.UpdateNotificationPreferences400JSONResponse{Error: err.Error()}, nil
+	}
+	return api.UpdateNotificationPreferences200JSONResponse(toNotificationPreferences(prefs)), nil
+}
+
+func toNotificationPreferences(p domain.NotificationPreferences) api.NotificationPreferences {
+	return api.NotificationPreferences{
+		Transfers: p.Transfers,
+		Cards:     p.Cards,
+		Kyc:       p.KYC,
+		Push:      p.Push,
+		Email:     p.Email,
+	}
 }

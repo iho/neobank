@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -129,4 +130,75 @@ func (c *NotificationClient) MarkAllNotificationsRead(ctx context.Context, userI
 		return 0, err
 	}
 	return out.MarkedCount, nil
+}
+
+type NotificationPreferences struct {
+	Transfers bool `json:"transfers"`
+	Cards     bool `json:"cards"`
+	KYC       bool `json:"kyc"`
+	Push      bool `json:"push"`
+	Email     bool `json:"email"`
+}
+
+type UpdateNotificationPreferencesRequest struct {
+	Transfers *bool `json:"transfers,omitempty"`
+	Cards     *bool `json:"cards,omitempty"`
+	KYC       *bool `json:"kyc,omitempty"`
+	Push      *bool `json:"push,omitempty"`
+	Email     *bool `json:"email,omitempty"`
+}
+
+func (c *NotificationClient) GetNotificationPreferences(ctx context.Context, userID string) (NotificationPreferences, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/notification-preferences", nil)
+	if err != nil {
+		return NotificationPreferences{}, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return NotificationPreferences{}, fmt.Errorf("notification service request: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return NotificationPreferences{}, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return NotificationPreferences{}, fmt.Errorf("notification service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	var out NotificationPreferences
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return NotificationPreferences{}, err
+	}
+	return out, nil
+}
+
+func (c *NotificationClient) UpdateNotificationPreferences(ctx context.Context, userID string, req UpdateNotificationPreferencesRequest) (NotificationPreferences, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return NotificationPreferences{}, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPatch, c.baseURL+"/api/v1/notification-preferences", bytes.NewReader(body))
+	if err != nil {
+		return NotificationPreferences{}, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-User-Id", userID)
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return NotificationPreferences{}, fmt.Errorf("notification service request: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return NotificationPreferences{}, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return NotificationPreferences{}, fmt.Errorf("notification service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	var out NotificationPreferences
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return NotificationPreferences{}, err
+	}
+	return out, nil
 }

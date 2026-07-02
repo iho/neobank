@@ -235,6 +235,7 @@ func (h *Harness) startServiceProcesses() {
 	h.startProcess("notification", map[string]string{
 		"DATABASE_URL": h.DatabaseURL,
 		"HTTP_PORT":    notifPort,
+		"USER_URL":     h.UserURL,
 	})
 	h.startProcess("user", map[string]string{
 		"DATABASE_URL":                    h.DatabaseURL,

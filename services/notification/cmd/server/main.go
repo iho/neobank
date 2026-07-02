@@ -12,9 +12,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/iho/neobank/pkg/notify"
 	"github.com/iho/neobank/pkg/otel"
 	"github.com/iho/neobank/pkg/reqctx"
 	"github.com/iho/neobank/pkg/sloghttp"
+	"github.com/iho/neobank/pkg/userclient"
 	apiadapter "github.com/iho/neobank/services/notification/internal/adapter/api"
 	kafkaadapter "github.com/iho/neobank/services/notification/internal/adapter/kafka"
 	sqlcrepo "github.com/iho/neobank/services/notification/internal/adapter/sqlc"
@@ -47,13 +49,24 @@ func main() {
 	queries := sqlc.New(pool)
 	notificationRepo := sqlcrepo.NewNotificationRepository(queries)
 	inboxRepo := sqlcrepo.NewConsumerInboxRepository(queries)
+	prefsRepo := sqlcrepo.NewPreferencesRepository(queries)
 
-	ingestUC := usecase.NewIngestEventUseCase(notificationRepo, inboxRepo)
+	userClient := userclient.New(cfg.UserURL)
+	delivery := usecase.NewDeliveryService(
+		notify.NewLogDispatcher(logger),
+		usecase.NewUserClientDelivery(userClient),
+		usecase.NewUserClientDelivery(userClient),
+		prefsRepo,
+	)
+
+	ingestUC := usecase.NewIngestEventUseCase(notificationRepo, inboxRepo, prefsRepo, delivery)
 	listUC := usecase.NewListNotificationsUseCase(notificationRepo)
 	markReadUC := usecase.NewMarkNotificationReadUseCase(notificationRepo)
 	markAllUC := usecase.NewMarkAllNotificationsReadUseCase(notificationRepo)
+	getPrefsUC := usecase.NewGetNotificationPreferencesUseCase(prefsRepo)
+	updatePrefsUC := usecase.NewUpdateNotificationPreferencesUseCase(prefsRepo)
 
-	strictServer := apiadapter.NewServer(ingestUC, listUC, markReadUC, markAllUC)
+	strictServer := apiadapter.NewServer(ingestUC, listUC, markReadUC, markAllUC, getPrefsUC, updatePrefsUC)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
 
 	if cfg.KafkaBrokers != "" {

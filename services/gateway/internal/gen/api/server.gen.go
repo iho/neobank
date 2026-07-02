@@ -36,6 +36,27 @@ func (e AuthorizeRequestChannel) Valid() bool {
 	}
 }
 
+// Defines values for RegisterDeviceTokenRequestPlatform.
+const (
+	Android RegisterDeviceTokenRequestPlatform = "android"
+	Ios     RegisterDeviceTokenRequestPlatform = "ios"
+	Web     RegisterDeviceTokenRequestPlatform = "web"
+)
+
+// Valid indicates whether the value is a known member of the RegisterDeviceTokenRequestPlatform enum.
+func (e RegisterDeviceTokenRequestPlatform) Valid() bool {
+	switch e {
+	case Android:
+		return true
+	case Ios:
+		return true
+	case Web:
+		return true
+	default:
+		return false
+	}
+}
+
 // AuthorizationList defines model for AuthorizationList.
 type AuthorizationList struct {
 	Authorizations []CardAuthorization `json:"authorizations"`
@@ -125,6 +146,15 @@ type DepositWalletResponse struct {
 	WalletId         string     `json:"wallet_id"`
 }
 
+// DeviceToken defines model for DeviceToken.
+type DeviceToken struct {
+	CreatedAt time.Time `json:"created_at"`
+	Id        string    `json:"id"`
+	Platform  string    `json:"platform"`
+	Token     string    `json:"token"`
+	UserId    string    `json:"user_id"`
+}
+
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
 	Error string `json:"error"`
@@ -198,6 +228,15 @@ type NotificationList struct {
 	UnreadCount   int64          `json:"unread_count"`
 }
 
+// NotificationPreferences defines model for NotificationPreferences.
+type NotificationPreferences struct {
+	Cards     bool `json:"cards"`
+	Email     bool `json:"email"`
+	Kyc       bool `json:"kyc"`
+	Push      bool `json:"push"`
+	Transfers bool `json:"transfers"`
+}
+
 // Payee defines model for Payee.
 type Payee struct {
 	CreatedAt   time.Time `json:"created_at"`
@@ -243,6 +282,15 @@ type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// RegisterDeviceTokenRequest defines model for RegisterDeviceTokenRequest.
+type RegisterDeviceTokenRequest struct {
+	Platform RegisterDeviceTokenRequestPlatform `json:"platform"`
+	Token    string                             `json:"token"`
+}
+
+// RegisterDeviceTokenRequestPlatform defines model for RegisterDeviceTokenRequest.Platform.
+type RegisterDeviceTokenRequestPlatform string
+
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	Email    openapi_types.Email `json:"email"`
@@ -268,9 +316,10 @@ type SubmitKYCRequest struct {
 
 // SubmitKYCResponse defines model for SubmitKYCResponse.
 type SubmitKYCResponse struct {
-	KycCaseId string `json:"kyc_case_id"`
-	Status    string `json:"status"`
-	WalletId  string `json:"wallet_id"`
+	KycCaseId       string  `json:"kyc_case_id"`
+	RejectionReason *string `json:"rejection_reason,omitempty"`
+	Status          string  `json:"status"`
+	WalletId        *string `json:"wallet_id,omitempty"`
 }
 
 // Transfer defines model for Transfer.
@@ -305,6 +354,15 @@ type TransferList struct {
 type UpdateCardControlsRequest struct {
 	DailyLimit *string `json:"daily_limit,omitempty"`
 	OnlineOnly *bool   `json:"online_only,omitempty"`
+}
+
+// UpdateNotificationPreferencesRequest defines model for UpdateNotificationPreferencesRequest.
+type UpdateNotificationPreferencesRequest struct {
+	Cards     *bool `json:"cards,omitempty"`
+	Email     *bool `json:"email,omitempty"`
+	Kyc       *bool `json:"kyc,omitempty"`
+	Push      *bool `json:"push,omitempty"`
+	Transfers *bool `json:"transfers,omitempty"`
 }
 
 // WalletBalance defines model for WalletBalance.
@@ -349,6 +407,13 @@ type IdempotencyKey = string
 
 // XUserId defines model for XUserId.
 type XUserId = string
+
+// CloseAccountParams defines parameters for CloseAccount.
+type CloseAccountParams struct {
+	Authorization  *Authorization `json:"Authorization,omitempty"`
+	XUserId        *XUserId       `json:"X-User-Id,omitempty"`
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
 
 // ChangePasswordParams defines parameters for ChangePassword.
 type ChangePasswordParams struct {
@@ -424,6 +489,20 @@ type UnfreezeCardParams struct {
 	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
 }
 
+// RegisterDeviceTokenParams defines parameters for RegisterDeviceToken.
+type RegisterDeviceTokenParams struct {
+	Authorization  *Authorization `json:"Authorization,omitempty"`
+	XUserId        *XUserId       `json:"X-User-Id,omitempty"`
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// DeleteDeviceTokenParams defines parameters for DeleteDeviceToken.
+type DeleteDeviceTokenParams struct {
+	Authorization  *Authorization `json:"Authorization,omitempty"`
+	XUserId        *XUserId       `json:"X-User-Id,omitempty"`
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
 // SubmitKYCParams defines parameters for SubmitKYC.
 type SubmitKYCParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
@@ -445,6 +524,18 @@ type GetLimitsParams struct {
 
 // GetProfileParams defines parameters for GetProfile.
 type GetProfileParams struct {
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
+// GetNotificationPreferencesParams defines parameters for GetNotificationPreferences.
+type GetNotificationPreferencesParams struct {
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
+// UpdateNotificationPreferencesParams defines parameters for UpdateNotificationPreferences.
+type UpdateNotificationPreferencesParams struct {
 	Authorization *Authorization `json:"Authorization,omitempty"`
 	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
 }
@@ -559,8 +650,14 @@ type AuthorizeTransactionJSONRequestBody = AuthorizeRequest
 // UpdateCardControlsJSONRequestBody defines body for UpdateCardControls for application/json ContentType.
 type UpdateCardControlsJSONRequestBody = UpdateCardControlsRequest
 
+// RegisterDeviceTokenJSONRequestBody defines body for RegisterDeviceToken for application/json ContentType.
+type RegisterDeviceTokenJSONRequestBody = RegisterDeviceTokenRequest
+
 // SubmitKYCJSONRequestBody defines body for SubmitKYC for application/json ContentType.
 type SubmitKYCJSONRequestBody = SubmitKYCRequest
+
+// UpdateNotificationPreferencesJSONRequestBody defines body for UpdateNotificationPreferences for application/json ContentType.
+type UpdateNotificationPreferencesJSONRequestBody = UpdateNotificationPreferencesRequest
 
 // CreatePayeeJSONRequestBody defines body for CreatePayee for application/json ContentType.
 type CreatePayeeJSONRequestBody = CreatePayeeRequest
@@ -579,6 +676,9 @@ type ServerInterface interface {
 
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
+
+	// (POST /v1/account/close)
+	CloseAccount(w http.ResponseWriter, r *http.Request, params CloseAccountParams)
 
 	// (POST /v1/auth/change-password)
 	ChangePassword(w http.ResponseWriter, r *http.Request, params ChangePasswordParams)
@@ -622,6 +722,12 @@ type ServerInterface interface {
 	// (POST /v1/cards/{id}/unfreeze)
 	UnfreezeCard(w http.ResponseWriter, r *http.Request, id string, params UnfreezeCardParams)
 
+	// (POST /v1/devices)
+	RegisterDeviceToken(w http.ResponseWriter, r *http.Request, params RegisterDeviceTokenParams)
+
+	// (DELETE /v1/devices/{id})
+	DeleteDeviceToken(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params DeleteDeviceTokenParams)
+
 	// (POST /v1/kyc)
 	SubmitKYC(w http.ResponseWriter, r *http.Request, params SubmitKYCParams)
 
@@ -633,6 +739,12 @@ type ServerInterface interface {
 
 	// (GET /v1/me)
 	GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams)
+
+	// (GET /v1/notification-preferences)
+	GetNotificationPreferences(w http.ResponseWriter, r *http.Request, params GetNotificationPreferencesParams)
+
+	// (PATCH /v1/notification-preferences)
+	UpdateNotificationPreferences(w http.ResponseWriter, r *http.Request, params UpdateNotificationPreferencesParams)
 
 	// (GET /v1/notifications)
 	ListNotifications(w http.ResponseWriter, r *http.Request, params ListNotificationsParams)
@@ -680,6 +792,11 @@ type Unimplemented struct{}
 
 // (GET /health)
 func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /v1/account/close)
+func (_ Unimplemented) CloseAccount(w http.ResponseWriter, r *http.Request, params CloseAccountParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -753,6 +870,16 @@ func (_ Unimplemented) UnfreezeCard(w http.ResponseWriter, r *http.Request, id s
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (POST /v1/devices)
+func (_ Unimplemented) RegisterDeviceToken(w http.ResponseWriter, r *http.Request, params RegisterDeviceTokenParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (DELETE /v1/devices/{id})
+func (_ Unimplemented) DeleteDeviceToken(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params DeleteDeviceTokenParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (POST /v1/kyc)
 func (_ Unimplemented) SubmitKYC(w http.ResponseWriter, r *http.Request, params SubmitKYCParams) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -770,6 +897,16 @@ func (_ Unimplemented) GetLimits(w http.ResponseWriter, r *http.Request, params 
 
 // (GET /v1/me)
 func (_ Unimplemented) GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /v1/notification-preferences)
+func (_ Unimplemented) GetNotificationPreferences(w http.ResponseWriter, r *http.Request, params GetNotificationPreferencesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (PATCH /v1/notification-preferences)
+func (_ Unimplemented) UpdateNotificationPreferences(w http.ResponseWriter, r *http.Request, params UpdateNotificationPreferencesParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -852,6 +989,89 @@ func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CloseAccount operation middleware
+func (siw *ServerInterfaceWrapper) CloseAccount(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CloseAccountParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CloseAccount(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1716,6 +1936,181 @@ func (siw *ServerInterfaceWrapper) UnfreezeCard(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
+// RegisterDeviceToken operation middleware
+func (siw *ServerInterfaceWrapper) RegisterDeviceToken(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RegisterDeviceTokenParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RegisterDeviceToken(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteDeviceToken operation middleware
+func (siw *ServerInterfaceWrapper) DeleteDeviceToken(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteDeviceTokenParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteDeviceToken(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // SubmitKYC operation middleware
 func (siw *ServerInterfaceWrapper) SubmitKYC(w http.ResponseWriter, r *http.Request) {
 
@@ -1970,6 +2365,126 @@ func (siw *ServerInterfaceWrapper) GetProfile(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProfile(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetNotificationPreferences operation middleware
+func (siw *ServerInterfaceWrapper) GetNotificationPreferences(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetNotificationPreferencesParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetNotificationPreferences(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateNotificationPreferences operation middleware
+func (siw *ServerInterfaceWrapper) UpdateNotificationPreferences(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateNotificationPreferencesParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateNotificationPreferences(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3076,6 +3591,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/health", wrapper.GetHealth)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/account/close", wrapper.CloseAccount)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/auth/change-password", wrapper.ChangePassword)
 	})
 	r.Group(func(r chi.Router) {
@@ -3118,6 +3636,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/v1/cards/{id}/unfreeze", wrapper.UnfreezeCard)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/devices", wrapper.RegisterDeviceToken)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/devices/{id}", wrapper.DeleteDeviceToken)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/kyc", wrapper.SubmitKYC)
 	})
 	r.Group(func(r chi.Router) {
@@ -3128,6 +3652,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/me", wrapper.GetProfile)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/notification-preferences", wrapper.GetNotificationPreferences)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/v1/notification-preferences", wrapper.UpdateNotificationPreferences)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/notifications", wrapper.ListNotifications)
@@ -3189,6 +3719,64 @@ func (response GetHealth200JSONResponse) VisitGetHealthResponse(w http.ResponseW
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CloseAccountRequestObject struct {
+	Params CloseAccountParams
+}
+
+type CloseAccountResponseObject interface {
+	VisitCloseAccountResponse(w http.ResponseWriter) error
+}
+
+type CloseAccount204Response struct {
+}
+
+func (response CloseAccount204Response) VisitCloseAccountResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type CloseAccount400JSONResponse ErrorResponse
+
+func (response CloseAccount400JSONResponse) VisitCloseAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CloseAccount401JSONResponse ErrorResponse
+
+func (response CloseAccount401JSONResponse) VisitCloseAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CloseAccount502JSONResponse ErrorResponse
+
+func (response CloseAccount502JSONResponse) VisitCloseAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -4067,6 +4655,130 @@ func (response UnfreezeCard502JSONResponse) VisitUnfreezeCardResponse(w http.Res
 	return err
 }
 
+type RegisterDeviceTokenRequestObject struct {
+	Params RegisterDeviceTokenParams
+	Body   *RegisterDeviceTokenJSONRequestBody
+}
+
+type RegisterDeviceTokenResponseObject interface {
+	VisitRegisterDeviceTokenResponse(w http.ResponseWriter) error
+}
+
+type RegisterDeviceToken201JSONResponse DeviceToken
+
+func (response RegisterDeviceToken201JSONResponse) VisitRegisterDeviceTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RegisterDeviceToken400JSONResponse ErrorResponse
+
+func (response RegisterDeviceToken400JSONResponse) VisitRegisterDeviceTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RegisterDeviceToken401JSONResponse ErrorResponse
+
+func (response RegisterDeviceToken401JSONResponse) VisitRegisterDeviceTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RegisterDeviceToken502JSONResponse ErrorResponse
+
+func (response RegisterDeviceToken502JSONResponse) VisitRegisterDeviceTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteDeviceTokenRequestObject struct {
+	Id     openapi_types.UUID `json:"id"`
+	Params DeleteDeviceTokenParams
+}
+
+type DeleteDeviceTokenResponseObject interface {
+	VisitDeleteDeviceTokenResponse(w http.ResponseWriter) error
+}
+
+type DeleteDeviceToken204Response struct {
+}
+
+func (response DeleteDeviceToken204Response) VisitDeleteDeviceTokenResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteDeviceToken401JSONResponse ErrorResponse
+
+func (response DeleteDeviceToken401JSONResponse) VisitDeleteDeviceTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteDeviceToken404JSONResponse ErrorResponse
+
+func (response DeleteDeviceToken404JSONResponse) VisitDeleteDeviceTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteDeviceToken502JSONResponse ErrorResponse
+
+func (response DeleteDeviceToken502JSONResponse) VisitDeleteDeviceTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type SubmitKYCRequestObject struct {
 	Params SubmitKYCParams
 	Body   *SubmitKYCJSONRequestBody
@@ -4285,6 +4997,121 @@ func (response GetProfile404JSONResponse) VisitGetProfileResponse(w http.Respons
 type GetProfile502JSONResponse ErrorResponse
 
 func (response GetProfile502JSONResponse) VisitGetProfileResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetNotificationPreferencesRequestObject struct {
+	Params GetNotificationPreferencesParams
+}
+
+type GetNotificationPreferencesResponseObject interface {
+	VisitGetNotificationPreferencesResponse(w http.ResponseWriter) error
+}
+
+type GetNotificationPreferences200JSONResponse NotificationPreferences
+
+func (response GetNotificationPreferences200JSONResponse) VisitGetNotificationPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetNotificationPreferences401JSONResponse ErrorResponse
+
+func (response GetNotificationPreferences401JSONResponse) VisitGetNotificationPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetNotificationPreferences502JSONResponse ErrorResponse
+
+func (response GetNotificationPreferences502JSONResponse) VisitGetNotificationPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateNotificationPreferencesRequestObject struct {
+	Params UpdateNotificationPreferencesParams
+	Body   *UpdateNotificationPreferencesJSONRequestBody
+}
+
+type UpdateNotificationPreferencesResponseObject interface {
+	VisitUpdateNotificationPreferencesResponse(w http.ResponseWriter) error
+}
+
+type UpdateNotificationPreferences200JSONResponse NotificationPreferences
+
+func (response UpdateNotificationPreferences200JSONResponse) VisitUpdateNotificationPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateNotificationPreferences400JSONResponse ErrorResponse
+
+func (response UpdateNotificationPreferences400JSONResponse) VisitUpdateNotificationPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateNotificationPreferences401JSONResponse ErrorResponse
+
+func (response UpdateNotificationPreferences401JSONResponse) VisitUpdateNotificationPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateNotificationPreferences502JSONResponse ErrorResponse
+
+func (response UpdateNotificationPreferences502JSONResponse) VisitUpdateNotificationPreferencesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -5079,6 +5906,9 @@ type StrictServerInterface interface {
 	// (GET /health)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
 
+	// (POST /v1/account/close)
+	CloseAccount(ctx context.Context, request CloseAccountRequestObject) (CloseAccountResponseObject, error)
+
 	// (POST /v1/auth/change-password)
 	ChangePassword(ctx context.Context, request ChangePasswordRequestObject) (ChangePasswordResponseObject, error)
 
@@ -5121,6 +5951,12 @@ type StrictServerInterface interface {
 	// (POST /v1/cards/{id}/unfreeze)
 	UnfreezeCard(ctx context.Context, request UnfreezeCardRequestObject) (UnfreezeCardResponseObject, error)
 
+	// (POST /v1/devices)
+	RegisterDeviceToken(ctx context.Context, request RegisterDeviceTokenRequestObject) (RegisterDeviceTokenResponseObject, error)
+
+	// (DELETE /v1/devices/{id})
+	DeleteDeviceToken(ctx context.Context, request DeleteDeviceTokenRequestObject) (DeleteDeviceTokenResponseObject, error)
+
 	// (POST /v1/kyc)
 	SubmitKYC(ctx context.Context, request SubmitKYCRequestObject) (SubmitKYCResponseObject, error)
 
@@ -5132,6 +5968,12 @@ type StrictServerInterface interface {
 
 	// (GET /v1/me)
 	GetProfile(ctx context.Context, request GetProfileRequestObject) (GetProfileResponseObject, error)
+
+	// (GET /v1/notification-preferences)
+	GetNotificationPreferences(ctx context.Context, request GetNotificationPreferencesRequestObject) (GetNotificationPreferencesResponseObject, error)
+
+	// (PATCH /v1/notification-preferences)
+	UpdateNotificationPreferences(ctx context.Context, request UpdateNotificationPreferencesRequestObject) (UpdateNotificationPreferencesResponseObject, error)
 
 	// (GET /v1/notifications)
 	ListNotifications(ctx context.Context, request ListNotificationsRequestObject) (ListNotificationsResponseObject, error)
@@ -5219,6 +6061,32 @@ func (sh *strictHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetHealthResponseObject); ok {
 		if err := validResponse.VisitGetHealthResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CloseAccount operation middleware
+func (sh *strictHandler) CloseAccount(w http.ResponseWriter, r *http.Request, params CloseAccountParams) {
+	var request CloseAccountRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CloseAccount(ctx, request.(CloseAccountRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CloseAccount")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CloseAccountResponseObject); ok {
+		if err := validResponse.VisitCloseAccountResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -5642,6 +6510,66 @@ func (sh *strictHandler) UnfreezeCard(w http.ResponseWriter, r *http.Request, id
 	}
 }
 
+// RegisterDeviceToken operation middleware
+func (sh *strictHandler) RegisterDeviceToken(w http.ResponseWriter, r *http.Request, params RegisterDeviceTokenParams) {
+	var request RegisterDeviceTokenRequestObject
+
+	request.Params = params
+
+	var body RegisterDeviceTokenJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RegisterDeviceToken(ctx, request.(RegisterDeviceTokenRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RegisterDeviceToken")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RegisterDeviceTokenResponseObject); ok {
+		if err := validResponse.VisitRegisterDeviceTokenResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteDeviceToken operation middleware
+func (sh *strictHandler) DeleteDeviceToken(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params DeleteDeviceTokenParams) {
+	var request DeleteDeviceTokenRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteDeviceToken(ctx, request.(DeleteDeviceTokenRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteDeviceToken")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteDeviceTokenResponseObject); ok {
+		if err := validResponse.VisitDeleteDeviceTokenResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // SubmitKYC operation middleware
 func (sh *strictHandler) SubmitKYC(w http.ResponseWriter, r *http.Request, params SubmitKYCParams) {
 	var request SubmitKYCRequestObject
@@ -5746,6 +6674,65 @@ func (sh *strictHandler) GetProfile(w http.ResponseWriter, r *http.Request, para
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProfileResponseObject); ok {
 		if err := validResponse.VisitGetProfileResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetNotificationPreferences operation middleware
+func (sh *strictHandler) GetNotificationPreferences(w http.ResponseWriter, r *http.Request, params GetNotificationPreferencesParams) {
+	var request GetNotificationPreferencesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetNotificationPreferences(ctx, request.(GetNotificationPreferencesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetNotificationPreferences")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetNotificationPreferencesResponseObject); ok {
+		if err := validResponse.VisitGetNotificationPreferencesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateNotificationPreferences operation middleware
+func (sh *strictHandler) UpdateNotificationPreferences(w http.ResponseWriter, r *http.Request, params UpdateNotificationPreferencesParams) {
+	var request UpdateNotificationPreferencesRequestObject
+
+	request.Params = params
+
+	var body UpdateNotificationPreferencesJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateNotificationPreferences(ctx, request.(UpdateNotificationPreferencesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateNotificationPreferences")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateNotificationPreferencesResponseObject); ok {
+		if err := validResponse.VisitUpdateNotificationPreferencesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

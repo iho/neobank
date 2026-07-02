@@ -62,8 +62,36 @@ type NotificationList struct {
 	UnreadCount   int64          `json:"unread_count"`
 }
 
+// NotificationPreferences defines model for NotificationPreferences.
+type NotificationPreferences struct {
+	Cards     bool `json:"cards"`
+	Email     bool `json:"email"`
+	Kyc       bool `json:"kyc"`
+	Push      bool `json:"push"`
+	Transfers bool `json:"transfers"`
+}
+
+// UpdateNotificationPreferencesRequest defines model for UpdateNotificationPreferencesRequest.
+type UpdateNotificationPreferencesRequest struct {
+	Cards     *bool `json:"cards,omitempty"`
+	Email     *bool `json:"email,omitempty"`
+	Kyc       *bool `json:"kyc,omitempty"`
+	Push      *bool `json:"push,omitempty"`
+	Transfers *bool `json:"transfers,omitempty"`
+}
+
 // XUserId defines model for XUserId.
 type XUserId = openapi_types.UUID
+
+// GetNotificationPreferencesParams defines parameters for GetNotificationPreferences.
+type GetNotificationPreferencesParams struct {
+	XUserId XUserId `json:"X-User-Id"`
+}
+
+// UpdateNotificationPreferencesParams defines parameters for UpdateNotificationPreferences.
+type UpdateNotificationPreferencesParams struct {
+	XUserId XUserId `json:"X-User-Id"`
+}
 
 // ListNotificationsParams defines parameters for ListNotifications.
 type ListNotificationsParams struct {
@@ -85,11 +113,20 @@ type MarkNotificationReadParams struct {
 // IngestEventJSONRequestBody defines body for IngestEvent for application/json ContentType.
 type IngestEventJSONRequestBody = EventEnvelope
 
+// UpdateNotificationPreferencesJSONRequestBody defines body for UpdateNotificationPreferences for application/json ContentType.
+type UpdateNotificationPreferencesJSONRequestBody = UpdateNotificationPreferencesRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
 	// (POST /api/v1/internal/events)
 	IngestEvent(w http.ResponseWriter, r *http.Request)
+
+	// (GET /api/v1/notification-preferences)
+	GetNotificationPreferences(w http.ResponseWriter, r *http.Request, params GetNotificationPreferencesParams)
+
+	// (PATCH /api/v1/notification-preferences)
+	UpdateNotificationPreferences(w http.ResponseWriter, r *http.Request, params UpdateNotificationPreferencesParams)
 
 	// (GET /api/v1/notifications)
 	ListNotifications(w http.ResponseWriter, r *http.Request, params ListNotificationsParams)
@@ -110,6 +147,16 @@ type Unimplemented struct{}
 
 // (POST /api/v1/internal/events)
 func (_ Unimplemented) IngestEvent(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /api/v1/notification-preferences)
+func (_ Unimplemented) GetNotificationPreferences(w http.ResponseWriter, r *http.Request, params GetNotificationPreferencesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (PATCH /api/v1/notification-preferences)
+func (_ Unimplemented) UpdateNotificationPreferences(w http.ResponseWriter, r *http.Request, params UpdateNotificationPreferencesParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -147,6 +194,96 @@ func (siw *ServerInterfaceWrapper) IngestEvent(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.IngestEvent(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetNotificationPreferences operation middleware
+func (siw *ServerInterfaceWrapper) GetNotificationPreferences(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetNotificationPreferencesParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetNotificationPreferences(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateNotificationPreferences operation middleware
+func (siw *ServerInterfaceWrapper) UpdateNotificationPreferences(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateNotificationPreferencesParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateNotificationPreferences(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -457,6 +594,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/api/v1/internal/events", wrapper.IngestEvent)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/notification-preferences", wrapper.GetNotificationPreferences)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/notification-preferences", wrapper.UpdateNotificationPreferences)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/notifications", wrapper.ListNotifications)
 	})
 	r.Group(func(r chi.Router) {
@@ -491,6 +634,79 @@ func (response IngestEvent202Response) VisitIngestEventResponse(w http.ResponseW
 type IngestEvent400JSONResponse ErrorResponse
 
 func (response IngestEvent400JSONResponse) VisitIngestEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetNotificationPreferencesRequestObject struct {
+	Params GetNotificationPreferencesParams
+}
+
+type GetNotificationPreferencesResponseObject interface {
+	VisitGetNotificationPreferencesResponse(w http.ResponseWriter) error
+}
+
+type GetNotificationPreferences200JSONResponse NotificationPreferences
+
+func (response GetNotificationPreferences200JSONResponse) VisitGetNotificationPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetNotificationPreferences401JSONResponse ErrorResponse
+
+func (response GetNotificationPreferences401JSONResponse) VisitGetNotificationPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateNotificationPreferencesRequestObject struct {
+	Params UpdateNotificationPreferencesParams
+	Body   *UpdateNotificationPreferencesJSONRequestBody
+}
+
+type UpdateNotificationPreferencesResponseObject interface {
+	VisitUpdateNotificationPreferencesResponse(w http.ResponseWriter) error
+}
+
+type UpdateNotificationPreferences200JSONResponse NotificationPreferences
+
+func (response UpdateNotificationPreferences200JSONResponse) VisitUpdateNotificationPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateNotificationPreferences400JSONResponse ErrorResponse
+
+func (response UpdateNotificationPreferences400JSONResponse) VisitUpdateNotificationPreferencesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -638,6 +854,12 @@ type StrictServerInterface interface {
 	// (POST /api/v1/internal/events)
 	IngestEvent(ctx context.Context, request IngestEventRequestObject) (IngestEventResponseObject, error)
 
+	// (GET /api/v1/notification-preferences)
+	GetNotificationPreferences(ctx context.Context, request GetNotificationPreferencesRequestObject) (GetNotificationPreferencesResponseObject, error)
+
+	// (PATCH /api/v1/notification-preferences)
+	UpdateNotificationPreferences(ctx context.Context, request UpdateNotificationPreferencesRequestObject) (UpdateNotificationPreferencesResponseObject, error)
+
 	// (GET /api/v1/notifications)
 	ListNotifications(ctx context.Context, request ListNotificationsRequestObject) (ListNotificationsResponseObject, error)
 
@@ -704,6 +926,65 @@ func (sh *strictHandler) IngestEvent(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(IngestEventResponseObject); ok {
 		if err := validResponse.VisitIngestEventResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetNotificationPreferences operation middleware
+func (sh *strictHandler) GetNotificationPreferences(w http.ResponseWriter, r *http.Request, params GetNotificationPreferencesParams) {
+	var request GetNotificationPreferencesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetNotificationPreferences(ctx, request.(GetNotificationPreferencesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetNotificationPreferences")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetNotificationPreferencesResponseObject); ok {
+		if err := validResponse.VisitGetNotificationPreferencesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateNotificationPreferences operation middleware
+func (sh *strictHandler) UpdateNotificationPreferences(w http.ResponseWriter, r *http.Request, params UpdateNotificationPreferencesParams) {
+	var request UpdateNotificationPreferencesRequestObject
+
+	request.Params = params
+
+	var body UpdateNotificationPreferencesJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateNotificationPreferences(ctx, request.(UpdateNotificationPreferencesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateNotificationPreferences")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateNotificationPreferencesResponseObject); ok {
+		if err := validResponse.VisitUpdateNotificationPreferencesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

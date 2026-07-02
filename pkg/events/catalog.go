@@ -60,6 +60,14 @@ func Catalog() []CatalogEntry {
 			PayloadFields: []string{"user_id", "kyc_case_id"},
 		},
 		{
+			EventType:     TypeKYCRejected,
+			EventVersion:  1,
+			AggregateType: "user",
+			Description:   "KYC case rejected after screening",
+			Topics:        []string{"user.events"},
+			PayloadFields: []string{"user_id", "kyc_case_id", "rejection_reason"},
+		},
+		{
 			EventType:     TypeWalletProvisioned,
 			EventVersion:  1,
 			AggregateType: "wallet",
@@ -156,6 +164,7 @@ func RegisteredEvents() []Event {
 	return []Event{
 		UserRegistered{UserID: "user-1", Email: "a@example.com"},
 		KYCApproved{UserID: "user-1", KYCCaseID: "kyc-1"},
+		KYCRejected{UserID: "user-1", KYCCaseID: "kyc-1", RejectionReason: "stub_sanctions_match"},
 		WalletProvisioned{UserID: "user-1", WalletID: "wallet-1", LedgerAccountID: "acct-1", Currency: "USD"},
 		DepositCompleted{
 			DepositID: "dep-1", UserID: "user-1", WalletID: "wallet-1",

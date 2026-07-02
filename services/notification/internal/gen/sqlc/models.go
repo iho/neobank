@@ -25,3 +25,13 @@ type NotificationNotification struct {
 	Read      bool
 	CreatedAt pgtype.Timestamptz
 }
+
+type NotificationNotificationPreference struct {
+	UserID    uuid.UUID
+	Transfers bool
+	Cards     bool
+	Kyc       bool
+	Push      bool
+	Email     bool
+	UpdatedAt pgtype.Timestamptz
+}

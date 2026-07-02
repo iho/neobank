@@ -11,12 +11,19 @@ import (
 )
 
 type IngestEventUseCase struct {
-	repo  NotificationRepository
-	inbox ConsumerInboxRepository
+	repo     NotificationRepository
+	inbox    ConsumerInboxRepository
+	prefs    PreferencesRepository
+	delivery *DeliveryService
 }
 
-func NewIngestEventUseCase(repo NotificationRepository, inbox ConsumerInboxRepository) *IngestEventUseCase {
-	return &IngestEventUseCase{repo: repo, inbox: inbox}
+func NewIngestEventUseCase(
+	repo NotificationRepository,
+	inbox ConsumerInboxRepository,
+	prefs PreferencesRepository,
+	delivery *DeliveryService,
+) *IngestEventUseCase {
+	return &IngestEventUseCase{repo: repo, inbox: inbox, prefs: prefs, delivery: delivery}
 }
 
 func (uc *IngestEventUseCase) Execute(ctx context.Context, envelope events.Envelope) error {
@@ -62,6 +69,8 @@ func (uc *IngestEventUseCase) dispatch(ctx context.Context, envelope events.Enve
 		return uc.handleCardAuthCaptured(ctx, envelope)
 	case events.TypeKYCApproved:
 		return uc.handleKYCApproved(ctx, envelope)
+	case events.TypeKYCRejected:
+		return uc.handleKYCRejected(ctx, envelope)
 	case events.TypeWalletProvisioned:
 		return uc.handleWalletProvisioned(ctx, envelope)
 	case events.TypeDepositCompleted:
@@ -71,12 +80,44 @@ func (uc *IngestEventUseCase) dispatch(ctx context.Context, envelope events.Enve
 	}
 }
 
+func (uc *IngestEventUseCase) shouldCreate(ctx context.Context, userID, eventType string) (bool, error) {
+	if uc.prefs == nil {
+		return true, nil
+	}
+	prefs, err := uc.prefs.Get(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	category := CategoryForEventType(eventType)
+	if category == "" {
+		return true, nil
+	}
+	return AllowsCategory(prefs, category), nil
+}
+
+func (uc *IngestEventUseCase) createNotification(ctx context.Context, n domain.Notification, eventID string) error {
+	ok, err := uc.shouldCreate(ctx, n.UserID, n.EventType)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+	if err := uc.repo.Create(ctx, n, eventID); err != nil {
+		return err
+	}
+	if uc.delivery != nil {
+		_ = uc.delivery.Deliver(ctx, n.UserID, n.EventType, n.Title, n.Body)
+	}
+	return nil
+}
+
 func (uc *IngestEventUseCase) handleKYCApproved(ctx context.Context, envelope events.Envelope) error {
 	var payload events.KYCApproved
 	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 		return fmt.Errorf("parse kyc approved payload: %w", err)
 	}
-	return uc.repo.Create(ctx, domain.Notification{
+	return uc.createNotification(ctx, domain.Notification{
 		ID:        uuid.NewString(),
 		UserID:    payload.UserID,
 		EventType: envelope.EventType,
@@ -85,12 +126,30 @@ func (uc *IngestEventUseCase) handleKYCApproved(ctx context.Context, envelope ev
 	}, envelope.EventID)
 }
 
+func (uc *IngestEventUseCase) handleKYCRejected(ctx context.Context, envelope events.Envelope) error {
+	var payload events.KYCRejected
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return fmt.Errorf("parse kyc rejected payload: %w", err)
+	}
+	body := "Your identity verification was not approved."
+	if payload.RejectionReason != "" {
+		body = fmt.Sprintf("Your identity verification was not approved: %s.", payload.RejectionReason)
+	}
+	return uc.createNotification(ctx, domain.Notification{
+		ID:        uuid.NewString(),
+		UserID:    payload.UserID,
+		EventType: envelope.EventType,
+		Title:     "KYC rejected",
+		Body:      body,
+	}, envelope.EventID)
+}
+
 func (uc *IngestEventUseCase) handleWalletProvisioned(ctx context.Context, envelope events.Envelope) error {
 	var payload events.WalletProvisioned
 	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 		return fmt.Errorf("parse wallet provisioned payload: %w", err)
 	}
-	return uc.repo.Create(ctx, domain.Notification{
+	return uc.createNotification(ctx, domain.Notification{
 		ID:        uuid.NewString(),
 		UserID:    payload.UserID,
 		EventType: envelope.EventType,
@@ -104,7 +163,7 @@ func (uc *IngestEventUseCase) handleDepositCompleted(ctx context.Context, envelo
 	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 		return fmt.Errorf("parse deposit completed payload: %w", err)
 	}
-	return uc.repo.Create(ctx, domain.Notification{
+	return uc.createNotification(ctx, domain.Notification{
 		ID:        uuid.NewString(),
 		UserID:    payload.UserID,
 		EventType: envelope.EventType,
@@ -118,7 +177,7 @@ func (uc *IngestEventUseCase) handleCardIssued(ctx context.Context, envelope eve
 	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 		return fmt.Errorf("parse card issued payload: %w", err)
 	}
-	return uc.repo.Create(ctx, domain.Notification{
+	return uc.createNotification(ctx, domain.Notification{
 		ID:        uuid.NewString(),
 		UserID:    payload.UserID,
 		EventType: envelope.EventType,
@@ -136,7 +195,7 @@ func (uc *IngestEventUseCase) handleCardAuthApproved(ctx context.Context, envelo
 	if merchant == "" {
 		merchant = "a merchant"
 	}
-	return uc.repo.Create(ctx, domain.Notification{
+	return uc.createNotification(ctx, domain.Notification{
 		ID:        uuid.NewString(),
 		UserID:    payload.UserID,
 		EventType: envelope.EventType,
@@ -150,7 +209,7 @@ func (uc *IngestEventUseCase) handleCardAuthCaptured(ctx context.Context, envelo
 	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 		return fmt.Errorf("parse card auth captured payload: %w", err)
 	}
-	return uc.repo.Create(ctx, domain.Notification{
+	return uc.createNotification(ctx, domain.Notification{
 		ID:        uuid.NewString(),
 		UserID:    payload.UserID,
 		EventType: envelope.EventType,
@@ -164,7 +223,7 @@ func (uc *IngestEventUseCase) handleCardStatus(ctx context.Context, envelope eve
 	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 		return fmt.Errorf("parse card status payload: %w", err)
 	}
-	return uc.repo.Create(ctx, domain.Notification{
+	return uc.createNotification(ctx, domain.Notification{
 		ID:        uuid.NewString(),
 		UserID:    payload.UserID,
 		EventType: envelope.EventType,
@@ -184,7 +243,7 @@ func (uc *IngestEventUseCase) handleTransferCompleted(ctx context.Context, envel
 	recipientTitle := "Transfer received"
 	recipientBody := fmt.Sprintf("You received %s %s", payload.Amount, payload.Currency)
 
-	if err := uc.repo.Create(ctx, domain.Notification{
+	if err := uc.createNotification(ctx, domain.Notification{
 		ID:        uuid.NewString(),
 		UserID:    payload.SenderUserID,
 		EventType: envelope.EventType,
@@ -194,7 +253,7 @@ func (uc *IngestEventUseCase) handleTransferCompleted(ctx context.Context, envel
 		return err
 	}
 
-	return uc.repo.Create(ctx, domain.Notification{
+	return uc.createNotification(ctx, domain.Notification{
 		ID:        uuid.NewString(),
 		UserID:    payload.RecipientUserID,
 		EventType: envelope.EventType,

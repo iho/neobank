@@ -56,3 +56,12 @@ type Wallet struct {
 	LedgerAccountID string
 	Status          string
 }
+
+type DeviceToken struct {
+	ID        string
+	UserID    string
+	Platform  string
+	Token     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}

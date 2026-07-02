@@ -28,9 +28,10 @@ type SubmitKYCInput struct {
 }
 
 type SubmitKYCOutput struct {
-	KYCCaseID string
-	Status    domain.KYCStatus
-	WalletID  string
+	KYCCaseID       string
+	Status          domain.KYCStatus
+	WalletID        string
+	RejectionReason string
 }
 
 type SubmitKYCUseCase struct {
@@ -68,6 +69,9 @@ func (uc *SubmitKYCUseCase) Execute(ctx context.Context, in SubmitKYCInput) (Sub
 	existing, err := uc.kyc.GetLatestByUser(ctx, in.UserID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return SubmitKYCOutput{}, err
+	}
+	if existing != nil && existing.Status == domain.KYCStatusPending {
+		return SubmitKYCOutput{}, fmt.Errorf("kyc submission in progress")
 	}
 	if existing != nil && existing.Status == domain.KYCStatusApproved {
 		wallet, wErr := uc.provision.Execute(ctx, ProvisionWalletInput{
@@ -184,7 +188,18 @@ func (uc *SubmitKYCUseCase) Execute(ctx context.Context, in SubmitKYCInput) (Sub
 	}
 
 	if screenResult.Decision == screening.DecisionBlock {
-		return SubmitKYCOutput{}, fmt.Errorf("kyc rejected: %s", screenResult.ReasonCode)
+		if err := uc.outbox.Publish(ctx, events.KYCRejected{
+			UserID:          in.UserID,
+			KYCCaseID:       caseID,
+			RejectionReason: screenResult.ReasonCode,
+		}); err != nil {
+			return SubmitKYCOutput{}, fmt.Errorf("publish kyc rejected event: %w", err)
+		}
+		return SubmitKYCOutput{
+			KYCCaseID:       caseID,
+			Status:          domain.KYCStatusRejected,
+			RejectionReason: screenResult.ReasonCode,
+		}, nil
 	}
 
 	wallet, err := uc.provision.Execute(ctx, ProvisionWalletInput{

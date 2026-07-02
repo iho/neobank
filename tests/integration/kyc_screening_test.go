@@ -17,8 +17,11 @@ func TestKYCScreeningRejectsSanctionedName(t *testing.T) {
 		"date_of_birth": "1990-01-15",
 		"country_code":  "US",
 	}, &out)
-	if status != http.StatusBadRequest {
-		t.Fatalf("expected 400 for sanctioned kyc, got %d", status)
+	if status != http.StatusOK {
+		t.Fatalf("expected 200 for sanctioned kyc rejection, got %d", status)
+	}
+	if out.Status != "rejected" {
+		t.Fatalf("kyc status = %q, want rejected", out.Status)
 	}
 }
 

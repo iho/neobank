@@ -41,6 +41,15 @@ type UserDeposit struct {
 	CompletedAt      pgtype.Timestamptz
 }
 
+type UserDeviceToken struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Platform  string
+	Token     string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type UserGdprRequest struct {
 	ID            uuid.UUID
 	UserID        uuid.UUID

@@ -238,3 +238,16 @@ CREATE TABLE "user".saved_payees (
 
 CREATE INDEX idx_saved_payees_user_last_used
     ON "user".saved_payees (user_id, last_used_at DESC);
+
+CREATE TABLE "user".device_tokens (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id    UUID NOT NULL REFERENCES "user".users (id),
+    platform   TEXT NOT NULL CHECK (platform IN ('ios', 'android', 'web')),
+    token      TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (user_id, token)
+);
+
+CREATE INDEX idx_device_tokens_user
+    ON "user".device_tokens (user_id);

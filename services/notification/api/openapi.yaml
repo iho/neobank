@@ -75,6 +75,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/notification-preferences:
+    get:
+      operationId: getNotificationPreferences
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateNotificationPreferences
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNotificationPreferencesRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/notifications:
     get:
       operationId: listNotifications
@@ -186,3 +227,30 @@ components:
         marked_count:
           type: integer
           format: int64
+    NotificationPreferences:
+      type: object
+      required: [transfers, cards, kyc, push, email]
+      properties:
+        transfers:
+          type: boolean
+        cards:
+          type: boolean
+        kyc:
+          type: boolean
+        push:
+          type: boolean
+        email:
+          type: boolean
+    UpdateNotificationPreferencesRequest:
+      type: object
+      properties:
+        transfers:
+          type: boolean
+        cards:
+          type: boolean
+        kyc:
+          type: boolean
+        push:
+          type: boolean
+        email:
+          type: boolean

@@ -18,6 +18,7 @@ import "encoding/json"
 const (
 	TypeUserRegistered    = "user.registered"
 	TypeKYCApproved       = "user.kyc.approved"
+	TypeKYCRejected       = "user.kyc.rejected"
 	TypeWalletProvisioned = "user.wallet.provisioned"
 	TypeDepositCompleted  = "user.deposit.completed"
 )
@@ -41,6 +42,17 @@ func (e KYCApproved) EventType() string     { return TypeKYCApproved }
 func (e KYCApproved) AggregateType() string { return "user" }
 func (e KYCApproved) AggregateID() string   { return e.UserID }
 func (e KYCApproved) Version() int          { return 1 }
+
+type KYCRejected struct {
+	UserID          string `json:"user_id"`
+	KYCCaseID       string `json:"kyc_case_id"`
+	RejectionReason string `json:"rejection_reason"`
+}
+
+func (e KYCRejected) EventType() string     { return TypeKYCRejected }
+func (e KYCRejected) AggregateType() string { return "user" }
+func (e KYCRejected) AggregateID() string   { return e.UserID }
+func (e KYCRejected) Version() int          { return 1 }
 
 type WalletProvisioned struct {
 	UserID          string `json:"user_id"`

@@ -36,6 +36,10 @@ type Server struct {
 	createPayee         *usecase.CreatePayeeUseCase
 	deletePayee         *usecase.DeletePayeeUseCase
 	upsertPayee         *usecase.UpsertPayeeUseCase
+	registerDevice      *usecase.RegisterDeviceTokenUseCase
+	deleteDevice        *usecase.DeleteDeviceTokenUseCase
+	listDeviceTokens    *usecase.ListDeviceTokensUseCase
+	closeAccount        *usecase.CloseAccountUseCase
 	users               *sqlcrepo.UserRepository
 	wallets             *sqlcrepo.WalletRepository
 	piiAccess           audit.PIIAccessRecorder
@@ -60,6 +64,10 @@ func NewServer(
 	createPayee *usecase.CreatePayeeUseCase,
 	deletePayee *usecase.DeletePayeeUseCase,
 	upsertPayee *usecase.UpsertPayeeUseCase,
+	registerDevice *usecase.RegisterDeviceTokenUseCase,
+	deleteDevice *usecase.DeleteDeviceTokenUseCase,
+	listDeviceTokens *usecase.ListDeviceTokensUseCase,
+	closeAccount *usecase.CloseAccountUseCase,
 	users *sqlcrepo.UserRepository,
 	wallets *sqlcrepo.WalletRepository,
 	piiAccess audit.PIIAccessRecorder,
@@ -83,6 +91,10 @@ func NewServer(
 		createPayee:        createPayee,
 		deletePayee:        deletePayee,
 		upsertPayee:        upsertPayee,
+		registerDevice:     registerDevice,
+		deleteDevice:       deleteDevice,
+		listDeviceTokens:   listDeviceTokens,
+		closeAccount:       closeAccount,
 		users:              users,
 		wallets:            wallets,
 		piiAccess:          piiAccess,
@@ -233,12 +245,19 @@ func (s *Server) SubmitKYC(ctx context.Context, req api.SubmitKYCRequestObject) 
 		return api.SubmitKYC400JSONResponse{Error: err.Error()}, nil
 	}
 	caseID, _ := uuid.Parse(out.KYCCaseID)
-	walletID, _ := uuid.Parse(out.WalletID)
-	return api.SubmitKYC200JSONResponse{
+	resp := api.SubmitKYC200JSONResponse{
 		KycCaseId: openapi_types.UUID(caseID),
 		Status:    string(out.Status),
-		WalletId:  openapi_types.UUID(walletID),
-	}, nil
+	}
+	if out.WalletID != "" {
+		walletID, _ := uuid.Parse(out.WalletID)
+		wid := openapi_types.UUID(walletID)
+		resp.WalletId = &wid
+	}
+	if out.RejectionReason != "" {
+		resp.RejectionReason = &out.RejectionReason
+	}
+	return resp, nil
 }
 
 func (s *Server) GetKYCStatus(ctx context.Context, req api.GetKYCStatusRequestObject) (api.GetKYCStatusResponseObject, error) {
@@ -707,6 +726,62 @@ func (s *Server) UpsertInternalPayee(ctx context.Context, req api.UpsertInternal
 		return api.UpsertInternalPayee400JSONResponse{Error: err.Error()}, nil
 	}
 	return api.UpsertInternalPayee200JSONResponse(toPayee(*payee)), nil
+}
+
+func (s *Server) RegisterDeviceToken(ctx context.Context, req api.RegisterDeviceTokenRequestObject) (api.RegisterDeviceTokenResponseObject, error) {
+	if req.Body == nil {
+		return api.RegisterDeviceToken400JSONResponse{Error: "invalid_json"}, nil
+	}
+	token, err := s.registerDevice.Execute(ctx, usecase.RegisterDeviceTokenInput{
+		UserID:   req.Params.XUserId.String(),
+		Platform: string(req.Body.Platform),
+		Token:    req.Body.Token,
+	})
+	if err != nil {
+		return api.RegisterDeviceToken400JSONResponse{Error: err.Error()}, nil
+	}
+	return api.RegisterDeviceToken201JSONResponse(toDeviceToken(*token)), nil
+}
+
+func (s *Server) DeleteDeviceToken(ctx context.Context, req api.DeleteDeviceTokenRequestObject) (api.DeleteDeviceTokenResponseObject, error) {
+	if err := s.deleteDevice.Execute(ctx, req.Params.XUserId.String(), req.Id.String()); err != nil {
+		if err.Error() == "device token not found" {
+			return api.DeleteDeviceToken404JSONResponse{Error: "device_token_not_found"}, nil
+		}
+		return nil, err
+	}
+	return api.DeleteDeviceToken204Response{}, nil
+}
+
+func (s *Server) ListInternalDeviceTokens(ctx context.Context, req api.ListInternalDeviceTokensRequestObject) (api.ListInternalDeviceTokensResponseObject, error) {
+	tokens, err := s.listDeviceTokens.Execute(ctx, req.UserId.String())
+	if err != nil {
+		return nil, err
+	}
+	views := make([]api.DeviceToken, 0, len(tokens))
+	for _, t := range tokens {
+		views = append(views, toDeviceToken(t))
+	}
+	return api.ListInternalDeviceTokens200JSONResponse{DeviceTokens: views}, nil
+}
+
+func (s *Server) CloseAccount(ctx context.Context, req api.CloseAccountRequestObject) (api.CloseAccountResponseObject, error) {
+	if err := s.closeAccount.Execute(ctx, req.Params.XUserId.String()); err != nil {
+		return api.CloseAccount400JSONResponse{Error: err.Error()}, nil
+	}
+	return api.CloseAccount204Response{}, nil
+}
+
+func toDeviceToken(t domain.DeviceToken) api.DeviceToken {
+	id, _ := uuid.Parse(t.ID)
+	userID, _ := uuid.Parse(t.UserID)
+	return api.DeviceToken{
+		Id:        openapi_types.UUID(id),
+		UserId:    openapi_types.UUID(userID),
+		Platform:  t.Platform,
+		Token:     t.Token,
+		CreatedAt: t.CreatedAt.UTC(),
+	}
 }
 
 func toPayee(p domain.SavedPayee) api.Payee {

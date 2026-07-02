@@ -149,11 +149,17 @@ func (s *Server) SubmitKYC(ctx context.Context, req api.SubmitKYCRequestObject) 
 		return api.SubmitKYC502JSONResponse{Error: err.Error()}, nil
 	}
 
-	return api.SubmitKYC200JSONResponse{
+	out := api.SubmitKYC200JSONResponse{
 		KycCaseId: resp.KYCCaseID,
 		Status:    resp.Status,
-		WalletId:  resp.WalletID,
-	}, nil
+	}
+	if resp.WalletID != "" {
+		out.WalletId = &resp.WalletID
+	}
+	if resp.RejectionReason != "" {
+		out.RejectionReason = &resp.RejectionReason
+	}
+	return out, nil
 }
 
 func (s *Server) GetProfile(ctx context.Context, req api.GetProfileRequestObject) (api.GetProfileResponseObject, error) {
@@ -958,6 +964,122 @@ func toCardView(c client.CardView) api.Card {
 		out.DailyLimit = &c.DailyLimit
 	}
 	return out
+}
+
+func (s *Server) RegisterDeviceToken(ctx context.Context, req api.RegisterDeviceTokenRequestObject) (api.RegisterDeviceTokenResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.RegisterDeviceToken401JSONResponse{Error: "unauthorized"}, nil
+	}
+	if req.Body == nil {
+		return api.RegisterDeviceToken400JSONResponse{Error: "invalid_json"}, nil
+	}
+	token, status, err := s.users.RegisterDeviceToken(ctx, userID, req.Params.IdempotencyKey, client.RegisterDeviceTokenRequest{
+		Platform: string(req.Body.Platform),
+		Token:    req.Body.Token,
+	})
+	if status == 400 {
+		return api.RegisterDeviceToken400JSONResponse{Error: err.Error()}, nil
+	}
+	if err != nil {
+		return api.RegisterDeviceToken502JSONResponse{Error: err.Error()}, nil
+	}
+	createdAt, _ := time.Parse(time.RFC3339, token.CreatedAt)
+	return api.RegisterDeviceToken201JSONResponse{
+		Id:        token.ID,
+		UserId:    token.UserID,
+		Platform:  token.Platform,
+		Token:     token.Token,
+		CreatedAt: createdAt,
+	}, nil
+}
+
+func (s *Server) DeleteDeviceToken(ctx context.Context, req api.DeleteDeviceTokenRequestObject) (api.DeleteDeviceTokenResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.DeleteDeviceToken401JSONResponse{Error: "unauthorized"}, nil
+	}
+	status, err := s.users.DeleteDeviceToken(ctx, userID, req.Id.String(), req.Params.IdempotencyKey)
+	if status == 404 {
+		return api.DeleteDeviceToken404JSONResponse{Error: "device_token_not_found"}, nil
+	}
+	if err != nil {
+		return api.DeleteDeviceToken502JSONResponse{Error: err.Error()}, nil
+	}
+	return api.DeleteDeviceToken204Response{}, nil
+}
+
+func (s *Server) CloseAccount(ctx context.Context, req api.CloseAccountRequestObject) (api.CloseAccountResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.CloseAccount401JSONResponse{Error: "unauthorized"}, nil
+	}
+
+	cards, err := s.cards.ListCards(ctx, userID)
+	if err != nil {
+		return api.CloseAccount502JSONResponse{Error: err.Error()}, nil
+	}
+	for _, card := range cards.Cards {
+		if card.Status == "active" {
+			if _, _, err := s.cards.FreezeCard(ctx, userID, card.ID); err != nil {
+				return api.CloseAccount502JSONResponse{Error: err.Error()}, nil
+			}
+		}
+	}
+
+	status, err := s.users.CloseAccount(ctx, userID, req.Params.IdempotencyKey)
+	if status == 400 {
+		return api.CloseAccount400JSONResponse{Error: err.Error()}, nil
+	}
+	if err != nil {
+		return api.CloseAccount502JSONResponse{Error: err.Error()}, nil
+	}
+	return api.CloseAccount204Response{}, nil
+}
+
+func (s *Server) GetNotificationPreferences(ctx context.Context, req api.GetNotificationPreferencesRequestObject) (api.GetNotificationPreferencesResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.GetNotificationPreferences401JSONResponse{Error: "unauthorized"}, nil
+	}
+	prefs, err := s.notifications.GetNotificationPreferences(ctx, userID)
+	if err != nil {
+		return api.GetNotificationPreferences502JSONResponse{Error: err.Error()}, nil
+	}
+	return api.GetNotificationPreferences200JSONResponse{
+		Transfers: prefs.Transfers,
+		Cards:     prefs.Cards,
+		Kyc:       prefs.KYC,
+		Push:      prefs.Push,
+		Email:     prefs.Email,
+	}, nil
+}
+
+func (s *Server) UpdateNotificationPreferences(ctx context.Context, req api.UpdateNotificationPreferencesRequestObject) (api.UpdateNotificationPreferencesResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.UpdateNotificationPreferences401JSONResponse{Error: "unauthorized"}, nil
+	}
+	if req.Body == nil {
+		return api.UpdateNotificationPreferences400JSONResponse{Error: "invalid_json"}, nil
+	}
+	prefs, err := s.notifications.UpdateNotificationPreferences(ctx, userID, client.UpdateNotificationPreferencesRequest{
+		Transfers: req.Body.Transfers,
+		Cards:     req.Body.Cards,
+		KYC:       req.Body.Kyc,
+		Push:      req.Body.Push,
+		Email:     req.Body.Email,
+	})
+	if err != nil {
+		return api.UpdateNotificationPreferences502JSONResponse{Error: err.Error()}, nil
+	}
+	return api.UpdateNotificationPreferences200JSONResponse{
+		Transfers: prefs.Transfers,
+		Cards:     prefs.Cards,
+		Kyc:       prefs.KYC,
+		Push:      prefs.Push,
+		Email:     prefs.Email,
+	}, nil
 }
 
 func (s *Server) resolveUserID(authHeader, xUserID *string) string {

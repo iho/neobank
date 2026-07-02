@@ -164,6 +164,71 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/KYCStatusResponse"
+  /api/v1/devices:
+    post:
+      operationId: registerDeviceToken
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterDeviceTokenRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceToken"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/devices/{id}:
+    delete:
+      operationId: deleteDeviceToken
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/account/close:
+    post:
+      operationId: closeAccount
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/XUserId"
+      responses:
+        "204":
+          description: Account closed
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/payees:
     get:
       operationId: listPayees
@@ -431,6 +496,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/internal/users/{user_id}/device-tokens:
+    get:
+      operationId: listInternalDeviceTokens
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceTokenList"
   /api/v1/internal/users/{user_id}/gdpr/export:
     post:
       operationId: exportUserGDPR
@@ -603,7 +685,7 @@ components:
           type: string
     SubmitKYCResponse:
       type: object
-      required: [kyc_case_id, status, wallet_id]
+      required: [kyc_case_id, status]
       properties:
         kyc_case_id:
           type: string
@@ -613,6 +695,42 @@ components:
         wallet_id:
           type: string
           format: uuid
+        rejection_reason:
+          type: string
+    RegisterDeviceTokenRequest:
+      type: object
+      required: [platform, token]
+      properties:
+        platform:
+          type: string
+          enum: [ios, android, web]
+        token:
+          type: string
+    DeviceToken:
+      type: object
+      required: [id, user_id, platform, token, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        platform:
+          type: string
+        token:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    DeviceTokenList:
+      type: object
+      required: [device_tokens]
+      properties:
+        device_tokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceToken"
     KYCStatusResponse:
       type: object
       required: [status]

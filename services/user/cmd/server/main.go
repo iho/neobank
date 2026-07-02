@@ -121,6 +121,11 @@ func main() {
 	createPayeeUC := usecase.NewCreatePayeeUseCase(payeeRepo)
 	deletePayeeUC := usecase.NewDeletePayeeUseCase(payeeRepo)
 	upsertPayeeUC := usecase.NewUpsertPayeeUseCase(payeeRepo)
+	deviceTokenRepo := sqlcrepo.NewDeviceTokenRepository(queries)
+	registerDeviceUC := usecase.NewRegisterDeviceTokenUseCase(deviceTokenRepo)
+	deleteDeviceUC := usecase.NewDeleteDeviceTokenUseCase(deviceTokenRepo)
+	listDeviceTokensUC := usecase.NewListDeviceTokensUseCase(deviceTokenRepo)
+	closeAccountUC := usecase.NewCloseAccountUseCase(maskGDPRUC, userRepo, auditRepo)
 
 	if cfg.KafkaBrokers != "" {
 		consumer := kafkaadapter.NewConsumer(cfg.KafkaBrokers, "user-wallet-projection", projectWalletEventUC, logger)
@@ -137,6 +142,7 @@ func main() {
 		listWalletTxUC, projectWalletEventUC,
 		provisionWalletUC, exportGDPRUC, maskGDPRUC, depositWalletUC, changePasswordUC,
 		listPayeesUC, createPayeeUC, deletePayeeUC, upsertPayeeUC,
+		registerDeviceUC, deleteDeviceUC, listDeviceTokensUC, closeAccountUC,
 		userRepo, walletRepo, piiAccessRepo,
 	)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)

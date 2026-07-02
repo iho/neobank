@@ -151,7 +151,12 @@ func (h *Harness) registerUser(t *testing.T, email, phone string) registerRespon
 }
 
 func (h *Harness) submitKYC(t *testing.T, userID string) submitKYCResponse {
-	return h.submitKYCWithName(t, userID, "Test User", "US")
+	t.Helper()
+	out := h.submitKYCWithName(t, userID, "Test User", "US")
+	if out.Status != "approved" {
+		t.Fatalf("kyc status = %q", out.Status)
+	}
+	return out
 }
 
 func (h *Harness) submitKYCWithName(t *testing.T, userID, fullName, country string) submitKYCResponse {
@@ -164,9 +169,6 @@ func (h *Harness) submitKYCWithName(t *testing.T, userID, fullName, country stri
 	}, &out)
 	if status != http.StatusOK {
 		t.Fatalf("submit kyc: status %d", status)
-	}
-	if out.Status != "approved" {
-		t.Fatalf("kyc status = %q", out.Status)
 	}
 	return out
 }

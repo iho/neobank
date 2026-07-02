@@ -17,6 +17,27 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for RegisterDeviceTokenRequestPlatform.
+const (
+	Android RegisterDeviceTokenRequestPlatform = "android"
+	Ios     RegisterDeviceTokenRequestPlatform = "ios"
+	Web     RegisterDeviceTokenRequestPlatform = "web"
+)
+
+// Valid indicates whether the value is a known member of the RegisterDeviceTokenRequestPlatform enum.
+func (e RegisterDeviceTokenRequestPlatform) Valid() bool {
+	switch e {
+	case Android:
+		return true
+	case Ios:
+		return true
+	case Web:
+		return true
+	default:
+		return false
+	}
+}
+
 // ChangePasswordRequest defines model for ChangePasswordRequest.
 type ChangePasswordRequest struct {
 	CurrentPassword string `json:"current_password"`
@@ -44,6 +65,20 @@ type DepositWalletResponse struct {
 	LedgerTransferId *string            `json:"ledger_transfer_id,omitempty"`
 	Status           string             `json:"status"`
 	WalletId         openapi_types.UUID `json:"wallet_id"`
+}
+
+// DeviceToken defines model for DeviceToken.
+type DeviceToken struct {
+	CreatedAt time.Time          `json:"created_at"`
+	Id        openapi_types.UUID `json:"id"`
+	Platform  string             `json:"platform"`
+	Token     string             `json:"token"`
+	UserId    openapi_types.UUID `json:"user_id"`
+}
+
+// DeviceTokenList defines model for DeviceTokenList.
+type DeviceTokenList struct {
+	DeviceTokens []DeviceToken `json:"device_tokens"`
 }
 
 // ErrorResponse defines model for ErrorResponse.
@@ -160,6 +195,15 @@ type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// RegisterDeviceTokenRequest defines model for RegisterDeviceTokenRequest.
+type RegisterDeviceTokenRequest struct {
+	Platform RegisterDeviceTokenRequestPlatform `json:"platform"`
+	Token    string                             `json:"token"`
+}
+
+// RegisterDeviceTokenRequestPlatform defines model for RegisterDeviceTokenRequest.Platform.
+type RegisterDeviceTokenRequestPlatform string
+
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	Email    openapi_types.Email `json:"email"`
@@ -187,9 +231,10 @@ type SubmitKYCRequest struct {
 
 // SubmitKYCResponse defines model for SubmitKYCResponse.
 type SubmitKYCResponse struct {
-	KycCaseId openapi_types.UUID `json:"kyc_case_id"`
-	Status    string             `json:"status"`
-	WalletId  openapi_types.UUID `json:"wallet_id"`
+	KycCaseId       openapi_types.UUID  `json:"kyc_case_id"`
+	RejectionReason *string             `json:"rejection_reason,omitempty"`
+	Status          string              `json:"status"`
+	WalletId        *openapi_types.UUID `json:"wallet_id,omitempty"`
 }
 
 // UpsertInternalPayeeRequest defines model for UpsertInternalPayeeRequest.
@@ -252,6 +297,12 @@ type IdempotencyKey = string
 // XUserId defines model for XUserId.
 type XUserId = openapi_types.UUID
 
+// CloseAccountParams defines parameters for CloseAccount.
+type CloseAccountParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+	XUserId        XUserId        `json:"X-User-Id"`
+}
+
 // ChangePasswordParams defines parameters for ChangePassword.
 type ChangePasswordParams struct {
 	XUserId XUserId `json:"X-User-Id"`
@@ -260,6 +311,16 @@ type ChangePasswordParams struct {
 // RegisterParams defines parameters for Register.
 type RegisterParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// RegisterDeviceTokenParams defines parameters for RegisterDeviceToken.
+type RegisterDeviceTokenParams struct {
+	XUserId XUserId `json:"X-User-Id"`
+}
+
+// DeleteDeviceTokenParams defines parameters for DeleteDeviceToken.
+type DeleteDeviceTokenParams struct {
+	XUserId XUserId `json:"X-User-Id"`
 }
 
 // ExportUserGDPRParams defines parameters for ExportUserGDPR.
@@ -347,6 +408,9 @@ type RefreshTokenJSONRequestBody = RefreshTokenRequest
 // RegisterJSONRequestBody defines body for Register for application/json ContentType.
 type RegisterJSONRequestBody = RegisterRequest
 
+// RegisterDeviceTokenJSONRequestBody defines body for RegisterDeviceToken for application/json ContentType.
+type RegisterDeviceTokenJSONRequestBody = RegisterDeviceTokenRequest
+
 // IngestEventJSONRequestBody defines body for IngestEvent for application/json ContentType.
 type IngestEventJSONRequestBody = EventEnvelope
 
@@ -368,6 +432,9 @@ type DepositWalletJSONRequestBody = DepositWalletRequest
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
+	// (POST /api/v1/account/close)
+	CloseAccount(w http.ResponseWriter, r *http.Request, params CloseAccountParams)
+
 	// (POST /api/v1/auth/change-password)
 	ChangePassword(w http.ResponseWriter, r *http.Request, params ChangePasswordParams)
 
@@ -379,6 +446,12 @@ type ServerInterface interface {
 
 	// (POST /api/v1/auth/register)
 	Register(w http.ResponseWriter, r *http.Request, params RegisterParams)
+
+	// (POST /api/v1/devices)
+	RegisterDeviceToken(w http.ResponseWriter, r *http.Request, params RegisterDeviceTokenParams)
+
+	// (DELETE /api/v1/devices/{id})
+	DeleteDeviceToken(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params DeleteDeviceTokenParams)
 
 	// (POST /api/v1/internal/events)
 	IngestEvent(w http.ResponseWriter, r *http.Request)
@@ -394,6 +467,9 @@ type ServerInterface interface {
 
 	// (GET /api/v1/internal/users/{user_id})
 	GetInternalUser(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID)
+
+	// (GET /api/v1/internal/users/{user_id}/device-tokens)
+	ListInternalDeviceTokens(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID)
 
 	// (POST /api/v1/internal/users/{user_id}/gdpr/export)
 	ExportUserGDPR(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID, params ExportUserGDPRParams)
@@ -442,6 +518,11 @@ type ServerInterface interface {
 
 type Unimplemented struct{}
 
+// (POST /api/v1/account/close)
+func (_ Unimplemented) CloseAccount(w http.ResponseWriter, r *http.Request, params CloseAccountParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (POST /api/v1/auth/change-password)
 func (_ Unimplemented) ChangePassword(w http.ResponseWriter, r *http.Request, params ChangePasswordParams) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -459,6 +540,16 @@ func (_ Unimplemented) RefreshToken(w http.ResponseWriter, r *http.Request) {
 
 // (POST /api/v1/auth/register)
 func (_ Unimplemented) Register(w http.ResponseWriter, r *http.Request, params RegisterParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /api/v1/devices)
+func (_ Unimplemented) RegisterDeviceToken(w http.ResponseWriter, r *http.Request, params RegisterDeviceTokenParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (DELETE /api/v1/devices/{id})
+func (_ Unimplemented) DeleteDeviceToken(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params DeleteDeviceTokenParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -484,6 +575,11 @@ func (_ Unimplemented) GetUserByPhone(w http.ResponseWriter, r *http.Request, ph
 
 // (GET /api/v1/internal/users/{user_id})
 func (_ Unimplemented) GetInternalUser(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /api/v1/internal/users/{user_id}/device-tokens)
+func (_ Unimplemented) ListInternalDeviceTokens(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -565,6 +661,74 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// CloseAccount operation middleware
+func (siw *ServerInterfaceWrapper) CloseAccount(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CloseAccountParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CloseAccount(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ChangePassword operation middleware
 func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http.Request) {
@@ -684,6 +848,105 @@ func (siw *ServerInterfaceWrapper) Register(w http.ResponseWriter, r *http.Reque
 	handler.ServeHTTP(w, r)
 }
 
+// RegisterDeviceToken operation middleware
+func (siw *ServerInterfaceWrapper) RegisterDeviceToken(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RegisterDeviceTokenParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RegisterDeviceToken(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteDeviceToken operation middleware
+func (siw *ServerInterfaceWrapper) DeleteDeviceToken(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteDeviceTokenParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteDeviceToken(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // IngestEvent operation middleware
 func (siw *ServerInterfaceWrapper) IngestEvent(w http.ResponseWriter, r *http.Request) {
 
@@ -781,6 +1044,32 @@ func (siw *ServerInterfaceWrapper) GetInternalUser(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetInternalUser(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListInternalDeviceTokens operation middleware
+func (siw *ServerInterfaceWrapper) ListInternalDeviceTokens(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "user_id" -------------
+	var userId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", chi.URLParam(r, "user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListInternalDeviceTokens(w, r, userId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1652,6 +1941,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/account/close", wrapper.CloseAccount)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/auth/change-password", wrapper.ChangePassword)
 	})
 	r.Group(func(r chi.Router) {
@@ -1662,6 +1954,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/auth/register", wrapper.Register)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/devices", wrapper.RegisterDeviceToken)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/devices/{id}", wrapper.DeleteDeviceToken)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/internal/events", wrapper.IngestEvent)
@@ -1677,6 +1975,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/internal/users/{user_id}", wrapper.GetInternalUser)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/internal/users/{user_id}/device-tokens", wrapper.ListInternalDeviceTokens)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/internal/users/{user_id}/gdpr/export", wrapper.ExportUserGDPR)
@@ -1722,6 +2023,50 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 
 	return r
+}
+
+type CloseAccountRequestObject struct {
+	Params CloseAccountParams
+}
+
+type CloseAccountResponseObject interface {
+	VisitCloseAccountResponse(w http.ResponseWriter) error
+}
+
+type CloseAccount204Response struct {
+}
+
+func (response CloseAccount204Response) VisitCloseAccountResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type CloseAccount400JSONResponse ErrorResponse
+
+func (response CloseAccount400JSONResponse) VisitCloseAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CloseAccount401JSONResponse ErrorResponse
+
+func (response CloseAccount401JSONResponse) VisitCloseAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type ChangePasswordRequestObject struct {
@@ -1874,6 +2219,74 @@ func (response Register400JSONResponse) VisitRegisterResponse(w http.ResponseWri
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RegisterDeviceTokenRequestObject struct {
+	Params RegisterDeviceTokenParams
+	Body   *RegisterDeviceTokenJSONRequestBody
+}
+
+type RegisterDeviceTokenResponseObject interface {
+	VisitRegisterDeviceTokenResponse(w http.ResponseWriter) error
+}
+
+type RegisterDeviceToken201JSONResponse DeviceToken
+
+func (response RegisterDeviceToken201JSONResponse) VisitRegisterDeviceTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RegisterDeviceToken400JSONResponse ErrorResponse
+
+func (response RegisterDeviceToken400JSONResponse) VisitRegisterDeviceTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteDeviceTokenRequestObject struct {
+	Id     openapi_types.UUID `json:"id"`
+	Params DeleteDeviceTokenParams
+}
+
+type DeleteDeviceTokenResponseObject interface {
+	VisitDeleteDeviceTokenResponse(w http.ResponseWriter) error
+}
+
+type DeleteDeviceToken204Response struct {
+}
+
+func (response DeleteDeviceToken204Response) VisitDeleteDeviceTokenResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteDeviceToken404JSONResponse ErrorResponse
+
+func (response DeleteDeviceToken404JSONResponse) VisitDeleteDeviceTokenResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -2048,6 +2461,28 @@ func (response GetInternalUser404JSONResponse) VisitGetInternalUserResponse(w ht
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListInternalDeviceTokensRequestObject struct {
+	UserId openapi_types.UUID `json:"user_id"`
+}
+
+type ListInternalDeviceTokensResponseObject interface {
+	VisitListInternalDeviceTokensResponse(w http.ResponseWriter) error
+}
+
+type ListInternalDeviceTokens200JSONResponse DeviceTokenList
+
+func (response ListInternalDeviceTokens200JSONResponse) VisitListInternalDeviceTokensResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -2517,6 +2952,9 @@ func (response GetHealth200JSONResponse) VisitGetHealthResponse(w http.ResponseW
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
+	// (POST /api/v1/account/close)
+	CloseAccount(ctx context.Context, request CloseAccountRequestObject) (CloseAccountResponseObject, error)
+
 	// (POST /api/v1/auth/change-password)
 	ChangePassword(ctx context.Context, request ChangePasswordRequestObject) (ChangePasswordResponseObject, error)
 
@@ -2528,6 +2966,12 @@ type StrictServerInterface interface {
 
 	// (POST /api/v1/auth/register)
 	Register(ctx context.Context, request RegisterRequestObject) (RegisterResponseObject, error)
+
+	// (POST /api/v1/devices)
+	RegisterDeviceToken(ctx context.Context, request RegisterDeviceTokenRequestObject) (RegisterDeviceTokenResponseObject, error)
+
+	// (DELETE /api/v1/devices/{id})
+	DeleteDeviceToken(ctx context.Context, request DeleteDeviceTokenRequestObject) (DeleteDeviceTokenResponseObject, error)
 
 	// (POST /api/v1/internal/events)
 	IngestEvent(ctx context.Context, request IngestEventRequestObject) (IngestEventResponseObject, error)
@@ -2543,6 +2987,9 @@ type StrictServerInterface interface {
 
 	// (GET /api/v1/internal/users/{user_id})
 	GetInternalUser(ctx context.Context, request GetInternalUserRequestObject) (GetInternalUserResponseObject, error)
+
+	// (GET /api/v1/internal/users/{user_id}/device-tokens)
+	ListInternalDeviceTokens(ctx context.Context, request ListInternalDeviceTokensRequestObject) (ListInternalDeviceTokensResponseObject, error)
 
 	// (POST /api/v1/internal/users/{user_id}/gdpr/export)
 	ExportUserGDPR(ctx context.Context, request ExportUserGDPRRequestObject) (ExportUserGDPRResponseObject, error)
@@ -2614,6 +3061,32 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// CloseAccount operation middleware
+func (sh *strictHandler) CloseAccount(w http.ResponseWriter, r *http.Request, params CloseAccountParams) {
+	var request CloseAccountRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CloseAccount(ctx, request.(CloseAccountRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CloseAccount")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CloseAccountResponseObject); ok {
+		if err := validResponse.VisitCloseAccountResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // ChangePassword operation middleware
@@ -2737,6 +3210,66 @@ func (sh *strictHandler) Register(w http.ResponseWriter, r *http.Request, params
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(RegisterResponseObject); ok {
 		if err := validResponse.VisitRegisterResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RegisterDeviceToken operation middleware
+func (sh *strictHandler) RegisterDeviceToken(w http.ResponseWriter, r *http.Request, params RegisterDeviceTokenParams) {
+	var request RegisterDeviceTokenRequestObject
+
+	request.Params = params
+
+	var body RegisterDeviceTokenJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RegisterDeviceToken(ctx, request.(RegisterDeviceTokenRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RegisterDeviceToken")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RegisterDeviceTokenResponseObject); ok {
+		if err := validResponse.VisitRegisterDeviceTokenResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteDeviceToken operation middleware
+func (sh *strictHandler) DeleteDeviceToken(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params DeleteDeviceTokenParams) {
+	var request DeleteDeviceTokenRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteDeviceToken(ctx, request.(DeleteDeviceTokenRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteDeviceToken")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteDeviceTokenResponseObject); ok {
+		if err := validResponse.VisitDeleteDeviceTokenResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -2877,6 +3410,32 @@ func (sh *strictHandler) GetInternalUser(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetInternalUserResponseObject); ok {
 		if err := validResponse.VisitGetInternalUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListInternalDeviceTokens operation middleware
+func (sh *strictHandler) ListInternalDeviceTokens(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
+	var request ListInternalDeviceTokensRequestObject
+
+	request.UserId = userId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListInternalDeviceTokens(ctx, request.(ListInternalDeviceTokensRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListInternalDeviceTokens")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListInternalDeviceTokensResponseObject); ok {
+		if err := validResponse.VisitListInternalDeviceTokensResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -56,9 +56,10 @@ type SubmitKYCRequest struct {
 }
 
 type SubmitKYCResponse struct {
-	KYCCaseID string `json:"kyc_case_id"`
-	Status    string `json:"status"`
-	WalletID  string `json:"wallet_id"`
+	KYCCaseID       string `json:"kyc_case_id"`
+	Status          string `json:"status"`
+	WalletID        string `json:"wallet_id,omitempty"`
+	RejectionReason string `json:"rejection_reason,omitempty"`
 }
 
 type KYCStatusResponse struct {
@@ -519,6 +520,98 @@ func (c *UserClient) DeletePayee(ctx context.Context, userID, payeeID string) (i
 		return 0, err
 	}
 	httpReq.Header.Set("X-User-Id", userID)
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	return resp.StatusCode, nil
+}
+
+type DeviceTokenView struct {
+	ID        string `json:"id"`
+	UserID    string `json:"user_id"`
+	Platform  string `json:"platform"`
+	Token     string `json:"token"`
+	CreatedAt string `json:"created_at"`
+}
+
+type RegisterDeviceTokenRequest struct {
+	Platform string `json:"platform"`
+	Token    string `json:"token"`
+}
+
+func (c *UserClient) RegisterDeviceToken(ctx context.Context, userID, idempotencyKey string, req RegisterDeviceTokenRequest) (DeviceTokenView, int, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return DeviceTokenView{}, 0, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/devices", bytes.NewReader(body))
+	if err != nil {
+		return DeviceTokenView{}, 0, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-User-Id", userID)
+	if idempotencyKey != "" {
+		httpReq.Header.Set("Idempotency-Key", idempotencyKey)
+	}
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return DeviceTokenView{}, 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return DeviceTokenView{}, 0, err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return DeviceTokenView{}, resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	var out DeviceTokenView
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return DeviceTokenView{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
+}
+
+func (c *UserClient) DeleteDeviceToken(ctx context.Context, userID, tokenID, idempotencyKey string) (int, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.baseURL+"/api/v1/devices/"+tokenID, nil)
+	if err != nil {
+		return 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+	if idempotencyKey != "" {
+		httpReq.Header.Set("Idempotency-Key", idempotencyKey)
+	}
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	return resp.StatusCode, nil
+}
+
+func (c *UserClient) CloseAccount(ctx context.Context, userID, idempotencyKey string) (int, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/account/close", nil)
+	if err != nil {
+		return 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+	httpReq.Header.Set("Idempotency-Key", idempotencyKey)
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
 		return 0, fmt.Errorf("user service request: %w", err)

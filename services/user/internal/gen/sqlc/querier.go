@@ -20,6 +20,7 @@ type Querier interface {
 	CreateSavedPayee(ctx context.Context, arg CreateSavedPayeeParams) (CreateSavedPayeeRow, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	CreateWallet(ctx context.Context, arg CreateWalletParams) error
+	DeleteDeviceToken(ctx context.Context, arg DeleteDeviceTokenParams) (int64, error)
 	DeleteSavedPayee(ctx context.Context, arg DeleteSavedPayeeParams) (int64, error)
 	DeleteWalletByID(ctx context.Context, id uuid.UUID) error
 	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error)
@@ -42,6 +43,7 @@ type Querier interface {
 	InsertScreeningCheck(ctx context.Context, arg InsertScreeningCheckParams) error
 	InsertWalletTransaction(ctx context.Context, arg InsertWalletTransactionParams) error
 	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
+	ListDeviceTokensByUser(ctx context.Context, userID uuid.UUID) ([]UserDeviceToken, error)
 	ListKYCSubmissionsByUser(ctx context.Context, userID uuid.UUID) ([]ListKYCSubmissionsByUserRow, error)
 	ListPIIAccessBySubject(ctx context.Context, subjectUserID uuid.UUID) ([]ListPIIAccessBySubjectRow, error)
 	ListSavedPayeesByUser(ctx context.Context, arg ListSavedPayeesByUserParams) ([]ListSavedPayeesByUserRow, error)
@@ -53,6 +55,7 @@ type Querier interface {
 	RejectKYCCase(ctx context.Context, arg RejectKYCCaseParams) error
 	UpdatePasswordHash(ctx context.Context, arg UpdatePasswordHashParams) error
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
+	UpsertDeviceToken(ctx context.Context, arg UpsertDeviceTokenParams) (UserDeviceToken, error)
 	UpsertProfile(ctx context.Context, arg UpsertProfileParams) error
 	UpsertSavedPayee(ctx context.Context, arg UpsertSavedPayeeParams) (UpsertSavedPayeeRow, error)
 	UpsertWalletTransactionCapture(ctx context.Context, arg UpsertWalletTransactionCaptureParams) error

@@ -45,7 +45,7 @@ ledger transfer → this notification".
       `pkg/grpcutil`), wired into gateway + user/payment/card/notification routers.
 - [x] Add `correlation_id`, `causation_id` columns to all `outbox_events` tables and
       thread them through `BuildRecord` → `Worker.flush` → `Envelope`
-      (`services/*/migrations/00*_traceability.sql`).
+      (`services/*/migrations/00000*_traceability.up.sql`, applied via golang-migrate).
 - [x] Include correlation ID in goledger calls (gRPC metadata via `grpcutil.Dial`'s
       interceptor) and in the outbox `Envelope`. Structured logs still only carry it
       where handlers explicitly log — no blanket logging middleware yet (see #9).

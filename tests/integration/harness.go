@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	dbmigrate "github.com/iho/neobank/pkg/migrate"
 	"github.com/iho/neobank/tests/integration/mockledger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go"
@@ -144,41 +145,27 @@ func (h *Harness) startRedis() {
 
 func (h *Harness) runMigrations() {
 	root := repoRoot(h.t)
-	files := []string{
-		filepath.Join(root, "deployments/init-db.sql"),
-		filepath.Join(root, "services/user/migrations/001_init.sql"),
-		filepath.Join(root, "services/user/migrations/002_traceability.sql"),
-		filepath.Join(root, "services/user/migrations/003_saga_alerts.sql"),
-		filepath.Join(root, "services/user/migrations/004_wallet_transactions.sql"),
-		filepath.Join(root, "services/user/migrations/005_kyc_evidence.sql"),
-		filepath.Join(root, "services/user/migrations/006_consumer_inbox.sql"),
-		filepath.Join(root, "services/user/migrations/007_outbox_immutability.sql"),
-		filepath.Join(root, "services/user/migrations/008_pii_access_log.sql"),
-		filepath.Join(root, "services/payment/migrations/001_init.sql"),
-		filepath.Join(root, "services/payment/migrations/002_traceability.sql"),
-		filepath.Join(root, "services/payment/migrations/003_fraud_rule_version.sql"),
-		filepath.Join(root, "services/payment/migrations/004_reconciliation_breaks.sql"),
-		filepath.Join(root, "services/payment/migrations/005_saga_alerts.sql"),
-		filepath.Join(root, "services/payment/migrations/006_screening_checks.sql"),
-		filepath.Join(root, "services/payment/migrations/007_aml_monitoring.sql"),
-		filepath.Join(root, "services/payment/migrations/008_outbox_immutability.sql"),
-		filepath.Join(root, "services/card/migrations/001_init.sql"),
-		filepath.Join(root, "services/card/migrations/002_authorizations.sql"),
-		filepath.Join(root, "services/card/migrations/003_traceability.sql"),
-		filepath.Join(root, "services/card/migrations/004_fraud_rule_version.sql"),
-		filepath.Join(root, "services/card/migrations/005_reconciliation_breaks.sql"),
-		filepath.Join(root, "services/card/migrations/006_saga_alerts.sql"),
-		filepath.Join(root, "services/card/migrations/007_outbox_immutability.sql"),
-		filepath.Join(root, "services/notification/migrations/001_init.sql"),
-		filepath.Join(root, "services/notification/migrations/002_consumer_inbox.sql"),
+	initSQL, err := os.ReadFile(filepath.Join(root, "deployments/init-db.sql"))
+	if err != nil {
+		h.t.Fatalf("read init-db.sql: %v", err)
 	}
-	for _, path := range files {
-		sql, err := os.ReadFile(path)
-		if err != nil {
-			h.t.Fatalf("read migration %s: %v", path, err)
-		}
-		if _, err := h.pool.Exec(h.ctx, string(sql)); err != nil {
-			h.t.Fatalf("apply migration %s: %v", path, err)
+	if _, err := h.pool.Exec(h.ctx, string(initSQL)); err != nil {
+		h.t.Fatalf("apply init-db.sql: %v", err)
+	}
+
+	type serviceMigrations struct {
+		dir    string
+		schema string
+	}
+	services := []serviceMigrations{
+		{filepath.Join(root, "services/user/migrations"), "user"},
+		{filepath.Join(root, "services/payment/migrations"), "payment"},
+		{filepath.Join(root, "services/card/migrations"), "card"},
+		{filepath.Join(root, "services/notification/migrations"), "notification"},
+	}
+	for _, svc := range services {
+		if err := dbmigrate.Up(h.DatabaseURL, svc.dir, dbmigrate.Config{SchemaName: svc.schema}); err != nil {
+			h.t.Fatalf("migrate %s: %v", svc.dir, err)
 		}
 	}
 }

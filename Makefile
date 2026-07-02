@@ -1,4 +1,4 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-jobs down-jobs migrate-user migrate-payment migrate-notification migrate-card tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog
+.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog
 
 OAPI_CODEGEN ?= oapi-codegen
 SQLC ?= sqlc
@@ -79,6 +79,8 @@ up-jobs:
 
 down-jobs:
 	docker compose -f deployments/docker-compose.yml -f deployments/docker-compose.jobs.yml down
+
+migrate: migrate-user migrate-payment migrate-notification migrate-card
 
 migrate-user:
 	cd services/user && go run ./cmd/migrate

@@ -1,44 +1,25 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
+	dbmigrate "github.com/iho/neobank/pkg/migrate"
 	"github.com/iho/neobank/services/user/internal/config"
-	"github.com/jackc/pgx/v5"
 )
 
 func main() {
 	cfg := config.Load()
-	migrations := []string{
-		"migrations/001_init.sql",
-		"migrations/002_traceability.sql",
-		"migrations/003_saga_alerts.sql",
-		"migrations/004_wallet_transactions.sql",
-		"migrations/005_kyc_evidence.sql",
-		"migrations/006_consumer_inbox.sql",
-		"migrations/007_outbox_immutability.sql",
-	}
-
-	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, cfg.DatabaseURL)
+	dir, err := filepath.Abs("migrations")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "connect: %v\n", err)
+		fmt.Fprintf(os.Stderr, "resolve migrations dir: %v\n", err)
 		os.Exit(1)
 	}
-	defer conn.Close(ctx)
 
-	for _, path := range migrations {
-		sql, err := os.ReadFile(path)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "read migration %s: %v\n", path, err)
-			os.Exit(1)
-		}
-		if _, err := conn.Exec(ctx, string(sql)); err != nil {
-			fmt.Fprintf(os.Stderr, "migrate %s: %v\n", path, err)
-			os.Exit(1)
-		}
+	if err := dbmigrate.Up(cfg.DatabaseURL, dir, dbmigrate.Config{SchemaName: "user"}); err != nil {
+		fmt.Fprintf(os.Stderr, "migrate: %v\n", err)
+		os.Exit(1)
 	}
 
 	fmt.Println("user service migrations applied")

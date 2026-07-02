@@ -91,6 +91,12 @@ opsMetrics:
       cpu: 200m
       memory: 128Mi
 
+monitoring:
+  serviceMonitor:
+    enabled: false
+    labels:
+      release: prometheus-grafana
+
 outboxArchiver:
   enabled: false
   schedule: "0 3 1 * *"

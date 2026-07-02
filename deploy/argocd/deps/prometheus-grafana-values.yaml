@@ -1,0 +1,39 @@
+# kube-prometheus-stack values for neobank (namespace: monitoring).
+
+prometheus:
+  prometheusSpec:
+    ruleSelector:
+      matchLabels:
+        prometheus_rule: "1"
+    retention: 15d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 30Gi
+    serviceMonitorSelector:
+      matchLabels:
+        release: prometheus-grafana
+
+grafana:
+  enabled: true
+  adminPassword: changeme
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      folderAnnotation: grafana_folder
+  persistence:
+    enabled: true
+    size: 10Gi
+
+alertmanager:
+  enabled: true
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true

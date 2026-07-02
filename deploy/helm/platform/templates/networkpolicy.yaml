@@ -1,4 +1,56 @@
 {{- if .Values.networkPolicy.enabled }}
+{{- if .Values.goledger.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "platform.fullname" . }}-goledger
+  namespace: {{ include "platform.namespace" . }}
+  labels:
+    {{- include "platform.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: goledger
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.appNamespace | quote }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.goledger.grpcPort }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "platform.fullname" . }}-goledger-postgres
+  namespace: {{ include "platform.namespace" . }}
+  labels:
+    {{- include "platform.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: In
+        values:
+          - {{ include "platform.goledger.postgresCluster" . | quote }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: goledger
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: goledger-setup
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

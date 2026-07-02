@@ -1,0 +1,48 @@
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+{{- $root := . }}
+{{- $monitorLabels := .Values.monitoring.serviceMonitor.labels }}
+{{- range $name, $wl := .Values.workloads }}
+{{- if $wl.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "neobank.fullname" $root }}-{{ $name }}
+  labels:
+    {{- include "neobank.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+    {{- range $k, $v := $monitorLabels }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "neobank.selectorLabels" $root | nindent 6 }}
+      app.kubernetes.io/component: {{ $name }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+{{- end }}
+{{- end }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "neobank.fullname" . }}-ops-metrics
+  labels:
+    {{- include "neobank.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ops-metrics
+    {{- range $k, $v := .Values.monitoring.serviceMonitor.labels }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "neobank.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ops-metrics
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+{{- end }}

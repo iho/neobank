@@ -36,4 +36,6 @@ bash /tmp/seed-neobank.sh
 kubectl apply -f deploy/argocd/application-vault-config.yaml
 ```
 
-Auto-unseal (AWS KMS / GCP CKM / HSM) is environment-specific — configure in the Vault Helm values before production cutover.
+Auto-unseal (AWS KMS / GCP CKM / HSM) is environment-specific — see
+`deploy/vault/helm-values-auto-unseal-aws.example.yaml` for an AWS KMS `awskms` seal
+snippet to merge into `deploy/argocd/deps/vault.yaml` Helm values before production cutover.

@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: neobank-prometheus-rules
+  namespace: monitoring
+  labels:
+    prometheus_rule: "1"
+data:
+  neobank-alerts.yaml: |
+    groups:
+      - name: neobank
+        rules:
+          - alert: NeobankHighErrorRate
+            expr: |
+              sum by (service) (rate(http_requests_total{status=~"5.."}[5m]))
+              /
+              sum by (service) (rate(http_requests_total[5m])) > 0.05
+            for: 10m
+            labels:
+              severity: page
+            annotations:
+              summary: "High 5xx rate on {{ $labels.service }}"
+          - alert: NeobankOutboxLag
+            expr: neobank_outbox_oldest_unpublished_seconds > 300
+            for: 15m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Outbox lag > 5m on schema {{ $labels.schema }}"
+          - alert: NeobankSagaAlertsOpen
+            expr: neobank_saga_alerts_open > 0
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Open saga alerts on schema {{ $labels.schema }}"
+          - alert: NeobankReconciliationBreaks
+            expr: neobank_reconciliation_breaks_open > 0
+            for: 1h
+            labels:
+              severity: warning
+            annotations:
+              summary: "Unresolved reconciliation breaks on {{ $labels.schema }}"
+          - alert: NeobankRedpandaConsumerLag
+            expr: |
+              max by (redpanda_group) (
+                vectorized_kafka_consumer_group_offset_lag
+              ) > 1000
+            for: 15m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Redpanda consumer lag > 1000 for group {{ $labels.redpanda_group }}"
+          - alert: NeobankRedpandaDiskLow
+            expr: redpanda_storage_disk_free_space_alert > 0
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Redpanda disk space low on {{ $labels.instance }}"
+          - alert: NeobankPostgresDatabaseLarge
+            expr: pg_database_size_bytes{datname="neobank"} > 8e9
+            for: 1h
+            labels:
+              severity: warning
+            annotations:
+              summary: "Neobank database size exceeds 8 GiB"
+          - alert: NeobankTLSCertExpiringSoon
+            expr: |
+              (certmanager_certificate_expiration_timestamp_seconds - time()) < 7 * 24 * 3600
+            for: 1h
+            labels:
+              severity: warning
+            annotations:
+              summary: "TLS cert {{ $labels.name }} expires within 7 days"

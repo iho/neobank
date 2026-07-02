@@ -44,5 +44,10 @@ spec:
         compression: gzip
   {{- end }}
   monitoring:
-    enablePodMonitor: false
+    enablePodMonitor: {{ .Values.monitoring.podMonitor.enabled }}
+    {{- if .Values.monitoring.podMonitor.enabled }}
+    podMonitorSelector:
+      matchLabels:
+        release: {{ .Values.monitoring.podMonitor.labels.release | quote }}
+    {{- end }}
 {{- end }}

@@ -2,15 +2,31 @@
 
 ## Scope
 
-Single Postgres cluster, schema-per-service (`user`, `payment`, `card`, `notification`).
+Single Postgres cluster (`neobank-postgres`), schema-per-service (`user`, `payment`, `card`, `notification`).
 
-## Backup (operator responsibility)
+## Backup
 
-Use your managed Postgres PITR (CloudNativePG, RDS, etc.). This repo does not deploy the database.
+Production uses CloudNativePG barman-cloud backups to object storage. Configure before cutover:
+
+```bash
+# Fill deploy/platform/cnpg-backup-values.example.yaml, then:
+helm upgrade neobank-platform deploy/helm/platform \
+  -f deploy/helm/platform/values-production.yaml \
+  -f deploy/platform/cnpg-backup-values.example.yaml \
+  -n neobank
+```
 
 ## Restore drill (quarterly)
 
-1. Restore a point-in-time clone to an isolated instance.
+```bash
+./deploy/scripts/restore-drill.sh neobank neobank-postgres
+# Optional PITR target:
+./deploy/scripts/restore-drill.sh neobank neobank-postgres "2026-07-01T12:00:00Z"
+```
+
+Manual steps after a real incident:
+
+1. Restore a point-in-time clone to an isolated CNPG cluster (or use the drill script pattern).
 2. Run migrations: `helm upgrade` migrate hook or `make migrate` against the clone.
 3. Smoke test: register/login via gateway against the clone.
 4. Run reconciliation jobs — expect zero new breaks if ledger matches.

@@ -17,5 +17,15 @@ redis:
   replicas: 1
   storageSize: 8Gi
 
+goledger:
+  enabled: true
+  postgres:
+    instances: 2
+    storageSize: 20Gi
+
+monitoring:
+  podMonitor:
+    enabled: true
+
 networkPolicy:
   enabled: true

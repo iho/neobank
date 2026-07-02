@@ -32,3 +32,11 @@ services:
   gateway:
     <<: *image-defaults
     image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}gateway:${IMAGE_TAG:-latest}
+
+  goledger-setup:
+    <<: *image-defaults
+    image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}goledger:${IMAGE_TAG:-latest}
+
+  goledger:
+    <<: *image-defaults
+    image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}goledger:${IMAGE_TAG:-latest}

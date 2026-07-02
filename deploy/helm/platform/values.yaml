@@ -4,6 +4,10 @@
 nameOverride: ""
 fullnameOverride: ""
 
+global:
+  imageRegistry: ghcr.io/iho/neobank
+  imageTag: latest
+
 namespace:
   create: true
   name: neobank
@@ -42,6 +46,29 @@ redis:
     limits:
       cpu: 500m
       memory: 256Mi
+
+goledger:
+  enabled: false
+  image:
+    repository: ""
+    tag: ""
+  grpcPort: 50051
+  authEnabled: false
+  postgres:
+    clusterName: goledger-postgres
+    instances: 1
+    storageSize: 10Gi
+    database: ledger
+    owner: ledger
+    password: ""
+  redis:
+    enabled: true
+
+monitoring:
+  podMonitor:
+    enabled: false
+    labels:
+      release: prometheus-grafana
 
 networkPolicy:
   enabled: false

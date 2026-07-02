@@ -75,13 +75,15 @@ jobs:
                -f deployments/docker-compose.yml \
                -f deployments/docker-compose.services.yml \
                -f deployments/docker-compose.images.yml \
+               -f deployments/docker-compose.goledger.yml \
                run --rm migrate && \
              docker compose \
                -f deployments/docker-compose.yml \
                -f deployments/docker-compose.services.yml \
                -f deployments/docker-compose.images.yml \
+               -f deployments/docker-compose.goledger.yml \
                up -d --no-build --pull always --wait --wait-timeout 300 \
-               user notification payment card gateway"
+               goledger user notification payment card gateway"
 
       - name: Staging smoke test
         if: steps.gate.outputs.configured == 'true'

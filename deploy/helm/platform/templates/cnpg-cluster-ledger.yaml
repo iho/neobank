@@ -1,0 +1,32 @@
+{{- if .Values.goledger.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "platform.goledger.postgresCluster" . }}
+  namespace: {{ include "platform.namespace" . }}
+  labels:
+    {{- include "platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: goledger-postgres
+spec:
+  instances: {{ .Values.goledger.postgres.instances }}
+  bootstrap:
+    initdb:
+      database: {{ .Values.goledger.postgres.database | quote }}
+      owner: {{ .Values.goledger.postgres.owner | quote }}
+      {{- if .Values.goledger.postgres.password }}
+      secret:
+        name: {{ include "platform.goledger.postgresCluster" . }}-app
+      {{- end }}
+  storage:
+    size: {{ .Values.goledger.postgres.storageSize | quote }}
+    {{- if .Values.cnpg.storageClass }}
+    storageClass: {{ .Values.cnpg.storageClass | quote }}
+    {{- end }}
+  monitoring:
+    enablePodMonitor: {{ .Values.monitoring.podMonitor.enabled }}
+    {{- if .Values.monitoring.podMonitor.enabled }}
+    podMonitorSelector:
+      matchLabels:
+        release: {{ .Values.monitoring.podMonitor.labels.release | quote }}
+    {{- end }}
+{{- end }}

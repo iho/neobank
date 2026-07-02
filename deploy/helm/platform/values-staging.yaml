@@ -10,5 +10,12 @@ redis:
   replicas: 1
   storageSize: 4Gi
 
+goledger:
+  enabled: true
+
+monitoring:
+  podMonitor:
+    enabled: true
+
 networkPolicy:
   enabled: true

@@ -1,0 +1,44 @@
+{{- if .Values.goledger.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "platform.fullname" . }}-goledger-setup
+  namespace: {{ include "platform.namespace" . }}
+  labels:
+    {{- include "platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: goledger-setup
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        {{- include "platform.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: goledger-setup
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: {{ include "platform.goledger.image" . }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              export DATABASE_URL="postgres://${PGUSER}:${PGPASSWORD}@{{ include "platform.goledger.postgresRW" . }}:5432/{{ .Values.goledger.postgres.database }}?sslmode=require"
+              /goledger-cli setup --database-url "${DATABASE_URL}"
+          env:
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "platform.goledger.postgresCluster" . }}-app
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "platform.goledger.postgresCluster" . }}-app
+                  key: password
+{{- end }}

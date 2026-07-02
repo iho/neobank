@@ -9,6 +9,7 @@ secrets:
 config:
   appEnv: production
   kafkaBrokers: redpanda:9092
+  ledgerGrpcAddr: goledger:50051
 
 ingress:
   enabled: true
@@ -26,6 +27,10 @@ ingress:
     enabled: true
     rps: "30"
     connections: "15"
+
+monitoring:
+  serviceMonitor:
+    enabled: true
 
 networkPolicy:
   enabled: true

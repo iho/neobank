@@ -1,0 +1,27 @@
+# Merge into deploy/argocd/deps/vault.yaml helm values for AWS KMS auto-unseal.
+# Requires IAM role on Vault pods with kms:Encrypt, kms:Decrypt, kms:DescribeKey.
+#
+#   seal "awskms" {
+#     region     = "us-east-1"
+#     kms_key_id = "alias/neobank-vault-unseal"
+#   }
+
+server:
+  ha:
+    config: |
+      ui = true
+      listener "tcp" {
+        address     = "[::]:8200"
+        tls_disable = 1
+      }
+      storage "raft" {
+        path = "/vault/data"
+      }
+      seal "awskms" {
+        region     = "us-east-1"
+        kms_key_id = "alias/neobank-vault-unseal"
+      }
+      service_registration "kubernetes" {}
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/neobank-vault-unseal

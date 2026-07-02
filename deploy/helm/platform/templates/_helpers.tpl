@@ -49,3 +49,21 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "platform.redis.serviceName" -}}
 {{- printf "%s-redis" (include "platform.fullname" .) -}}
 {{- end -}}
+
+{{- define "platform.goledger.image" -}}
+{{- $registry := .Values.global.imageRegistry | default "ghcr.io/iho/neobank" -}}
+{{- $tag := default .Values.global.imageTag .Values.goledger.image.tag -}}
+{{- if .Values.goledger.image.repository -}}
+{{- printf "%s:%s" .Values.goledger.image.repository $tag -}}
+{{- else -}}
+{{- printf "%s/goledger:%s" $registry $tag -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "platform.goledger.postgresCluster" -}}
+{{- .Values.goledger.postgres.clusterName | default "goledger-postgres" -}}
+{{- end -}}
+
+{{- define "platform.goledger.postgresRW" -}}
+{{- printf "%s-rw" (include "platform.goledger.postgresCluster" .) -}}
+{{- end -}}

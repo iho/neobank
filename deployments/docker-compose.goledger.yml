@@ -6,6 +6,9 @@
 # Builds goledger from GitHub (GOLEDGER_REF=main). Pin a tag for reproducibility:
 #   GOLEDGER_REF=v1.2.3 make up-all-ledger
 
+x-goledger-image: &goledger-image
+  image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}goledger:${IMAGE_TAG:-latest}
+
 x-goledger-build: &goledger-build
   context: ..
   dockerfile: deployments/Dockerfile.goledger-init
@@ -36,6 +39,7 @@ services:
       retries: 8
 
   goledger-setup:
+    <<: *goledger-image
     build: *goledger-build
     entrypoint: ["/goledger-cli"]
     command:
@@ -48,6 +52,7 @@ services:
     restart: "no"
 
   goledger:
+    <<: *goledger-image
     build: *goledger-build
     entrypoint: ["/goledger"]
     environment:

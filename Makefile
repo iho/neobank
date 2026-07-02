@@ -1,4 +1,4 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-all down-all up-ledger down-ledger up-all-ledger down-all-ledger up-ghcr down-ghcr up-observability up-obs-all down-obs up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs helm-lint helm-template helm-lint-platform helm-template-platform
+.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-all down-all up-ledger down-ledger up-all-ledger down-all-ledger up-ghcr down-ghcr up-ghcr-ledger down-ghcr-ledger up-observability up-obs-all down-obs up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs helm-lint helm-template helm-lint-platform helm-template-platform
 
 HELM_CHART := deploy/helm/neobank
 HELM_PLATFORM := deploy/helm/platform
@@ -10,6 +10,7 @@ COMPOSE_ALL   := docker compose -f deployments/docker-compose.yml -f deployments
 COMPOSE_LEDGER := $(COMPOSE_INFRA) -f deployments/docker-compose.goledger.yml
 COMPOSE_ALL_LEDGER := $(COMPOSE_ALL) -f deployments/docker-compose.goledger.yml
 COMPOSE_GHCR  := $(COMPOSE_ALL) -f deployments/docker-compose.images.yml
+COMPOSE_GHCR_LEDGER := $(COMPOSE_GHCR) -f deployments/docker-compose.goledger.yml
 COMPOSE_JOBS  := $(COMPOSE_ALL) -f deployments/docker-compose.jobs.yml
 GIT_SHA       ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 BUILD_DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -117,6 +118,12 @@ up-ghcr:
 
 down-ghcr:
 	$(COMPOSE_GHCR) down
+
+up-ghcr-ledger:
+	$(COMPOSE_GHCR_LEDGER) up -d --no-build --pull always
+
+down-ghcr-ledger:
+	$(COMPOSE_GHCR_LEDGER) down
 
 up-observability:
 	$(COMPOSE_OBS) up -d --build

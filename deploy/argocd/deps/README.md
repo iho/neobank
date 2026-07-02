@@ -7,9 +7,11 @@ Apply the **AppProject** first (`deploy/argocd/project.yaml`), then sync in this
 3. `external-secrets.yaml` — Vault → Kubernetes Secrets
 4. `cloudnative-pg.yaml` — CNPG operator
 5. `redpanda.yaml` — Redpanda cluster (`KAFKA_BROKERS=redpanda:9092`)
-6. `application-platform.yaml` — CNPG cluster + Redis (`deploy/helm/platform`)
-7. `application-vault-config.yaml` — ClusterSecretStore + neobank ExternalSecret template
-8. `application-neobank.yaml` — neobank app chart (`deploy/helm/neobank`)
+6. `prometheus-grafana.yaml` — kube-prometheus-stack (namespace `monitoring`)
+7. `monitoring-config.yaml` — PrometheusRule ConfigMaps for neobank alerts
+8. `application-platform.yaml` — CNPG + Redis + goledger (`deploy/helm/platform`)
+9. `application-vault-config.yaml` — ClusterSecretStore + neobank ExternalSecret template
+10. `application-neobank.yaml` — neobank app chart (`deploy/helm/neobank`)
 
 Vault requires manual init/unseal — see [`deploy/vault/README.md`](../../vault/README.md).
 

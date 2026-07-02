@@ -1,0 +1,101 @@
+{{- if .Values.goledger.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: goledger
+  namespace: {{ include "platform.namespace" . }}
+  labels:
+    {{- include "platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: goledger
+spec:
+  ports:
+    - name: grpc
+      port: {{ .Values.goledger.grpcPort }}
+      targetPort: grpc
+  selector:
+    app.kubernetes.io/component: goledger
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goledger
+  namespace: {{ include "platform.namespace" . }}
+  labels:
+    {{- include "platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: goledger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: goledger
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        {{- include "platform.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: goledger
+    spec:
+      initContainers:
+        - name: wait-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until nc -z {{ include "platform.goledger.postgresRW" . }} 5432; do sleep 2; done
+      containers:
+        - name: goledger
+          image: {{ include "platform.goledger.image" . }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              export DATABASE_URL="postgres://${PGUSER}:${PGPASSWORD}@{{ include "platform.goledger.postgresRW" . }}:5432/{{ .Values.goledger.postgres.database }}?sslmode=require"
+              exec /goledger
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.goledger.grpcPort }}
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "platform.goledger.postgresCluster" . }}-app
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "platform.goledger.postgresCluster" . }}-app
+                  key: password
+            - name: REDIS_URL
+              value: redis://goledger-redis:6379
+            - name: GRPC_PORT
+              value: {{ .Values.goledger.grpcPort | quote }}
+            - name: HTTP_PORT
+              value: "8080"
+            - name: AUTH_ENABLED
+              value: {{ .Values.goledger.authEnabled | quote }}
+            - name: LOG_LEVEL
+              value: info
+            - name: LOG_FORMAT
+              value: json
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+{{- end }}

@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/iho/neobank/services/card/internal/domain"
+	"github.com/iho/neobank/services/card/internal/port"
 )
 
 type ListAuthorizationsUseCase struct {
-	auths AuthorizationRepository
+	auths port.AuthorizationRepository
 }
 
-func NewListAuthorizationsUseCase(auths AuthorizationRepository) *ListAuthorizationsUseCase {
+func NewListAuthorizationsUseCase(auths port.AuthorizationRepository) *ListAuthorizationsUseCase {
 	return &ListAuthorizationsUseCase{auths: auths}
 }
 

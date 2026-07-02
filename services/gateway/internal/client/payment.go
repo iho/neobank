@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/iho/neobank/pkg/reqctx"
 )
 
 type PaymentClient struct {
@@ -17,7 +19,7 @@ type PaymentClient struct {
 func NewPaymentClient(baseURL string) *PaymentClient {
 	return &PaymentClient{
 		baseURL:    baseURL,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Transport: reqctx.Transport(nil)},
 	}
 }
 

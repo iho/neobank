@@ -7,6 +7,8 @@ import (
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/services/card/internal/domain"
 	"github.com/iho/neobank/services/card/internal/gen/sqlc"
+	"github.com/iho/neobank/services/card/internal/port"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -16,6 +18,10 @@ type AuthorizationRepository struct {
 
 func NewAuthorizationRepository(q sqlc.Querier) *AuthorizationRepository {
 	return &AuthorizationRepository{q: q}
+}
+
+func (r *AuthorizationRepository) WithTx(tx pgx.Tx) port.AuthorizationRepository {
+	return &AuthorizationRepository{q: withTx(r.q, tx)}
 }
 
 func (r *AuthorizationRepository) Create(ctx context.Context, a domain.Authorization) error {

@@ -34,6 +34,22 @@ func (c *Client) VoidHold(ctx context.Context, holdID string) error {
 	return err
 }
 
+// ListHoldsByAccount returns holds for an account, used by reconciliation to
+// cross-check card.authorizations against goledger's view of open/settled holds.
+func (c *Client) ListHoldsByAccount(ctx context.Context, accountID string, limit int) ([]*goledgerv1.Hold, error) {
+	ctx, cancel := grpcutil.DefaultTimeout(ctx)
+	defer cancel()
+
+	resp, err := c.holds.ListHoldsByAccount(ctx, &goledgerv1.ListHoldsByAccountRequest{
+		AccountId: accountID,
+		Limit:     int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Holds, nil
+}
+
 type CaptureHoldInput struct {
 	HoldID      string
 	ToAccountID string

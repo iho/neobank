@@ -8,6 +8,8 @@ import (
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/services/user/internal/domain"
 	"github.com/iho/neobank/services/user/internal/gen/sqlc"
+	"github.com/iho/neobank/services/user/internal/port"
+	"github.com/jackc/pgx/v5"
 )
 
 type UserRepository struct {
@@ -105,6 +107,10 @@ func NewWalletRepository(q sqlc.Querier) *WalletRepository {
 	return &WalletRepository{q: q}
 }
 
+func (r *WalletRepository) WithTx(tx pgx.Tx) port.WalletRepository {
+	return &WalletRepository{q: withTx(r.q, tx)}
+}
+
 func (r *WalletRepository) Create(ctx context.Context, wallet domain.Wallet) error {
 	id, err := pgutil.ParseUUID(wallet.ID)
 	if err != nil {
@@ -151,4 +157,3 @@ func (r *WalletRepository) GetByUserAndCurrency(ctx context.Context, userID, cur
 		Status:          row.Status,
 	}, nil
 }
-

@@ -22,10 +22,28 @@ func TestResolveUserIDFromJWT(t *testing.T) {
 }
 
 func TestResolveUserIDLegacyDevToken(t *testing.T) {
-	srv := &Server{jwt: auth.NewJWT("secret")}
+	srv := &Server{jwt: auth.NewJWT("secret"), allowDevAuth: true}
 	authHeader := "Bearer access.legacy-user-id.devsecret.123"
 	userID := srv.resolveUserID(&authHeader, nil)
 	if userID != "legacy-user-id" {
 		t.Fatalf("userID = %q", userID)
+	}
+}
+
+func TestResolveUserIDLegacyDevTokenBlockedOutsideDev(t *testing.T) {
+	srv := &Server{jwt: auth.NewJWT("secret"), allowDevAuth: false}
+	authHeader := "Bearer access.legacy-user-id.devsecret.123"
+	userID := srv.resolveUserID(&authHeader, nil)
+	if userID != "" {
+		t.Fatalf("expected legacy dev token to be rejected outside dev, got userID = %q", userID)
+	}
+}
+
+func TestResolveUserIDXUserIDBlockedOutsideDev(t *testing.T) {
+	srv := &Server{jwt: auth.NewJWT("secret"), allowDevAuth: false}
+	xUserID := "some-user-id"
+	userID := srv.resolveUserID(nil, &xUserID)
+	if userID != "" {
+		t.Fatalf("expected X-User-Id bypass to be rejected outside dev, got userID = %q", userID)
 	}
 }

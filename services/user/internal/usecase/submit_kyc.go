@@ -6,17 +6,14 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/iho/neobank/pkg/audit"
 	"github.com/iho/neobank/pkg/events"
+	"github.com/iho/neobank/pkg/outbox"
+	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/services/user/internal/domain"
+	"github.com/iho/neobank/services/user/internal/port"
 	"github.com/jackc/pgx/v5"
 )
-
-type KYCRepository interface {
-	UpsertProfile(ctx context.Context, userID, fullName, dob, country string) error
-	CreateCase(ctx context.Context, id, userID, status string) (domain.KYCCase, error)
-	GetLatestByUser(ctx context.Context, userID string) (*domain.KYCCase, error)
-	ApproveCase(ctx context.Context, caseID string) error
-}
 
 type SubmitKYCInput struct {
 	UserID         string
@@ -33,13 +30,15 @@ type SubmitKYCOutput struct {
 }
 
 type SubmitKYCUseCase struct {
-	kyc       KYCRepository
+	kyc       port.KYCRepository
 	provision *ProvisionWalletUseCase
-	outbox    OutboxPublisher
+	outbox    outbox.TxPublisher
+	audit     audit.Recorder
+	tx        *pgutil.TxRunner
 }
 
-func NewSubmitKYCUseCase(kyc KYCRepository, provision *ProvisionWalletUseCase, outbox OutboxPublisher) *SubmitKYCUseCase {
-	return &SubmitKYCUseCase{kyc: kyc, provision: provision, outbox: outbox}
+func NewSubmitKYCUseCase(kyc port.KYCRepository, provision *ProvisionWalletUseCase, outboxPublisher outbox.TxPublisher, auditRecorder audit.Recorder, tx *pgutil.TxRunner) *SubmitKYCUseCase {
+	return &SubmitKYCUseCase{kyc: kyc, provision: provision, outbox: outboxPublisher, audit: auditRecorder, tx: tx}
 }
 
 func (uc *SubmitKYCUseCase) Execute(ctx context.Context, in SubmitKYCInput) (SubmitKYCOutput, error) {
@@ -76,8 +75,28 @@ func (uc *SubmitKYCUseCase) Execute(ctx context.Context, in SubmitKYCInput) (Sub
 	if err != nil {
 		return SubmitKYCOutput{}, err
 	}
+	if err := uc.audit.Record(ctx, audit.Entry{
+		EntityType: "kyc_case",
+		EntityID:   caseID,
+		Action:     "submitted",
+		ToStatus:   string(domain.KYCStatusPending),
+		Metadata:   map[string]any{"user_id": in.UserID, "country_code": in.CountryCode},
+	}); err != nil {
+		return SubmitKYCOutput{}, err
+	}
 
-	if err := uc.kyc.ApproveCase(ctx, caseID); err != nil {
+	if err := uc.tx.Run(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if err := uc.kyc.WithTx(tx).ApproveCase(ctx, caseID); err != nil {
+			return err
+		}
+		return uc.audit.WithTx(tx).Record(ctx, audit.Entry{
+			EntityType: "kyc_case",
+			EntityID:   caseID,
+			Action:     "approved",
+			FromStatus: string(domain.KYCStatusPending),
+			ToStatus:   string(domain.KYCStatusApproved),
+		})
+	}); err != nil {
 		return SubmitKYCOutput{}, err
 	}
 
@@ -90,10 +109,12 @@ func (uc *SubmitKYCUseCase) Execute(ctx context.Context, in SubmitKYCInput) (Sub
 		return SubmitKYCOutput{}, fmt.Errorf("provision wallet: %w", err)
 	}
 
-	_ = uc.outbox.Publish(ctx, events.KYCApproved{
+	if err := uc.outbox.Publish(ctx, events.KYCApproved{
 		UserID:    in.UserID,
 		KYCCaseID: kycCase.ID,
-	})
+	}); err != nil {
+		return SubmitKYCOutput{}, fmt.Errorf("publish kyc approved event: %w", err)
+	}
 
 	return SubmitKYCOutput{
 		KYCCaseID: kycCase.ID,
@@ -110,10 +131,10 @@ func walletProvisionKey(idempotencyKey, userID string) string {
 }
 
 type GetKYCStatusUseCase struct {
-	kyc KYCRepository
+	kyc port.KYCRepository
 }
 
-func NewGetKYCStatusUseCase(kyc KYCRepository) *GetKYCStatusUseCase {
+func NewGetKYCStatusUseCase(kyc port.KYCRepository) *GetKYCStatusUseCase {
 	return &GetKYCStatusUseCase{kyc: kyc}
 }
 

@@ -15,6 +15,8 @@ import (
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
 	"github.com/iho/neobank/pkg/outbox"
+	"github.com/iho/neobank/pkg/pgutil"
+	"github.com/iho/neobank/pkg/reqctx"
 	apiadapter "github.com/iho/neobank/services/user/internal/adapter/api"
 	"github.com/iho/neobank/services/user/internal/adapter/auth"
 	ledgeradapter "github.com/iho/neobank/services/user/internal/adapter/ledger"
@@ -54,6 +56,7 @@ func main() {
 	walletRepo := sqlcrepo.NewWalletRepository(queries)
 	kycRepo := sqlcrepo.NewKYCRepository(queries)
 	outboxRepo := sqlcrepo.NewOutboxRepository(queries)
+	auditRepo := sqlcrepo.NewAuditRepository(queries)
 	sagaStore := sqlcrepo.NewSagaStore(queries)
 
 	producer := outbox.NewProducer(outbox.ProducerConfig{
@@ -72,8 +75,9 @@ func main() {
 	registerUC := usecase.NewRegisterUseCase(userRepo, tokenIssuer)
 	loginUC := usecase.NewLoginUseCase(userRepo, tokenIssuer)
 	refreshUC := usecase.NewRefreshTokenUseCase(tokenIssuer, userRepo)
-	provisionWalletUC := usecase.NewProvisionWalletUseCase(walletRepo, ledgerAdapter, outboxRepo, sagaStore)
-	submitKYCUC := usecase.NewSubmitKYCUseCase(kycRepo, provisionWalletUC, outboxRepo)
+	txRunner := pgutil.NewTxRunner(pool)
+	provisionWalletUC := usecase.NewProvisionWalletUseCase(walletRepo, ledgerAdapter, outboxRepo, auditRepo, sagaStore, txRunner)
+	submitKYCUC := usecase.NewSubmitKYCUseCase(kycRepo, provisionWalletUC, outboxRepo, auditRepo, txRunner)
 	getKYCStatusUC := usecase.NewGetKYCStatusUseCase(kycRepo)
 	getProfileUC := usecase.NewGetProfileUseCase(userRepo)
 	walletBalanceUC := usecase.NewGetWalletBalanceUseCase(walletRepo, ledgerAdapter)
@@ -86,6 +90,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	r.Use(reqctx.Middleware)
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
 	genapi.HandlerFromMux(strictHandler, r)
 

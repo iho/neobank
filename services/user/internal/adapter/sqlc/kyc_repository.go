@@ -8,6 +8,8 @@ import (
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/services/user/internal/domain"
 	"github.com/iho/neobank/services/user/internal/gen/sqlc"
+	"github.com/iho/neobank/services/user/internal/port"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -17,6 +19,10 @@ type KYCRepository struct {
 
 func NewKYCRepository(q sqlc.Querier) *KYCRepository {
 	return &KYCRepository{q: q}
+}
+
+func (r *KYCRepository) WithTx(tx pgx.Tx) port.KYCRepository {
+	return &KYCRepository{q: withTx(r.q, tx)}
 }
 
 func (r *KYCRepository) UpsertProfile(ctx context.Context, userID, fullName, dob, country string) error {

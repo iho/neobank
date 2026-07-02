@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/iho/neobank/pkg/events"
+	"github.com/iho/neobank/pkg/reqctx"
 )
 
 // Store persists and retrieves outbox records.
@@ -24,6 +26,7 @@ type Worker struct {
 	topic    string
 	interval time.Duration
 	batch    int
+	logger   *slog.Logger
 }
 
 func NewWorker(store Store, producer Producer, topic string) *Worker {
@@ -33,7 +36,14 @@ func NewWorker(store Store, producer Producer, topic string) *Worker {
 		topic:    topic,
 		interval: 100 * time.Millisecond,
 		batch:    100,
+		logger:   slog.Default(),
 	}
+}
+
+// WithLogger overrides the logger used to report flush failures (defaults to slog.Default()).
+func (w *Worker) WithLogger(logger *slog.Logger) *Worker {
+	w.logger = logger
+	return w
 }
 
 func (w *Worker) Run(ctx context.Context) error {
@@ -46,8 +56,7 @@ func (w *Worker) Run(ctx context.Context) error {
 			return ctx.Err()
 		case <-ticker.C:
 			if err := w.flush(ctx); err != nil {
-				// Log at call site; worker keeps running.
-				_ = err
+				w.logger.Error("outbox flush failed", "error", err, "topic", w.topic)
 			}
 		}
 	}
@@ -59,11 +68,17 @@ func (w *Worker) flush(ctx context.Context) error {
 		return err
 	}
 	for _, rec := range records {
+		version := rec.EventVersion
+		if version == 0 {
+			version = 1
+		}
 		envelope := events.Envelope{
 			EventID:       rec.ID,
 			EventType:     rec.EventType,
-			EventVersion:  1,
+			EventVersion:  version,
 			OccurredAt:    rec.CreatedAt,
+			CorrelationID: rec.CorrelationID,
+			CausationID:   rec.CausationID,
 			AggregateType: rec.AggregateType,
 			AggregateID:   rec.AggregateID,
 			Payload:       rec.Payload,
@@ -72,7 +87,12 @@ func (w *Worker) flush(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if err := w.producer.Produce(ctx, w.topic, rec.AggregateID, data); err != nil {
+		// Carry the event's own correlation ID (set at write time, not the
+		// worker loop's ambient context) so producers using reqctx.Transport
+		// tag the delivery request with the ID that produced the event.
+		produceCtx := reqctx.WithCorrelationID(ctx, rec.CorrelationID)
+		produceCtx = reqctx.WithCausationID(produceCtx, rec.CausationID)
+		if err := w.producer.Produce(produceCtx, w.topic, rec.AggregateID, data); err != nil {
 			return err
 		}
 		if err := w.store.MarkPublished(ctx, rec.ID); err != nil {
@@ -82,8 +102,10 @@ func (w *Worker) flush(ctx context.Context) error {
 	return nil
 }
 
-// BuildRecord creates an outbox record from a domain event.
-func BuildRecord(evt events.Event) (Record, error) {
+// BuildRecord creates an outbox record from a domain event, tagging it with
+// the correlation/causation IDs from ctx (see pkg/reqctx) so the full chain
+// from API request to published event can be reconstructed later.
+func BuildRecord(ctx context.Context, evt events.Event) (Record, error) {
 	payload, err := events.MarshalPayload(evt)
 	if err != nil {
 		return Record{}, fmt.Errorf("marshal event payload: %w", err)
@@ -93,7 +115,10 @@ func BuildRecord(evt events.Event) (Record, error) {
 		AggregateType: evt.AggregateType(),
 		AggregateID:   evt.AggregateID(),
 		EventType:     evt.EventType(),
+		EventVersion:  evt.Version(),
 		Payload:       payload,
+		CorrelationID: reqctx.CorrelationID(ctx),
+		CausationID:   reqctx.CausationID(ctx),
 		CreatedAt:     time.Now().UTC(),
 	}, nil
 }

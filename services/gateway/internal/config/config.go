@@ -11,9 +11,15 @@ type Config struct {
 	LedgerAddr      string
 	RedisURL        string
 	JWTSecret       string
+	AppEnv          string
+	// AllowDevAuth gates the X-User-Id header bypass and the legacy
+	// access.<user-id>.<anything> token: both skip real JWT validation and
+	// must never be reachable outside local development.
+	AllowDevAuth bool
 }
 
 func Load() Config {
+	appEnv := env("APP_ENV", "development")
 	return Config{
 		HTTPPort:        env("HTTP_PORT", "8080"),
 		UserURL:         env("USER_SERVICE_URL", "http://localhost:8081"),
@@ -23,6 +29,8 @@ func Load() Config {
 		LedgerAddr:      env("LEDGER_GRPC_ADDR", "localhost:50051"),
 		RedisURL:        env("REDIS_URL", "redis://localhost:6379/0"),
 		JWTSecret:       env("JWT_SECRET", "dev-secret-change-me"),
+		AppEnv:          appEnv,
+		AllowDevAuth:    appEnv == "development" || appEnv == "local" || appEnv == "dev",
 	}
 }
 

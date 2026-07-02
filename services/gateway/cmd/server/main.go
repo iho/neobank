@@ -15,6 +15,7 @@ import (
 	"github.com/iho/neobank/pkg/auth"
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
+	"github.com/iho/neobank/pkg/reqctx"
 	apiadapter "github.com/iho/neobank/services/gateway/internal/adapter/api"
 	"github.com/iho/neobank/services/gateway/internal/client"
 	"github.com/iho/neobank/services/gateway/internal/config"
@@ -34,16 +35,23 @@ func main() {
 		logger.Info("connected to ledger", "addr", cfg.LedgerAddr)
 	}
 
+	if !cfg.AllowDevAuth {
+		logger.Info("dev auth bypass disabled (X-User-Id header and legacy access.* tokens rejected)", "app_env", cfg.AppEnv)
+	} else {
+		logger.Warn("dev auth bypass enabled - do not use in production", "app_env", cfg.AppEnv)
+	}
+
 	jwtAuth := auth.NewJWT(cfg.JWTSecret)
 	users := client.NewUserClient(cfg.UserURL)
 	payments := client.NewPaymentClient(cfg.PaymentURL)
 	cards := client.NewCardClient(cfg.CardURL)
 	notifications := client.NewNotificationClient(cfg.NotificationURL)
-	strictServer := apiadapter.NewServer(jwtAuth, users, payments, cards, notifications)
+	strictServer := apiadapter.NewServer(jwtAuth, users, payments, cards, notifications, cfg.AllowDevAuth)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	r.Use(reqctx.Middleware)
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
 	genapi.HandlerFromMux(strictHandler, r)
 

@@ -7,6 +7,8 @@ import (
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/services/payment/internal/domain"
 	"github.com/iho/neobank/services/payment/internal/gen/sqlc"
+	"github.com/iho/neobank/services/payment/internal/port"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -16,6 +18,10 @@ type TransferRepository struct {
 
 func NewTransferRepository(q sqlc.Querier) *TransferRepository {
 	return &TransferRepository{q: q}
+}
+
+func (r *TransferRepository) WithTx(tx pgx.Tx) port.TransferRepository {
+	return &TransferRepository{q: withTx(r.q, tx)}
 }
 
 func (r *TransferRepository) Create(ctx context.Context, t domain.Transfer) error {

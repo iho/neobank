@@ -1,4 +1,4 @@
-.PHONY: deps build test lint proto sqlc oapi generate up down migrate-user migrate-payment migrate-notification migrate-card tools
+.PHONY: deps build test lint proto sqlc oapi generate up down migrate-user migrate-payment migrate-notification migrate-card tools reconcile-payment reconcile-card
 
 OAPI_CODEGEN ?= oapi-codegen
 SQLC ?= sqlc
@@ -38,6 +38,8 @@ build: generate
 	go build -o bin/gateway ./services/gateway/cmd/server
 	go build -o bin/notification ./services/notification/cmd/server
 	go build -o bin/card ./services/card/cmd/server
+	go build -o bin/payment-reconcile ./services/payment/cmd/reconcile
+	go build -o bin/card-reconcile ./services/card/cmd/reconcile
 
 test:
 	cd pkg && go test ./...
@@ -67,3 +69,9 @@ migrate-notification:
 
 migrate-card:
 	cd services/card && go run ./cmd/migrate
+
+reconcile-payment:
+	cd services/payment && go run ./cmd/reconcile
+
+reconcile-card:
+	cd services/card && go run ./cmd/reconcile

@@ -14,20 +14,27 @@ type Querier interface {
 	CreateAuthorization(ctx context.Context, arg CreateAuthorizationParams) error
 	CreateCard(ctx context.Context, arg CreateCardParams) error
 	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
-	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]CardOutboxEvent, error)
+	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error)
+	FinishReconciliationRun(ctx context.Context, arg FinishReconciliationRunParams) error
 	GetAuthorizationByCardAndIdempotencyKey(ctx context.Context, arg GetAuthorizationByCardAndIdempotencyKeyParams) (GetAuthorizationByCardAndIdempotencyKeyRow, error)
 	GetAuthorizationByID(ctx context.Context, id uuid.UUID) (GetAuthorizationByIDRow, error)
 	GetCardByID(ctx context.Context, id uuid.UUID) (GetCardByIDRow, error)
 	GetCardByUserAndIdempotencyKey(ctx context.Context, arg GetCardByUserAndIdempotencyKeyParams) (GetCardByUserAndIdempotencyKeyRow, error)
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
+	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
+	InsertFraudDecision(ctx context.Context, arg InsertFraudDecisionParams) error
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error
+	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
 	ListAuthorizationsByUser(ctx context.Context, arg ListAuthorizationsByUserParams) ([]ListAuthorizationsByUserRow, error)
+	ListAuthorizationsForReconciliation(ctx context.Context, limit int32) ([]ListAuthorizationsForReconciliationRow, error)
 	ListCardsByUser(ctx context.Context, userID uuid.UUID) ([]ListCardsByUserRow, error)
+	ListFraudDecisionsByEntity(ctx context.Context, arg ListFraudDecisionsByEntityParams) ([]ListFraudDecisionsByEntityRow, error)
 	MarkAuthorizationCaptured(ctx context.Context, arg MarkAuthorizationCapturedParams) error
 	MarkAuthorizationFailed(ctx context.Context, arg MarkAuthorizationFailedParams) error
 	MarkAuthorizationHold(ctx context.Context, arg MarkAuthorizationHoldParams) error
 	MarkCardCancelled(ctx context.Context, id uuid.UUID) error
 	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
+	StartReconciliationRun(ctx context.Context, arg StartReconciliationRunParams) (uuid.UUID, error)
 	UpdateCardStatus(ctx context.Context, arg UpdateCardStatusParams) error
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
 }

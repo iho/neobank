@@ -18,7 +18,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	CreateWallet(ctx context.Context, arg CreateWalletParams) error
 	DeleteWalletByID(ctx context.Context, id uuid.UUID) error
-	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]UserOutboxEvent, error)
+	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error)
 	GetLatestKYCCaseByUser(ctx context.Context, userID uuid.UUID) (GetLatestKYCCaseByUserRow, error)
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
@@ -26,7 +26,9 @@ type Querier interface {
 	GetUserByPhone(ctx context.Context, phone pgtype.Text) (GetUserByPhoneRow, error)
 	GetUserProfile(ctx context.Context, id uuid.UUID) (GetUserProfileRow, error)
 	GetWalletByUserAndCurrency(ctx context.Context, arg GetWalletByUserAndCurrencyParams) (GetWalletByUserAndCurrencyRow, error)
+	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error
+	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
 	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
 	UpsertProfile(ctx context.Context, arg UpsertProfileParams) error

@@ -7,6 +7,7 @@ import (
 
 	goledgerv1 "github.com/iho/neobank/pkg/gen/goledger/v1"
 	"github.com/iho/neobank/pkg/ledgerclient"
+	"github.com/iho/neobank/services/user/internal/port"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -29,11 +30,11 @@ type WalletBalance struct {
 }
 
 type GetWalletBalanceUseCase struct {
-	wallets WalletRepository
+	wallets port.WalletRepository
 	ledger  LedgerAccountReader
 }
 
-func NewGetWalletBalanceUseCase(wallets WalletRepository, ledger LedgerAccountReader) *GetWalletBalanceUseCase {
+func NewGetWalletBalanceUseCase(wallets port.WalletRepository, ledger LedgerAccountReader) *GetWalletBalanceUseCase {
 	return &GetWalletBalanceUseCase{wallets: wallets, ledger: ledger}
 }
 

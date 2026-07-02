@@ -13,15 +13,22 @@ import (
 type Querier interface {
 	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
 	CreateTransfer(ctx context.Context, arg CreateTransferParams) error
-	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]PaymentOutboxEvent, error)
+	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error)
+	FinishReconciliationRun(ctx context.Context, arg FinishReconciliationRunParams) error
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
 	GetTransferByID(ctx context.Context, id uuid.UUID) (GetTransferByIDRow, error)
 	GetTransferBySenderAndIdempotencyKey(ctx context.Context, arg GetTransferBySenderAndIdempotencyKeyParams) (GetTransferBySenderAndIdempotencyKeyRow, error)
+	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
+	InsertFraudDecision(ctx context.Context, arg InsertFraudDecisionParams) error
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error
+	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
+	ListFraudDecisionsByEntity(ctx context.Context, arg ListFraudDecisionsByEntityParams) ([]ListFraudDecisionsByEntityRow, error)
 	ListTransfersByUser(ctx context.Context, arg ListTransfersByUserParams) ([]ListTransfersByUserRow, error)
+	ListTransfersForReconciliation(ctx context.Context, limit int32) ([]ListTransfersForReconciliationRow, error)
 	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
 	MarkTransferCompleted(ctx context.Context, arg MarkTransferCompletedParams) error
 	MarkTransferFailed(ctx context.Context, arg MarkTransferFailedParams) error
+	StartReconciliationRun(ctx context.Context, arg StartReconciliationRunParams) (uuid.UUID, error)
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
 }
 

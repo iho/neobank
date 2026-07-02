@@ -22,7 +22,10 @@ CREATE TABLE payment.outbox_events (
     aggregate_type  TEXT NOT NULL,
     aggregate_id    TEXT NOT NULL,
     event_type      TEXT NOT NULL,
+    event_version   INT NOT NULL DEFAULT 1,
     payload         JSONB NOT NULL,
+    correlation_id  TEXT,
+    causation_id    TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     published_at    TIMESTAMPTZ
 );
@@ -36,4 +39,55 @@ CREATE TABLE payment.saga_instances (
     context         JSONB NOT NULL DEFAULT '{}',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Append-only lifecycle trail: every state transition on a payment entity is
+-- inserted here in the same transaction as the mutation itself, so the
+-- destructive UPDATEs on payment.transfers never lose history.
+CREATE TABLE payment.audit_log (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    entity_type     TEXT NOT NULL,
+    entity_id       TEXT NOT NULL,
+    action          TEXT NOT NULL,
+    from_status     TEXT,
+    to_status       TEXT,
+    actor           TEXT NOT NULL DEFAULT 'system',
+    correlation_id  TEXT,
+    metadata        JSONB NOT NULL DEFAULT '{}',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_payment_audit_log_entity
+    ON payment.audit_log (entity_type, entity_id, created_at);
+
+-- Every fraud evaluation (allow or deny) is recorded, not just acted on, so
+-- disputes and regulators can see what rule fired and why.
+CREATE TABLE payment.fraud_decisions (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    entity_type       TEXT NOT NULL,
+    entity_id         TEXT NOT NULL,
+    user_id           UUID NOT NULL,
+    transaction_type  TEXT NOT NULL,
+    amount            NUMERIC(20,8) NOT NULL,
+    currency          CHAR(3) NOT NULL,
+    decision          TEXT NOT NULL,
+    reason_code       TEXT NOT NULL,
+    risk_score        INT NOT NULL,
+    correlation_id    TEXT,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_payment_fraud_decisions_user
+    ON payment.fraud_decisions (user_id, created_at DESC);
+
+-- Records of reconciliation sweeps between payment.transfers and goledger,
+-- so "did we check for drift and what did we find" has an auditable answer.
+CREATE TABLE payment.reconciliation_runs (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    started_at      TIMESTAMPTZ NOT NULL,
+    finished_at     TIMESTAMPTZ,
+    checked_count   INT NOT NULL DEFAULT 0,
+    break_count     INT NOT NULL DEFAULT 0,
+    breaks          JSONB NOT NULL DEFAULT '[]',
+    status          TEXT NOT NULL DEFAULT 'running'
 );

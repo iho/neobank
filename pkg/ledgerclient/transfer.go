@@ -5,6 +5,8 @@ import (
 
 	goledgerv1 "github.com/iho/neobank/pkg/gen/goledger/v1"
 	"github.com/iho/neobank/pkg/grpcutil"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type CreateTransferInput struct {
@@ -35,6 +37,21 @@ func (c *Client) CreateTransfer(ctx context.Context, in CreateTransferInput) (*g
 
 	resp, err := c.transfers.CreateTransfer(ctx, req)
 	if err != nil {
+		return nil, err
+	}
+	return resp.Transfer, nil
+}
+
+// GetTransfer looks up a ledger transfer by ID, returning (nil, nil) if it does not exist.
+func (c *Client) GetTransfer(ctx context.Context, id string) (*goledgerv1.Transfer, error) {
+	ctx, cancel := grpcutil.DefaultTimeout(ctx)
+	defer cancel()
+
+	resp, err := c.transfers.GetTransfer(ctx, &goledgerv1.GetTransferRequest{Id: id})
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return resp.Transfer, nil

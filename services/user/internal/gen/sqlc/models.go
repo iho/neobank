@@ -9,6 +9,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type UserAuditLog struct {
+	ID            uuid.UUID
+	EntityType    string
+	EntityID      string
+	Action        string
+	FromStatus    pgtype.Text
+	ToStatus      pgtype.Text
+	Actor         string
+	CorrelationID pgtype.Text
+	Metadata      []byte
+	CreatedAt     pgtype.Timestamptz
+}
+
 type UserKycCase struct {
 	ID              uuid.UUID
 	UserID          uuid.UUID
@@ -23,7 +36,10 @@ type UserOutboxEvent struct {
 	AggregateType string
 	AggregateID   string
 	EventType     string
+	EventVersion  int32
 	Payload       []byte
+	CorrelationID pgtype.Text
+	CausationID   pgtype.Text
 	CreatedAt     pgtype.Timestamptz
 	PublishedAt   pgtype.Timestamptz
 }
@@ -40,8 +56,9 @@ type UserSagaInstance struct {
 	SagaType       string
 	IdempotencyKey string
 	Status         string
-	CompletedSteps []byte
+	CurrentStep    string
 	Context        []byte
+	CompletedSteps []byte
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
 }

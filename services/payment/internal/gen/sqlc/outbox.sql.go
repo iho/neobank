@@ -13,28 +13,47 @@ import (
 )
 
 const fetchUnpublishedOutboxEvents = `-- name: FetchUnpublishedOutboxEvents :many
-SELECT id, aggregate_type, aggregate_id, event_type, payload, created_at, published_at
+SELECT id, aggregate_type, aggregate_id, event_type, event_version, payload,
+       COALESCE(correlation_id, '') AS correlation_id,
+       COALESCE(causation_id, '') AS causation_id,
+       created_at, published_at
 FROM payment.outbox_events
 WHERE published_at IS NULL
 ORDER BY created_at
 LIMIT $1
 `
 
-func (q *Queries) FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]PaymentOutboxEvent, error) {
+type FetchUnpublishedOutboxEventsRow struct {
+	ID            uuid.UUID
+	AggregateType string
+	AggregateID   string
+	EventType     string
+	EventVersion  int32
+	Payload       []byte
+	CorrelationID string
+	CausationID   string
+	CreatedAt     pgtype.Timestamptz
+	PublishedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error) {
 	rows, err := q.db.Query(ctx, fetchUnpublishedOutboxEvents, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []PaymentOutboxEvent{}
+	items := []FetchUnpublishedOutboxEventsRow{}
 	for rows.Next() {
-		var i PaymentOutboxEvent
+		var i FetchUnpublishedOutboxEventsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.AggregateType,
 			&i.AggregateID,
 			&i.EventType,
+			&i.EventVersion,
 			&i.Payload,
+			&i.CorrelationID,
+			&i.CausationID,
 			&i.CreatedAt,
 			&i.PublishedAt,
 		); err != nil {
@@ -49,8 +68,8 @@ func (q *Queries) FetchUnpublishedOutboxEvents(ctx context.Context, limit int32)
 }
 
 const insertOutboxEvent = `-- name: InsertOutboxEvent :exec
-INSERT INTO payment.outbox_events (id, aggregate_type, aggregate_id, event_type, payload, created_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO payment.outbox_events (id, aggregate_type, aggregate_id, event_type, event_version, payload, correlation_id, causation_id, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $8, $9, $7)
 `
 
 type InsertOutboxEventParams struct {
@@ -58,8 +77,11 @@ type InsertOutboxEventParams struct {
 	AggregateType string
 	AggregateID   string
 	EventType     string
+	EventVersion  int32
 	Payload       []byte
 	CreatedAt     pgtype.Timestamptz
+	CorrelationID pgtype.Text
+	CausationID   pgtype.Text
 }
 
 func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error {
@@ -68,8 +90,11 @@ func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventPa
 		arg.AggregateType,
 		arg.AggregateID,
 		arg.EventType,
+		arg.EventVersion,
 		arg.Payload,
 		arg.CreatedAt,
+		arg.CorrelationID,
+		arg.CausationID,
 	)
 	return err
 }

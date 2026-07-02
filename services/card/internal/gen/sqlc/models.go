@@ -9,6 +9,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type CardAuditLog struct {
+	ID            uuid.UUID
+	EntityType    string
+	EntityID      string
+	Action        string
+	FromStatus    pgtype.Text
+	ToStatus      pgtype.Text
+	Actor         string
+	CorrelationID pgtype.Text
+	Metadata      []byte
+	CreatedAt     pgtype.Timestamptz
+}
+
 type CardAuthorization struct {
 	ID               uuid.UUID
 	CardID           uuid.UUID
@@ -39,14 +52,42 @@ type CardCard struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+type CardFraudDecision struct {
+	ID              uuid.UUID
+	EntityType      string
+	EntityID        string
+	UserID          uuid.UUID
+	TransactionType string
+	Amount          pgtype.Numeric
+	Currency        string
+	Decision        string
+	ReasonCode      string
+	RiskScore       int32
+	CorrelationID   pgtype.Text
+	CreatedAt       pgtype.Timestamptz
+}
+
 type CardOutboxEvent struct {
 	ID            uuid.UUID
 	AggregateType string
 	AggregateID   string
 	EventType     string
+	EventVersion  int32
 	Payload       []byte
+	CorrelationID pgtype.Text
+	CausationID   pgtype.Text
 	CreatedAt     pgtype.Timestamptz
 	PublishedAt   pgtype.Timestamptz
+}
+
+type CardReconciliationRun struct {
+	ID           uuid.UUID
+	StartedAt    pgtype.Timestamptz
+	FinishedAt   pgtype.Timestamptz
+	CheckedCount int32
+	BreakCount   int32
+	Breaks       []byte
+	Status       string
 }
 
 type CardSagaInstance struct {

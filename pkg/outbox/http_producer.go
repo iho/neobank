@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+
+	"github.com/iho/neobank/pkg/reqctx"
 )
 
 // HTTPProducer forwards outbox events to a notification service ingest endpoint.
@@ -16,7 +18,7 @@ type HTTPProducer struct {
 func NewHTTPProducer(url string) *HTTPProducer {
 	return &HTTPProducer{
 		url:        url,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Transport: reqctx.Transport(nil)},
 	}
 }
 

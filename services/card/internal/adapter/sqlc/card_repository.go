@@ -7,6 +7,8 @@ import (
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/services/card/internal/domain"
 	"github.com/iho/neobank/services/card/internal/gen/sqlc"
+	"github.com/iho/neobank/services/card/internal/port"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -16,6 +18,10 @@ type CardRepository struct {
 
 func NewCardRepository(q sqlc.Querier) *CardRepository {
 	return &CardRepository{q: q}
+}
+
+func (r *CardRepository) WithTx(tx pgx.Tx) port.CardRepository {
+	return &CardRepository{q: withTx(r.q, tx)}
 }
 
 func (r *CardRepository) Create(ctx context.Context, c domain.Card) error {

@@ -4,9 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/iho/neobank/pkg/audit"
 	"github.com/iho/neobank/pkg/events"
 	"github.com/iho/neobank/pkg/ledgerclient"
+	"github.com/iho/neobank/pkg/outbox"
+	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/services/card/internal/domain"
+	"github.com/iho/neobank/services/card/internal/port"
+	"github.com/jackc/pgx/v5"
 )
 
 type CaptureAuthorizationInput struct {
@@ -16,23 +21,29 @@ type CaptureAuthorizationInput struct {
 }
 
 type CaptureAuthorizationUseCase struct {
-	auths      AuthorizationRepository
+	auths      port.AuthorizationRepository
 	ledger     *ledgerclient.Client
-	outbox     OutboxPublisher
+	outbox     outbox.TxPublisher
+	audit      audit.Recorder
 	settlement string
+	tx         *pgutil.TxRunner
 }
 
 func NewCaptureAuthorizationUseCase(
-	auths AuthorizationRepository,
+	auths port.AuthorizationRepository,
 	ledger *ledgerclient.Client,
-	outbox OutboxPublisher,
+	outboxPublisher outbox.TxPublisher,
+	auditRecorder audit.Recorder,
 	settlementAccountID string,
+	tx *pgutil.TxRunner,
 ) *CaptureAuthorizationUseCase {
 	return &CaptureAuthorizationUseCase{
 		auths:      auths,
 		ledger:     ledger,
-		outbox:     outbox,
+		outbox:     outboxPublisher,
+		audit:      auditRecorder,
 		settlement: settlementAccountID,
+		tx:         tx,
 	}
 }
 
@@ -72,18 +83,32 @@ func (uc *CaptureAuthorizationUseCase) Execute(ctx context.Context, in CaptureAu
 		return nil, err
 	}
 
-	if err := uc.auths.MarkCaptured(ctx, auth.ID, transfer.Id); err != nil {
-		return nil, err
-	}
-
-	_ = uc.outbox.Publish(ctx, events.CardAuthCaptured{
+	capturedEvent := events.CardAuthCaptured{
 		AuthorizationID:  auth.ID,
 		CardID:           auth.CardID,
 		UserID:           auth.UserID,
 		Amount:           auth.Amount,
 		Currency:         auth.Currency,
 		LedgerTransferID: transfer.Id,
-	})
+	}
+	if err := uc.tx.Run(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if err := uc.auths.WithTx(tx).MarkCaptured(ctx, auth.ID, transfer.Id); err != nil {
+			return err
+		}
+		if err := uc.audit.WithTx(tx).Record(ctx, audit.Entry{
+			EntityType: "authorization",
+			EntityID:   auth.ID,
+			Action:     "captured",
+			FromStatus: string(domain.AuthStatusAuthorized),
+			ToStatus:   string(domain.AuthStatusCaptured),
+			Metadata:   map[string]any{"ledger_transfer_id": transfer.Id},
+		}); err != nil {
+			return err
+		}
+		return uc.outbox.WithTx(tx).Publish(ctx, capturedEvent)
+	}); err != nil {
+		return nil, err
+	}
 
 	return uc.auths.GetByID(ctx, auth.ID)
 }

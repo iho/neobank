@@ -7,30 +7,21 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/iho/neobank/pkg/audit"
 	"github.com/iho/neobank/pkg/events"
 	"github.com/iho/neobank/pkg/fraud"
 	"github.com/iho/neobank/pkg/ledgerclient"
 	"github.com/iho/neobank/pkg/money"
+	"github.com/iho/neobank/pkg/outbox"
+	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/saga"
 	"github.com/iho/neobank/pkg/userclient"
 	"github.com/iho/neobank/services/payment/internal/domain"
+	"github.com/iho/neobank/services/payment/internal/port"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-type TransferRepository interface {
-	Create(ctx context.Context, t domain.Transfer) error
-	GetBySenderAndIdempotencyKey(ctx context.Context, senderUserID, key string) (*domain.Transfer, error)
-	GetByID(ctx context.Context, id string) (*domain.Transfer, error)
-	MarkCompleted(ctx context.Context, id, ledgerTransferID string) error
-	MarkFailed(ctx context.Context, id, reason string) error
-	ListByUser(ctx context.Context, userID string, limit int) ([]domain.Transfer, error)
-}
-
-type OutboxPublisher interface {
-	Publish(ctx context.Context, evt events.Event) error
-}
 
 type P2PTransferInput struct {
 	SenderUserID   string
@@ -42,29 +33,38 @@ type P2PTransferInput struct {
 }
 
 type P2PTransferUseCase struct {
-	transfers TransferRepository
+	transfers port.TransferRepository
 	users     *userclient.Client
 	ledger    *ledgerclient.Client
 	fraud     *fraud.Checker
-	outbox    OutboxPublisher
+	fraudRepo port.FraudDecisionRepository
+	outbox    outbox.TxPublisher
+	audit     audit.Recorder
 	sagaStore saga.InstanceStore
+	tx        *pgutil.TxRunner
 }
 
 func NewP2PTransferUseCase(
-	transfers TransferRepository,
+	transfers port.TransferRepository,
 	users *userclient.Client,
 	ledger *ledgerclient.Client,
 	fraudChecker *fraud.Checker,
-	outbox OutboxPublisher,
+	fraudRepo port.FraudDecisionRepository,
+	outboxPublisher outbox.TxPublisher,
+	auditRecorder audit.Recorder,
 	sagaStore saga.InstanceStore,
+	tx *pgutil.TxRunner,
 ) *P2PTransferUseCase {
 	return &P2PTransferUseCase{
 		transfers: transfers,
 		users:     users,
 		ledger:    ledger,
 		fraud:     fraudChecker,
-		outbox:    outbox,
+		fraudRepo: fraudRepo,
+		outbox:    outboxPublisher,
+		audit:     auditRecorder,
 		sagaStore: sagaStore,
+		tx:        tx,
 	}
 }
 
@@ -116,19 +116,34 @@ func (uc *P2PTransferUseCase) Execute(ctx context.Context, in P2PTransferInput) 
 		Currency:        in.Currency,
 		Memo:            in.Memo,
 	}
-	if err := uc.transfers.Create(ctx, transfer); err != nil {
+	if err := uc.tx.Run(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if err := uc.transfers.WithTx(tx).Create(ctx, transfer); err != nil {
+			return err
+		}
+		return uc.audit.WithTx(tx).Record(ctx, audit.Entry{
+			EntityType: "transfer",
+			EntityID:   transferID,
+			Action:     "created",
+			ToStatus:   string(domain.TransferStatusPending),
+			Metadata: map[string]any{
+				"amount":            in.Amount,
+				"currency":          in.Currency,
+				"recipient_user_id": recipient.ID,
+			},
+		})
+	}); err != nil {
 		return nil, err
 	}
 
 	state := saga.NewState(map[string]string{
-		"transfer_id":                transferID,
-		"sender_user_id":             in.SenderUserID,
-		"sender_ledger_account_id":   senderWallet.LedgerAccountID,
-		"recipient_user_id":          recipient.ID,
+		"transfer_id":                 transferID,
+		"sender_user_id":              in.SenderUserID,
+		"sender_ledger_account_id":    senderWallet.LedgerAccountID,
+		"recipient_user_id":           recipient.ID,
 		"recipient_ledger_account_id": recipientWallet.LedgerAccountID,
-		"amount":                     in.Amount,
-		"currency":                   in.Currency,
-		"idempotency_key":            in.IdempotencyKey,
+		"amount":                      in.Amount,
+		"currency":                    in.Currency,
+		"idempotency_key":             in.IdempotencyKey,
 	})
 
 	orchestrator := saga.New("p2p_transfer", uc.steps(), uc.sagaStore)
@@ -137,7 +152,21 @@ func (uc *P2PTransferUseCase) Execute(ctx context.Context, in P2PTransferInput) 
 		if biz, ok := err.(*saga.BusinessError); ok {
 			reason = biz.Code
 		}
-		_ = uc.transfers.MarkFailed(ctx, transferID, reason)
+		if txErr := uc.tx.Run(ctx, func(ctx context.Context, tx pgx.Tx) error {
+			if err := uc.transfers.WithTx(tx).MarkFailed(ctx, transferID, reason); err != nil {
+				return err
+			}
+			return uc.audit.WithTx(tx).Record(ctx, audit.Entry{
+				EntityType: "transfer",
+				EntityID:   transferID,
+				Action:     "mark_failed",
+				FromStatus: string(domain.TransferStatusPending),
+				ToStatus:   "failed",
+				Metadata:   map[string]any{"reason": reason},
+			})
+		}); txErr != nil {
+			return nil, txErr
+		}
 		t, getErr := uc.transfers.GetByID(ctx, transferID)
 		if getErr != nil {
 			return nil, getErr
@@ -145,17 +174,32 @@ func (uc *P2PTransferUseCase) Execute(ctx context.Context, in P2PTransferInput) 
 		return t, nil
 	}
 
-	if err := uc.transfers.MarkCompleted(ctx, transferID, state.Get("ledger_transfer_id")); err != nil {
-		return nil, err
-	}
-	_ = uc.outbox.Publish(ctx, events.TransferCompleted{
+	completedEvent := events.TransferCompleted{
 		TransferID:       transferID,
 		LedgerTransferID: state.Get("ledger_transfer_id"),
 		SenderUserID:     in.SenderUserID,
 		RecipientUserID:  state.Get("recipient_user_id"),
 		Amount:           in.Amount,
 		Currency:         in.Currency,
-	})
+	}
+	if err := uc.tx.Run(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if err := uc.transfers.WithTx(tx).MarkCompleted(ctx, transferID, state.Get("ledger_transfer_id")); err != nil {
+			return err
+		}
+		if err := uc.audit.WithTx(tx).Record(ctx, audit.Entry{
+			EntityType: "transfer",
+			EntityID:   transferID,
+			Action:     "mark_completed",
+			FromStatus: string(domain.TransferStatusPending),
+			ToStatus:   "completed",
+			Metadata:   map[string]any{"ledger_transfer_id": state.Get("ledger_transfer_id")},
+		}); err != nil {
+			return err
+		}
+		return uc.outbox.WithTx(tx).Publish(ctx, completedEvent)
+	}); err != nil {
+		return nil, err
+	}
 
 	return uc.transfers.GetByID(ctx, transferID)
 }
@@ -179,6 +223,12 @@ func (uc *P2PTransferUseCase) steps() []saga.Step {
 				)
 				if err != nil {
 					return err
+				}
+				if uc.fraudRepo != nil {
+					if recErr := uc.fraudRepo.Record(ctx, "transfer", state.Get("transfer_id"), state.Get("sender_user_id"),
+						"p2p", state.Get("amount"), state.Get("currency"), result); recErr != nil {
+						return fmt.Errorf("record fraud decision: %w", recErr)
+					}
 				}
 				if result.Decision == fraud.DecisionDeny {
 					return saga.NewBusinessError("fraud_denied", result.ReasonCode)

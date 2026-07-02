@@ -6,26 +6,20 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	goledgerv1 "github.com/iho/neobank/pkg/gen/goledger/v1"
+	"github.com/iho/neobank/pkg/audit"
 	"github.com/iho/neobank/pkg/events"
+	goledgerv1 "github.com/iho/neobank/pkg/gen/goledger/v1"
 	"github.com/iho/neobank/pkg/ledgerclient"
+	"github.com/iho/neobank/pkg/outbox"
+	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/saga"
 	"github.com/iho/neobank/services/user/internal/domain"
+	"github.com/iho/neobank/services/user/internal/port"
 	"github.com/jackc/pgx/v5"
 )
 
-type WalletRepository interface {
-	Create(ctx context.Context, wallet domain.Wallet) error
-	DeleteByID(ctx context.Context, walletID string) error
-	GetByUserAndCurrency(ctx context.Context, userID, currency string) (*domain.Wallet, error)
-}
-
 type LedgerClient interface {
 	CreateAccount(ctx context.Context, in ledgerclient.CreateAccountInput) (*goledgerv1.Account, error)
-}
-
-type OutboxPublisher interface {
-	Publish(ctx context.Context, evt events.Event) error
 }
 
 type ProvisionWalletInput struct {
@@ -41,23 +35,29 @@ type ProvisionWalletOutput struct {
 }
 
 type ProvisionWalletUseCase struct {
-	wallets   WalletRepository
+	wallets   port.WalletRepository
 	ledger    LedgerClient
-	outbox    OutboxPublisher
+	outbox    outbox.TxPublisher
+	audit     audit.Recorder
 	sagaStore saga.InstanceStore
+	tx        *pgutil.TxRunner
 }
 
 func NewProvisionWalletUseCase(
-	wallets WalletRepository,
+	wallets port.WalletRepository,
 	ledger LedgerClient,
-	outbox OutboxPublisher,
+	outboxPublisher outbox.TxPublisher,
+	auditRecorder audit.Recorder,
 	sagaStore saga.InstanceStore,
+	tx *pgutil.TxRunner,
 ) *ProvisionWalletUseCase {
 	return &ProvisionWalletUseCase{
 		wallets:   wallets,
 		ledger:    ledger,
-		outbox:    outbox,
+		outbox:    outboxPublisher,
+		audit:     auditRecorder,
 		sagaStore: sagaStore,
+		tx:        tx,
 	}
 }
 
@@ -102,13 +102,6 @@ func (uc *ProvisionWalletUseCase) Execute(ctx context.Context, in ProvisionWalle
 		return ProvisionWalletOutput{}, err
 	}
 
-	_ = uc.outbox.Publish(ctx, events.WalletProvisioned{
-		UserID:          in.UserID,
-		WalletID:        wallet.ID,
-		LedgerAccountID: wallet.LedgerAccountID,
-		Currency:        in.Currency,
-	})
-
 	return ProvisionWalletOutput{
 		WalletID:        wallet.ID,
 		LedgerAccountID: wallet.LedgerAccountID,
@@ -141,6 +134,14 @@ func (uc *ProvisionWalletUseCase) steps() []saga.Step {
 		{
 			Name: "persist_wallet",
 			Execute: func(ctx context.Context, state *saga.State) error {
+				existing, err := uc.wallets.GetByUserAndCurrency(ctx, state.Get("user_id"), state.Get("currency"))
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return err
+				}
+				if existing != nil {
+					return nil
+				}
+
 				wallet := domain.Wallet{
 					ID:              state.Get("wallet_id"),
 					UserID:          state.Get("user_id"),
@@ -148,7 +149,27 @@ func (uc *ProvisionWalletUseCase) steps() []saga.Step {
 					LedgerAccountID: state.Get("ledger_account_id"),
 					Status:          "active",
 				}
-				return uc.wallets.Create(ctx, wallet)
+				event := events.WalletProvisioned{
+					UserID:          state.Get("user_id"),
+					WalletID:        state.Get("wallet_id"),
+					LedgerAccountID: state.Get("ledger_account_id"),
+					Currency:        state.Get("currency"),
+				}
+				return uc.tx.Run(ctx, func(ctx context.Context, tx pgx.Tx) error {
+					if err := uc.wallets.WithTx(tx).Create(ctx, wallet); err != nil {
+						return err
+					}
+					if err := uc.audit.WithTx(tx).Record(ctx, audit.Entry{
+						EntityType: "wallet",
+						EntityID:   state.Get("wallet_id"),
+						Action:     "provisioned",
+						ToStatus:   "active",
+						Metadata:   map[string]any{"currency": state.Get("currency"), "ledger_account_id": state.Get("ledger_account_id")},
+					}); err != nil {
+						return err
+					}
+					return uc.outbox.WithTx(tx).Publish(ctx, event)
+				})
 			},
 			Compensate: func(ctx context.Context, state *saga.State) error {
 				if !state.Has("wallet_id") {

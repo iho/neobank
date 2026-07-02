@@ -7,27 +7,21 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/iho/neobank/pkg/audit"
 	"github.com/iho/neobank/pkg/events"
 	"github.com/iho/neobank/pkg/fraud"
 	"github.com/iho/neobank/pkg/ledgerclient"
 	"github.com/iho/neobank/pkg/money"
+	"github.com/iho/neobank/pkg/outbox"
+	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/saga"
 	"github.com/iho/neobank/pkg/userclient"
 	"github.com/iho/neobank/services/card/internal/domain"
+	"github.com/iho/neobank/services/card/internal/port"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-type AuthorizationRepository interface {
-	Create(ctx context.Context, a domain.Authorization) error
-	GetByID(ctx context.Context, id string) (*domain.Authorization, error)
-	GetByCardAndIdempotencyKey(ctx context.Context, cardID, key string) (*domain.Authorization, error)
-	ListByUser(ctx context.Context, userID string, limit int) ([]domain.Authorization, error)
-	MarkHold(ctx context.Context, id, holdID string) error
-	MarkFailed(ctx context.Context, id, reason string) error
-	MarkCaptured(ctx context.Context, id, transferID string) error
-}
 
 type AuthorizeTransactionInput struct {
 	UserID         string
@@ -44,23 +38,29 @@ type AuthorizeTransactionOutput struct {
 }
 
 type AuthorizeTransactionUseCase struct {
-	cards       CardRepository
-	auths       AuthorizationRepository
-	users       *userclient.Client
-	ledger      *ledgerclient.Client
-	fraud       *fraud.Checker
-	outbox      OutboxPublisher
-	sagaStore   saga.InstanceStore
+	cards     port.CardRepository
+	auths     port.AuthorizationRepository
+	users     *userclient.Client
+	ledger    *ledgerclient.Client
+	fraud     *fraud.Checker
+	fraudRepo port.FraudDecisionRepository
+	outbox    outbox.TxPublisher
+	audit     audit.Recorder
+	sagaStore saga.InstanceStore
+	tx        *pgutil.TxRunner
 }
 
 func NewAuthorizeTransactionUseCase(
-	cards CardRepository,
-	auths AuthorizationRepository,
+	cards port.CardRepository,
+	auths port.AuthorizationRepository,
 	users *userclient.Client,
 	ledger *ledgerclient.Client,
 	fraudChecker *fraud.Checker,
-	outbox OutboxPublisher,
+	fraudRepo port.FraudDecisionRepository,
+	outboxPublisher outbox.TxPublisher,
+	auditRecorder audit.Recorder,
 	sagaStore saga.InstanceStore,
+	tx *pgutil.TxRunner,
 ) *AuthorizeTransactionUseCase {
 	return &AuthorizeTransactionUseCase{
 		cards:     cards,
@@ -68,8 +68,11 @@ func NewAuthorizeTransactionUseCase(
 		users:     users,
 		ledger:    ledger,
 		fraud:     fraudChecker,
-		outbox:    outbox,
+		fraudRepo: fraudRepo,
+		outbox:    outboxPublisher,
+		audit:     auditRecorder,
 		sagaStore: sagaStore,
+		tx:        tx,
 	}
 }
 
@@ -109,28 +112,39 @@ func (uc *AuthorizeTransactionUseCase) Execute(ctx context.Context, in Authorize
 	}
 
 	authID := uuid.NewString()
-	if err := uc.auths.Create(ctx, domain.Authorization{
-		ID:             authID,
-		CardID:         in.CardID,
-		UserID:         card.UserID,
-		IdempotencyKey: in.IdempotencyKey,
-		MerchantName:   in.MerchantName,
-		Amount:         in.Amount,
-		Currency:       in.Currency,
-		Status:         domain.AuthStatusAuthorized,
+	if err := uc.tx.Run(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if err := uc.auths.WithTx(tx).Create(ctx, domain.Authorization{
+			ID:             authID,
+			CardID:         in.CardID,
+			UserID:         card.UserID,
+			IdempotencyKey: in.IdempotencyKey,
+			MerchantName:   in.MerchantName,
+			Amount:         in.Amount,
+			Currency:       in.Currency,
+			Status:         domain.AuthStatusAuthorized,
+		}); err != nil {
+			return err
+		}
+		return uc.audit.WithTx(tx).Record(ctx, audit.Entry{
+			EntityType: "authorization",
+			EntityID:   authID,
+			Action:     "created",
+			ToStatus:   string(domain.AuthStatusAuthorized),
+			Metadata:   map[string]any{"amount": in.Amount, "currency": in.Currency, "card_id": in.CardID},
+		})
 	}); err != nil {
 		return AuthorizeTransactionOutput{}, err
 	}
 
 	state := saga.NewState(map[string]string{
-		"authorization_id":   authID,
-		"card_id":            in.CardID,
-		"user_id":            card.UserID,
-		"ledger_account_id":  wallet.LedgerAccountID,
-		"amount":             in.Amount,
-		"currency":           in.Currency,
-		"merchant_name":      in.MerchantName,
-		"idempotency_key":    in.IdempotencyKey,
+		"authorization_id":  authID,
+		"card_id":           in.CardID,
+		"user_id":           card.UserID,
+		"ledger_account_id": wallet.LedgerAccountID,
+		"amount":            in.Amount,
+		"currency":          in.Currency,
+		"merchant_name":     in.MerchantName,
+		"idempotency_key":   in.IdempotencyKey,
 	})
 
 	orchestrator := saga.New("card_authorization", uc.steps(), uc.sagaStore)
@@ -139,7 +153,21 @@ func (uc *AuthorizeTransactionUseCase) Execute(ctx context.Context, in Authorize
 		if biz, ok := err.(*saga.BusinessError); ok {
 			reason = biz.Code
 		}
-		_ = uc.auths.MarkFailed(ctx, authID, reason)
+		if txErr := uc.tx.Run(ctx, func(ctx context.Context, tx pgx.Tx) error {
+			if err := uc.auths.WithTx(tx).MarkFailed(ctx, authID, reason); err != nil {
+				return err
+			}
+			return uc.audit.WithTx(tx).Record(ctx, audit.Entry{
+				EntityType: "authorization",
+				EntityID:   authID,
+				Action:     "mark_failed",
+				FromStatus: string(domain.AuthStatusAuthorized),
+				ToStatus:   "declined",
+				Metadata:   map[string]any{"reason": reason},
+			})
+		}); txErr != nil {
+			return AuthorizeTransactionOutput{}, txErr
+		}
 		auth, getErr := uc.auths.GetByID(ctx, authID)
 		if getErr != nil {
 			return AuthorizeTransactionOutput{}, getErr
@@ -147,15 +175,31 @@ func (uc *AuthorizeTransactionUseCase) Execute(ctx context.Context, in Authorize
 		return AuthorizeTransactionOutput{Authorization: auth}, nil
 	}
 
-	_ = uc.auths.MarkHold(ctx, authID, state.Get("ledger_hold_id"))
-	_ = uc.outbox.Publish(ctx, events.CardAuthApproved{
+	approvedEvent := events.CardAuthApproved{
 		AuthorizationID: authID,
 		CardID:          in.CardID,
 		UserID:          card.UserID,
 		Amount:          in.Amount,
 		Currency:        in.Currency,
 		MerchantName:    in.MerchantName,
-	})
+	}
+	if err := uc.tx.Run(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if err := uc.auths.WithTx(tx).MarkHold(ctx, authID, state.Get("ledger_hold_id")); err != nil {
+			return err
+		}
+		if err := uc.audit.WithTx(tx).Record(ctx, audit.Entry{
+			EntityType: "authorization",
+			EntityID:   authID,
+			Action:     "mark_hold",
+			ToStatus:   string(domain.AuthStatusAuthorized),
+			Metadata:   map[string]any{"ledger_hold_id": state.Get("ledger_hold_id")},
+		}); err != nil {
+			return err
+		}
+		return uc.outbox.WithTx(tx).Publish(ctx, approvedEvent)
+	}); err != nil {
+		return AuthorizeTransactionOutput{}, err
+	}
 
 	auth, err := uc.auths.GetByID(ctx, authID)
 	if err != nil {
@@ -179,6 +223,12 @@ func (uc *AuthorizeTransactionUseCase) steps() []saga.Step {
 				)
 				if err != nil {
 					return err
+				}
+				if uc.fraudRepo != nil {
+					if recErr := uc.fraudRepo.Record(ctx, "authorization", state.Get("authorization_id"), state.Get("user_id"),
+						"card_auth", state.Get("amount"), state.Get("currency"), result); recErr != nil {
+						return fmt.Errorf("record fraud decision: %w", recErr)
+					}
 				}
 				if result.Decision == fraud.DecisionDeny {
 					return saga.NewBusinessError("fraud_denied", result.ReasonCode)

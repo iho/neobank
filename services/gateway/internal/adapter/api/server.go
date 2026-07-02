@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/iho/neobank/pkg/auth"
 	"github.com/iho/neobank/services/gateway/internal/client"
 	"github.com/iho/neobank/services/gateway/internal/gen/api"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 type Server struct {
@@ -17,6 +17,7 @@ type Server struct {
 	payments      *client.PaymentClient
 	cards         *client.CardClient
 	notifications *client.NotificationClient
+	allowDevAuth  bool
 }
 
 func NewServer(
@@ -25,8 +26,16 @@ func NewServer(
 	payments *client.PaymentClient,
 	cards *client.CardClient,
 	notifications *client.NotificationClient,
+	allowDevAuth bool,
 ) *Server {
-	return &Server{jwt: jwtAuth, users: users, payments: payments, cards: cards, notifications: notifications}
+	return &Server{
+		jwt:           jwtAuth,
+		users:         users,
+		payments:      payments,
+		cards:         cards,
+		notifications: notifications,
+		allowDevAuth:  allowDevAuth,
+	}
 }
 
 func (s *Server) GetHealth(_ context.Context, _ api.GetHealthRequestObject) (api.GetHealthResponseObject, error) {
@@ -637,8 +646,12 @@ func toCardView(c client.CardView) api.Card {
 }
 
 func (s *Server) resolveUserID(authHeader, xUserID *string) string {
-	if xUserID != nil && *xUserID != "" {
-		return *xUserID
+	// The X-User-Id bypass and legacy access.<user-id> token both skip real
+	// JWT validation and must never be reachable outside local development.
+	if s.allowDevAuth {
+		if xUserID != nil && *xUserID != "" {
+			return *xUserID
+		}
 	}
 	if authHeader == nil {
 		return ""
@@ -652,7 +665,7 @@ func (s *Server) resolveUserID(authHeader, xUserID *string) string {
 		return ""
 	}
 
-	if strings.HasPrefix(token, "access.") {
+	if s.allowDevAuth && strings.HasPrefix(token, "access.") {
 		parts := strings.Split(token, ".")
 		if len(parts) >= 2 {
 			return parts[1]

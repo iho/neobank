@@ -16,6 +16,8 @@ import (
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
 	"github.com/iho/neobank/pkg/outbox"
+	"github.com/iho/neobank/pkg/pgutil"
+	"github.com/iho/neobank/pkg/reqctx"
 	"github.com/iho/neobank/pkg/userclient"
 	apiadapter "github.com/iho/neobank/services/payment/internal/adapter/api"
 	sqlcrepo "github.com/iho/neobank/services/payment/internal/adapter/sqlc"
@@ -51,11 +53,14 @@ func main() {
 	queries := sqlc.New(pool)
 	transferRepo := sqlcrepo.NewTransferRepository(queries)
 	outboxRepo := sqlcrepo.NewOutboxRepository(queries)
+	auditRepo := sqlcrepo.NewAuditRepository(queries)
+	fraudRepo := sqlcrepo.NewFraudDecisionRepository(queries)
 	sagaStore := sqlcrepo.NewSagaStore(queries)
 
 	users := userclient.New(cfg.UserURL)
 	fraudChecker := fraud.NewChecker()
-	p2pUC := usecase.NewP2PTransferUseCase(transferRepo, users, ledger, fraudChecker, outboxRepo, sagaStore)
+	txRunner := pgutil.NewTxRunner(pool)
+	p2pUC := usecase.NewP2PTransferUseCase(transferRepo, users, ledger, fraudChecker, fraudRepo, outboxRepo, auditRepo, sagaStore, txRunner)
 
 	strictServer := apiadapter.NewServer(p2pUC)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
@@ -74,6 +79,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	r.Use(reqctx.Middleware)
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
 	genapi.HandlerFromMux(strictHandler, r)
 

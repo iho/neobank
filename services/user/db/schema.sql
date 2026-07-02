@@ -41,7 +41,10 @@ CREATE TABLE "user".outbox_events (
     aggregate_type  TEXT NOT NULL,
     aggregate_id    TEXT NOT NULL,
     event_type      TEXT NOT NULL,
+    event_version   INT NOT NULL DEFAULT 1,
     payload         JSONB NOT NULL,
+    correlation_id  TEXT,
+    causation_id    TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     published_at    TIMESTAMPTZ
 );
@@ -51,8 +54,26 @@ CREATE TABLE "user".saga_instances (
     saga_type       TEXT NOT NULL,
     idempotency_key TEXT NOT NULL UNIQUE,
     status          TEXT NOT NULL DEFAULT 'running',
-    completed_steps JSONB NOT NULL DEFAULT '{}',
+    current_step    TEXT NOT NULL DEFAULT '',
     context         JSONB NOT NULL DEFAULT '{}',
+    completed_steps JSONB NOT NULL DEFAULT '{}',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Append-only lifecycle trail for KYC decisions and wallet provisioning.
+CREATE TABLE "user".audit_log (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    entity_type     TEXT NOT NULL,
+    entity_id       TEXT NOT NULL,
+    action          TEXT NOT NULL,
+    from_status     TEXT,
+    to_status       TEXT,
+    actor           TEXT NOT NULL DEFAULT 'system',
+    correlation_id  TEXT,
+    metadata        JSONB NOT NULL DEFAULT '{}',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_user_audit_log_entity
+    ON "user".audit_log (entity_type, entity_id, created_at);

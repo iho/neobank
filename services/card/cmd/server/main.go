@@ -16,6 +16,8 @@ import (
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
 	"github.com/iho/neobank/pkg/outbox"
+	"github.com/iho/neobank/pkg/pgutil"
+	"github.com/iho/neobank/pkg/reqctx"
 	"github.com/iho/neobank/pkg/userclient"
 	apiadapter "github.com/iho/neobank/services/card/internal/adapter/api"
 	"github.com/iho/neobank/services/card/internal/adapter/processor"
@@ -56,17 +58,20 @@ func main() {
 	cardRepo := sqlcrepo.NewCardRepository(queries)
 	authRepo := sqlcrepo.NewAuthorizationRepository(queries)
 	outboxRepo := sqlcrepo.NewOutboxRepository(queries)
+	auditRepo := sqlcrepo.NewAuditRepository(queries)
+	fraudRepo := sqlcrepo.NewFraudDecisionRepository(queries)
 	sagaStore := sqlcrepo.NewSagaStore(queries)
 
 	users := userclient.New(cfg.UserURL)
 	proc := processor.NewMock()
 	fraudChecker := fraud.NewChecker()
 
-	issueUC := usecase.NewIssueCardUseCase(cardRepo, users, proc, fraudChecker, outboxRepo, sagaStore)
-	freezeUC := usecase.NewFreezeCardUseCase(cardRepo, outboxRepo)
-	unfreezeUC := usecase.NewUnfreezeCardUseCase(cardRepo, outboxRepo)
-	authorizeUC := usecase.NewAuthorizeTransactionUseCase(cardRepo, authRepo, users, ledger, fraudChecker, outboxRepo, sagaStore)
-	captureUC := usecase.NewCaptureAuthorizationUseCase(authRepo, ledger, outboxRepo, cfg.SettlementLedgerAcctID)
+	txRunner := pgutil.NewTxRunner(pool)
+	issueUC := usecase.NewIssueCardUseCase(cardRepo, users, proc, fraudChecker, fraudRepo, outboxRepo, auditRepo, sagaStore, txRunner)
+	freezeUC := usecase.NewFreezeCardUseCase(cardRepo, outboxRepo, auditRepo, txRunner)
+	unfreezeUC := usecase.NewUnfreezeCardUseCase(cardRepo, outboxRepo, auditRepo, txRunner)
+	authorizeUC := usecase.NewAuthorizeTransactionUseCase(cardRepo, authRepo, users, ledger, fraudChecker, fraudRepo, outboxRepo, auditRepo, sagaStore, txRunner)
+	captureUC := usecase.NewCaptureAuthorizationUseCase(authRepo, ledger, outboxRepo, auditRepo, cfg.SettlementLedgerAcctID, txRunner)
 	listAuthsUC := usecase.NewListAuthorizationsUseCase(authRepo)
 
 	strictServer := apiadapter.NewServer(issueUC, freezeUC, unfreezeUC, authorizeUC, captureUC, listAuthsUC)
@@ -86,6 +91,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	r.Use(reqctx.Middleware)
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
 	genapi.HandlerFromMux(strictHandler, r)
 

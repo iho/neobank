@@ -386,6 +386,10 @@ components:
           default: USD
         merchant_name:
           type: string
+        merchant_category_code:
+          type: string
+          minLength: 4
+          maxLength: 4
         channel:
           type: string
           enum: [pos, online]
@@ -404,6 +408,8 @@ components:
           type: string
           format: uuid
         merchant_name:
+          type: string
+        merchant_category_code:
           type: string
         amount:
           type: string

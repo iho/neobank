@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -190,6 +191,22 @@ type ProvisionWalletResponse struct {
 	WalletId        openapi_types.UUID `json:"wallet_id"`
 }
 
+// ReferralInvite defines model for ReferralInvite.
+type ReferralInvite struct {
+	AcceptedAt    *time.Time          `json:"accepted_at,omitempty"`
+	CreatedAt     time.Time           `json:"created_at"`
+	Id            openapi_types.UUID  `json:"id"`
+	InviteCode    string              `json:"invite_code"`
+	InviteeUserId *openapi_types.UUID `json:"invitee_user_id,omitempty"`
+	InviterUserId openapi_types.UUID  `json:"inviter_user_id"`
+	Status        string              `json:"status"`
+}
+
+// ReferralInviteList defines model for ReferralInviteList.
+type ReferralInviteList struct {
+	Invites []ReferralInvite `json:"invites"`
+}
+
 // RefreshTokenRequest defines model for RefreshTokenRequest.
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
@@ -206,9 +223,10 @@ type RegisterDeviceTokenRequestPlatform string
 
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
-	Email    openapi_types.Email `json:"email"`
-	Password string              `json:"password"`
-	Phone    *string             `json:"phone,omitempty"`
+	Email      openapi_types.Email `json:"email"`
+	InviteCode *string             `json:"invite_code,omitempty"`
+	Password   string              `json:"password"`
+	Phone      *string             `json:"phone,omitempty"`
 }
 
 // RegisterResponse defines model for RegisterResponse.
@@ -269,6 +287,11 @@ type WalletBalance struct {
 	EncumberedBalance *string            `json:"encumbered_balance,omitempty"`
 	LedgerAccountId   *string            `json:"ledger_account_id,omitempty"`
 	WalletId          openapi_types.UUID `json:"wallet_id"`
+}
+
+// WalletBalanceList defines model for WalletBalanceList.
+type WalletBalanceList struct {
+	Wallets []WalletBalance `json:"wallets"`
 }
 
 // WalletTransaction defines model for WalletTransaction.
@@ -339,6 +362,18 @@ type GetWalletParams struct {
 	Currency *string            `form:"currency,omitempty" json:"currency,omitempty"`
 }
 
+// ListReferralInvitesParams defines parameters for ListReferralInvites.
+type ListReferralInvitesParams struct {
+	Limit   *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	XUserId XUserId `json:"X-User-Id"`
+}
+
+// CreateReferralInviteParams defines parameters for CreateReferralInvite.
+type CreateReferralInviteParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+	XUserId        XUserId        `json:"X-User-Id"`
+}
+
 // SubmitKYCParams defines parameters for SubmitKYC.
 type SubmitKYCParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
@@ -375,6 +410,19 @@ type DeletePayeeParams struct {
 type ListWalletTransactionsParams struct {
 	Limit   *int    `form:"limit,omitempty" json:"limit,omitempty"`
 	Cursor  *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+	XUserId XUserId `json:"X-User-Id"`
+}
+
+// ExportWalletTransactionsParams defines parameters for ExportWalletTransactions.
+type ExportWalletTransactionsParams struct {
+	Format  *string            `form:"format,omitempty" json:"format,omitempty"`
+	From    openapi_types.Date `form:"from" json:"from"`
+	To      openapi_types.Date `form:"to" json:"to"`
+	XUserId XUserId            `json:"X-User-Id"`
+}
+
+// ListWalletsParams defines parameters for ListWallets.
+type ListWalletsParams struct {
 	XUserId XUserId `json:"X-User-Id"`
 }
 
@@ -480,6 +528,12 @@ type ServerInterface interface {
 	// (GET /api/v1/internal/wallets)
 	GetWallet(w http.ResponseWriter, r *http.Request, params GetWalletParams)
 
+	// (GET /api/v1/invites)
+	ListReferralInvites(w http.ResponseWriter, r *http.Request, params ListReferralInvitesParams)
+
+	// (POST /api/v1/invites)
+	CreateReferralInvite(w http.ResponseWriter, r *http.Request, params CreateReferralInviteParams)
+
 	// (POST /api/v1/kyc)
 	SubmitKYC(w http.ResponseWriter, r *http.Request, params SubmitKYCParams)
 
@@ -500,6 +554,12 @@ type ServerInterface interface {
 
 	// (GET /api/v1/wallet/transactions)
 	ListWalletTransactions(w http.ResponseWriter, r *http.Request, params ListWalletTransactionsParams)
+
+	// (GET /api/v1/wallet/transactions/export)
+	ExportWalletTransactions(w http.ResponseWriter, r *http.Request, params ExportWalletTransactionsParams)
+
+	// (GET /api/v1/wallets)
+	ListWallets(w http.ResponseWriter, r *http.Request, params ListWalletsParams)
 
 	// (POST /api/v1/wallets)
 	ProvisionWallet(w http.ResponseWriter, r *http.Request, params ProvisionWalletParams)
@@ -598,6 +658,16 @@ func (_ Unimplemented) GetWallet(w http.ResponseWriter, r *http.Request, params 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (GET /api/v1/invites)
+func (_ Unimplemented) ListReferralInvites(w http.ResponseWriter, r *http.Request, params ListReferralInvitesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /api/v1/invites)
+func (_ Unimplemented) CreateReferralInvite(w http.ResponseWriter, r *http.Request, params CreateReferralInviteParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (POST /api/v1/kyc)
 func (_ Unimplemented) SubmitKYC(w http.ResponseWriter, r *http.Request, params SubmitKYCParams) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -630,6 +700,16 @@ func (_ Unimplemented) DeletePayee(w http.ResponseWriter, r *http.Request, id op
 
 // (GET /api/v1/wallet/transactions)
 func (_ Unimplemented) ListWalletTransactions(w http.ResponseWriter, r *http.Request, params ListWalletTransactionsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /api/v1/wallet/transactions/export)
+func (_ Unimplemented) ExportWalletTransactions(w http.ResponseWriter, r *http.Request, params ExportWalletTransactionsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /api/v1/wallets)
+func (_ Unimplemented) ListWallets(w http.ResponseWriter, r *http.Request, params ListWalletsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1233,6 +1313,132 @@ func (siw *ServerInterfaceWrapper) GetWallet(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
+// ListReferralInvites operation middleware
+func (siw *ServerInterfaceWrapper) ListReferralInvites(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListReferralInvitesParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListReferralInvites(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateReferralInvite operation middleware
+func (siw *ServerInterfaceWrapper) CreateReferralInvite(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateReferralInviteParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateReferralInvite(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // SubmitKYC operation middleware
 func (siw *ServerInterfaceWrapper) SubmitKYC(w http.ResponseWriter, r *http.Request) {
 
@@ -1619,6 +1825,135 @@ func (siw *ServerInterfaceWrapper) ListWalletTransactions(w http.ResponseWriter,
 	handler.ServeHTTP(w, r)
 }
 
+// ExportWalletTransactions operation middleware
+func (siw *ServerInterfaceWrapper) ExportWalletTransactions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ExportWalletTransactionsParams
+
+	// ------------- Optional query parameter "format" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "format", r.URL.Query(), &params.Format, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "format"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "format", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ExportWalletTransactions(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListWallets operation middleware
+func (siw *ServerInterfaceWrapper) ListWallets(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListWalletsParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWallets(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ProvisionWallet operation middleware
 func (siw *ServerInterfaceWrapper) ProvisionWallet(w http.ResponseWriter, r *http.Request) {
 
@@ -1989,6 +2324,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/api/v1/internal/wallets", wrapper.GetWallet)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/invites", wrapper.ListReferralInvites)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/invites", wrapper.CreateReferralInvite)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/kyc", wrapper.SubmitKYC)
 	})
 	r.Group(func(r chi.Router) {
@@ -2008,6 +2349,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/wallet/transactions", wrapper.ListWalletTransactions)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/wallet/transactions/export", wrapper.ExportWalletTransactions)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/wallets", wrapper.ListWallets)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/wallets", wrapper.ProvisionWallet)
@@ -2597,6 +2944,64 @@ func (response GetWallet404JSONResponse) VisitGetWalletResponse(w http.ResponseW
 	return err
 }
 
+type ListReferralInvitesRequestObject struct {
+	Params ListReferralInvitesParams
+}
+
+type ListReferralInvitesResponseObject interface {
+	VisitListReferralInvitesResponse(w http.ResponseWriter) error
+}
+
+type ListReferralInvites200JSONResponse ReferralInviteList
+
+func (response ListReferralInvites200JSONResponse) VisitListReferralInvitesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateReferralInviteRequestObject struct {
+	Params CreateReferralInviteParams
+}
+
+type CreateReferralInviteResponseObject interface {
+	VisitCreateReferralInviteResponse(w http.ResponseWriter) error
+}
+
+type CreateReferralInvite201JSONResponse ReferralInvite
+
+func (response CreateReferralInvite201JSONResponse) VisitCreateReferralInviteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateReferralInvite400JSONResponse ErrorResponse
+
+func (response CreateReferralInvite400JSONResponse) VisitCreateReferralInviteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type SubmitKYCRequestObject struct {
 	Params SubmitKYCParams
 	Body   *SubmitKYCJSONRequestBody
@@ -2804,6 +3209,70 @@ func (response ListWalletTransactions200JSONResponse) VisitListWalletTransaction
 	return err
 }
 
+type ExportWalletTransactionsRequestObject struct {
+	Params ExportWalletTransactionsParams
+}
+
+type ExportWalletTransactionsResponseObject interface {
+	VisitExportWalletTransactionsResponse(w http.ResponseWriter) error
+}
+
+type ExportWalletTransactions200TextcsvResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response ExportWalletTransactions200TextcsvResponse) VisitExportWalletTransactionsResponse(w http.ResponseWriter) error {
+
+	w.Header().Set("Content-Type", "text/csv")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type ExportWalletTransactions400JSONResponse ErrorResponse
+
+func (response ExportWalletTransactions400JSONResponse) VisitExportWalletTransactionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWalletsRequestObject struct {
+	Params ListWalletsParams
+}
+
+type ListWalletsResponseObject interface {
+	VisitListWalletsResponse(w http.ResponseWriter) error
+}
+
+type ListWallets200JSONResponse WalletBalanceList
+
+func (response ListWallets200JSONResponse) VisitListWalletsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ProvisionWalletRequestObject struct {
 	Params ProvisionWalletParams
 	Body   *ProvisionWalletJSONRequestBody
@@ -3000,6 +3469,12 @@ type StrictServerInterface interface {
 	// (GET /api/v1/internal/wallets)
 	GetWallet(ctx context.Context, request GetWalletRequestObject) (GetWalletResponseObject, error)
 
+	// (GET /api/v1/invites)
+	ListReferralInvites(ctx context.Context, request ListReferralInvitesRequestObject) (ListReferralInvitesResponseObject, error)
+
+	// (POST /api/v1/invites)
+	CreateReferralInvite(ctx context.Context, request CreateReferralInviteRequestObject) (CreateReferralInviteResponseObject, error)
+
 	// (POST /api/v1/kyc)
 	SubmitKYC(ctx context.Context, request SubmitKYCRequestObject) (SubmitKYCResponseObject, error)
 
@@ -3020,6 +3495,12 @@ type StrictServerInterface interface {
 
 	// (GET /api/v1/wallet/transactions)
 	ListWalletTransactions(ctx context.Context, request ListWalletTransactionsRequestObject) (ListWalletTransactionsResponseObject, error)
+
+	// (GET /api/v1/wallet/transactions/export)
+	ExportWalletTransactions(ctx context.Context, request ExportWalletTransactionsRequestObject) (ExportWalletTransactionsResponseObject, error)
+
+	// (GET /api/v1/wallets)
+	ListWallets(ctx context.Context, request ListWalletsRequestObject) (ListWalletsResponseObject, error)
 
 	// (POST /api/v1/wallets)
 	ProvisionWallet(ctx context.Context, request ProvisionWalletRequestObject) (ProvisionWalletResponseObject, error)
@@ -3523,6 +4004,58 @@ func (sh *strictHandler) GetWallet(w http.ResponseWriter, r *http.Request, param
 	}
 }
 
+// ListReferralInvites operation middleware
+func (sh *strictHandler) ListReferralInvites(w http.ResponseWriter, r *http.Request, params ListReferralInvitesParams) {
+	var request ListReferralInvitesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListReferralInvites(ctx, request.(ListReferralInvitesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListReferralInvites")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListReferralInvitesResponseObject); ok {
+		if err := validResponse.VisitListReferralInvitesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateReferralInvite operation middleware
+func (sh *strictHandler) CreateReferralInvite(w http.ResponseWriter, r *http.Request, params CreateReferralInviteParams) {
+	var request CreateReferralInviteRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateReferralInvite(ctx, request.(CreateReferralInviteRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateReferralInvite")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateReferralInviteResponseObject); ok {
+		if err := validResponse.VisitCreateReferralInviteResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // SubmitKYC operation middleware
 func (sh *strictHandler) SubmitKYC(w http.ResponseWriter, r *http.Request, params SubmitKYCParams) {
 	var request SubmitKYCRequestObject
@@ -3713,6 +4246,58 @@ func (sh *strictHandler) ListWalletTransactions(w http.ResponseWriter, r *http.R
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListWalletTransactionsResponseObject); ok {
 		if err := validResponse.VisitListWalletTransactionsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ExportWalletTransactions operation middleware
+func (sh *strictHandler) ExportWalletTransactions(w http.ResponseWriter, r *http.Request, params ExportWalletTransactionsParams) {
+	var request ExportWalletTransactionsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ExportWalletTransactions(ctx, request.(ExportWalletTransactionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ExportWalletTransactions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ExportWalletTransactionsResponseObject); ok {
+		if err := validResponse.VisitExportWalletTransactionsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListWallets operation middleware
+func (sh *strictHandler) ListWallets(w http.ResponseWriter, r *http.Request, params ListWalletsParams) {
+	var request ListWalletsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListWallets(ctx, request.(ListWalletsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListWallets")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListWalletsResponseObject); ok {
+		if err := validResponse.VisitListWalletsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

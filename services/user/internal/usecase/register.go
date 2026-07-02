@@ -15,6 +15,7 @@ type RegisterInput struct {
 	Email          string
 	Phone          string
 	Password       string
+	InviteCode     string
 	IdempotencyKey string
 }
 
@@ -35,12 +36,13 @@ type TokenIssuer interface {
 }
 
 type RegisterUseCase struct {
-	users  UserRepository
-	tokens TokenIssuer
+	users        UserRepository
+	tokens       TokenIssuer
+	acceptInvite *AcceptReferralInviteUseCase
 }
 
-func NewRegisterUseCase(users UserRepository, tokens TokenIssuer) *RegisterUseCase {
-	return &RegisterUseCase{users: users, tokens: tokens}
+func NewRegisterUseCase(users UserRepository, tokens TokenIssuer, acceptInvite *AcceptReferralInviteUseCase) *RegisterUseCase {
+	return &RegisterUseCase{users: users, tokens: tokens, acceptInvite: acceptInvite}
 }
 
 func (uc *RegisterUseCase) Execute(ctx context.Context, in RegisterInput) (RegisterOutput, error) {
@@ -72,6 +74,10 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, in RegisterInput) (Regis
 
 	if err := uc.users.Create(ctx, user); err != nil {
 		return RegisterOutput{}, err
+	}
+
+	if in.InviteCode != "" && uc.acceptInvite != nil {
+		_ = uc.acceptInvite.Execute(ctx, in.InviteCode, userID)
 	}
 
 	access, refresh, err := uc.tokens.Issue(userID)

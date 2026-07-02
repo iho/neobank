@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/iho/neobank/pkg/events"
+	"github.com/iho/neobank/pkg/mcc"
 	"github.com/iho/neobank/services/notification/internal/domain"
 )
 
@@ -195,12 +196,13 @@ func (uc *IngestEventUseCase) handleCardAuthApproved(ctx context.Context, envelo
 	if merchant == "" {
 		merchant = "a merchant"
 	}
+	category := mcc.CategoryLabel(payload.MerchantCategoryCode)
 	return uc.createNotification(ctx, domain.Notification{
 		ID:        uuid.NewString(),
 		UserID:    payload.UserID,
 		EventType: envelope.EventType,
 		Title:     "Card purchase authorized",
-		Body:      fmt.Sprintf("%s %s pending at %s.", payload.Amount, payload.Currency, merchant),
+		Body:      fmt.Sprintf("%s %s pending at %s (%s).", payload.Amount, payload.Currency, merchant, category),
 	}, envelope.EventID)
 }
 

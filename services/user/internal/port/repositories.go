@@ -12,6 +12,7 @@ type WalletRepository interface {
 	Create(ctx context.Context, wallet domain.Wallet) error
 	DeleteByID(ctx context.Context, walletID string) error
 	GetByUserAndCurrency(ctx context.Context, userID, currency string) (*domain.Wallet, error)
+	ListByUser(ctx context.Context, userID string) ([]domain.Wallet, error)
 	WithTx(tx pgx.Tx) WalletRepository
 }
 

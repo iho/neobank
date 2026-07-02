@@ -75,3 +75,44 @@ func (q *Queries) GetWalletByUserAndCurrency(ctx context.Context, arg GetWalletB
 	)
 	return i, err
 }
+
+const listWalletsByUserID = `-- name: ListWalletsByUserID :many
+SELECT id, user_id, currency, ledger_account_id, status
+FROM "user".wallets
+WHERE user_id = $1
+ORDER BY currency
+`
+
+type ListWalletsByUserIDRow struct {
+	ID              uuid.UUID
+	UserID          uuid.UUID
+	Currency        string
+	LedgerAccountID string
+	Status          string
+}
+
+func (q *Queries) ListWalletsByUserID(ctx context.Context, userID uuid.UUID) ([]ListWalletsByUserIDRow, error) {
+	rows, err := q.db.Query(ctx, listWalletsByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListWalletsByUserIDRow{}
+	for rows.Next() {
+		var i ListWalletsByUserIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Currency,
+			&i.LedgerAccountID,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

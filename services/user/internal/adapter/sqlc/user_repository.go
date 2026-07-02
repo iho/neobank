@@ -187,6 +187,28 @@ func (r *WalletRepository) DeleteByID(ctx context.Context, walletID string) erro
 	return r.q.DeleteWalletByID(ctx, id)
 }
 
+func (r *WalletRepository) ListByUser(ctx context.Context, userID string) ([]domain.Wallet, error) {
+	uid, err := pgutil.ParseUUID(userID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.q.ListWalletsByUserID(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.Wallet, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.Wallet{
+			ID:              row.ID.String(),
+			UserID:          row.UserID.String(),
+			Currency:        row.Currency,
+			LedgerAccountID: row.LedgerAccountID,
+			Status:          row.Status,
+		})
+	}
+	return out, nil
+}
+
 func (r *WalletRepository) GetByUserAndCurrency(ctx context.Context, userID, currency string) (*domain.Wallet, error) {
 	uid, err := pgutil.ParseUUID(userID)
 	if err != nil {

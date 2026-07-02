@@ -121,6 +121,63 @@ func (q *Queries) ListWalletTransactionsByUser(ctx context.Context, arg ListWall
 	return items, nil
 }
 
+const listWalletTransactionsByUserInRange = `-- name: ListWalletTransactionsByUserInRange :many
+SELECT id, tx_type, amount, currency, direction, status, counterparty, memo, created_at
+FROM "user".wallet_transactions
+WHERE user_id = $1
+  AND created_at >= $2
+  AND created_at < $3
+ORDER BY created_at ASC, id ASC
+`
+
+type ListWalletTransactionsByUserInRangeParams struct {
+	UserID   uuid.UUID
+	FromDate pgtype.Timestamptz
+	ToDate   pgtype.Timestamptz
+}
+
+type ListWalletTransactionsByUserInRangeRow struct {
+	ID           string
+	TxType       string
+	Amount       string
+	Currency     string
+	Direction    string
+	Status       string
+	Counterparty pgtype.Text
+	Memo         pgtype.Text
+	CreatedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) ListWalletTransactionsByUserInRange(ctx context.Context, arg ListWalletTransactionsByUserInRangeParams) ([]ListWalletTransactionsByUserInRangeRow, error) {
+	rows, err := q.db.Query(ctx, listWalletTransactionsByUserInRange, arg.UserID, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListWalletTransactionsByUserInRangeRow{}
+	for rows.Next() {
+		var i ListWalletTransactionsByUserInRangeRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TxType,
+			&i.Amount,
+			&i.Currency,
+			&i.Direction,
+			&i.Status,
+			&i.Counterparty,
+			&i.Memo,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertWalletTransactionCapture = `-- name: UpsertWalletTransactionCapture :exec
 INSERT INTO "user".wallet_transactions (
     user_id, id, source_event_id, tx_type, amount, currency, direction, status,

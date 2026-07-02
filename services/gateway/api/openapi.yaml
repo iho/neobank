@@ -362,6 +362,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /v1/wallet/transactions/export:
+    get:
+      operationId: exportWalletTransactions
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/XUserId"
+        - name: format
+          in: query
+          schema:
+            type: string
+            default: csv
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: CSV export
+          content:
+            text/csv:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /v1/wallet/transactions:
     get:
       operationId: listWalletTransactions
@@ -440,7 +488,86 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /v1/invites:
+    get:
+      operationId: listReferralInvites
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/XUserId"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferralInviteList"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createReferralInvite
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/XUserId"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferralInvite"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /v1/wallets:
+    get:
+      operationId: listWallets
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/XUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletBalanceList"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       operationId: provisionWallet
       parameters:
@@ -1321,6 +1448,44 @@ components:
           type: string
         password:
           type: string
+        invite_code:
+          type: string
+    ReferralInvite:
+      type: object
+      required: [id, inviter_user_id, invite_code, status, created_at]
+      properties:
+        id:
+          type: string
+        inviter_user_id:
+          type: string
+        invite_code:
+          type: string
+        invitee_user_id:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        accepted_at:
+          type: string
+          format: date-time
+    ReferralInviteList:
+      type: object
+      required: [invites]
+      properties:
+        invites:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReferralInvite"
+    WalletBalanceList:
+      type: object
+      required: [wallets]
+      properties:
+        wallets:
+          type: array
+          items:
+            $ref: "#/components/schemas/WalletBalance"
     RegisterResponse:
       type: object
       required: [user_id, access_token, refresh_token]
@@ -1751,6 +1916,8 @@ components:
           type: string
         merchant_name:
           type: string
+        merchant_category_code:
+          type: string
         channel:
           type: string
           enum: [pos, online]
@@ -1765,6 +1932,8 @@ components:
         user_id:
           type: string
         merchant_name:
+          type: string
+        merchant_category_code:
           type: string
         amount:
           type: string

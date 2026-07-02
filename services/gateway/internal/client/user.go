@@ -25,9 +25,10 @@ func NewUserClient(baseURL string) *UserClient {
 }
 
 type RegisterRequest struct {
-	Email    string `json:"email"`
-	Phone    string `json:"phone"`
-	Password string `json:"password"`
+	Email      string `json:"email"`
+	Phone      string `json:"phone"`
+	Password   string `json:"password"`
+	InviteCode string `json:"invite_code,omitempty"`
 }
 
 type RegisterResponse struct {
@@ -625,6 +626,137 @@ func (c *UserClient) CloseAccount(ctx context.Context, userID, idempotencyKey st
 		return resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
 	}
 	return resp.StatusCode, nil
+}
+
+type WalletBalanceList struct {
+	Wallets []WalletBalance `json:"wallets"`
+}
+
+type ReferralInviteView struct {
+	ID            string `json:"id"`
+	InviterUserID string `json:"inviter_user_id"`
+	InviteCode    string `json:"invite_code"`
+	InviteeUserID string `json:"invitee_user_id,omitempty"`
+	Status        string `json:"status"`
+	CreatedAt     string `json:"created_at"`
+	AcceptedAt    string `json:"accepted_at,omitempty"`
+}
+
+type ReferralInviteList struct {
+	Invites []ReferralInviteView `json:"invites"`
+}
+
+func (c *UserClient) ExportWalletTransactions(ctx context.Context, userID, format string, from, to string) ([]byte, int, error) {
+	reqURL := fmt.Sprintf("%s/api/v1/wallet/transactions/export?format=%s&from=%s&to=%s",
+		c.baseURL, url.QueryEscape(format), url.QueryEscape(from), url.QueryEscape(to))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	return respBody, resp.StatusCode, nil
+}
+
+func (c *UserClient) ListWallets(ctx context.Context, userID string) (WalletBalanceList, int, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/wallets", nil)
+	if err != nil {
+		return WalletBalanceList{}, 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return WalletBalanceList{}, 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return WalletBalanceList{}, 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return WalletBalanceList{}, resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var out WalletBalanceList
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return WalletBalanceList{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
+}
+
+func (c *UserClient) CreateReferralInvite(ctx context.Context, userID, idempotencyKey string) (ReferralInviteView, int, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/invites", nil)
+	if err != nil {
+		return ReferralInviteView{}, 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+	if idempotencyKey != "" {
+		httpReq.Header.Set("Idempotency-Key", idempotencyKey)
+	}
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return ReferralInviteView{}, 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ReferralInviteView{}, 0, err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return ReferralInviteView{}, resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var out ReferralInviteView
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return ReferralInviteView{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
+}
+
+func (c *UserClient) ListReferralInvites(ctx context.Context, userID string, limit int) (ReferralInviteList, int, error) {
+	reqURL := fmt.Sprintf("%s/api/v1/invites?limit=%d", c.baseURL, limit)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return ReferralInviteList{}, 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return ReferralInviteList{}, 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ReferralInviteList{}, 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return ReferralInviteList{}, resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var out ReferralInviteList
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return ReferralInviteList{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
 }
 
 func (c *UserClient) DepositWallet(ctx context.Context, userID, idempotencyKey string, req DepositWalletRequest) (DepositWalletResponse, int, error) {

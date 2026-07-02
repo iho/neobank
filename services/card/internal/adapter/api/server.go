@@ -168,14 +168,19 @@ func (s *Server) AuthorizeTransaction(ctx context.Context, req api.AuthorizeTran
 	if req.Body.Channel != nil {
 		channel = string(*req.Body.Channel)
 	}
+	mcc := ""
+	if req.Body.MerchantCategoryCode != nil {
+		mcc = *req.Body.MerchantCategoryCode
+	}
 	out, err := s.authorize.Execute(ctx, usecase.AuthorizeTransactionInput{
-		UserID:         req.Params.XUserId.String(),
-		CardID:         req.Id.String(),
-		Amount:         req.Body.Amount,
-		Currency:       currency,
-		MerchantName:   merchant,
-		Channel:        channel,
-		IdempotencyKey: req.Params.IdempotencyKey,
+		UserID:               req.Params.XUserId.String(),
+		CardID:               req.Id.String(),
+		Amount:               req.Body.Amount,
+		Currency:             currency,
+		MerchantName:         merchant,
+		MerchantCategoryCode: mcc,
+		Channel:              channel,
+		IdempotencyKey:       req.Params.IdempotencyKey,
 	})
 	if err != nil {
 		if biz, ok := err.(*saga.BusinessError); ok {
@@ -280,6 +285,9 @@ func toAuthorization(a domain.Authorization) api.Authorization {
 	}
 	if a.MerchantName != "" {
 		out.MerchantName = &a.MerchantName
+	}
+	if a.MerchantCategoryCode != "" {
+		out.MerchantCategoryCode = &a.MerchantCategoryCode
 	}
 	if a.LedgerHoldID != "" {
 		out.LedgerHoldId = &a.LedgerHoldID

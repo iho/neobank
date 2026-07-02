@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -26,6 +27,10 @@ type Server struct {
 	getProfile        *usecase.GetProfileUseCase
 	walletBalance       *usecase.GetWalletBalanceUseCase
 	listWalletTx        *usecase.ListWalletTransactionsUseCase
+	exportWalletTx      *usecase.ExportWalletTransactionsUseCase
+	listWallets         *usecase.ListWalletsUseCase
+	createInvite        *usecase.CreateReferralInviteUseCase
+	listInvites         *usecase.ListReferralInvitesUseCase
 	projectWalletEvent  *usecase.ProjectWalletEventUseCase
 	provisionWallet     *usecase.ProvisionWalletUseCase
 	exportGDPR          *usecase.ExportGDPRUseCase
@@ -54,6 +59,10 @@ func NewServer(
 	getProfile *usecase.GetProfileUseCase,
 	walletBalance *usecase.GetWalletBalanceUseCase,
 	listWalletTx *usecase.ListWalletTransactionsUseCase,
+	exportWalletTx *usecase.ExportWalletTransactionsUseCase,
+	listWallets *usecase.ListWalletsUseCase,
+	createInvite *usecase.CreateReferralInviteUseCase,
+	listInvites *usecase.ListReferralInvitesUseCase,
 	projectWalletEvent *usecase.ProjectWalletEventUseCase,
 	provisionWallet *usecase.ProvisionWalletUseCase,
 	exportGDPR *usecase.ExportGDPRUseCase,
@@ -81,6 +90,10 @@ func NewServer(
 		getProfile:         getProfile,
 		walletBalance:      walletBalance,
 		listWalletTx:       listWalletTx,
+		exportWalletTx:     exportWalletTx,
+		listWallets:        listWallets,
+		createInvite:       createInvite,
+		listInvites:        listInvites,
 		projectWalletEvent: projectWalletEvent,
 		provisionWallet:    provisionWallet,
 		exportGDPR:         exportGDPR,
@@ -165,10 +178,15 @@ func (s *Server) Register(ctx context.Context, req api.RegisterRequestObject) (a
 	if req.Body.Phone != nil {
 		phone = *req.Body.Phone
 	}
+	inviteCode := ""
+	if req.Body.InviteCode != nil {
+		inviteCode = *req.Body.InviteCode
+	}
 	out, err := s.register.Execute(ctx, usecase.RegisterInput{
 		Email:          string(req.Body.Email),
 		Phone:          phone,
 		Password:       req.Body.Password,
+		InviteCode:     inviteCode,
 		IdempotencyKey: req.Params.IdempotencyKey,
 	})
 	if err != nil {
@@ -765,6 +783,86 @@ func (s *Server) ListInternalDeviceTokens(ctx context.Context, req api.ListInter
 	return api.ListInternalDeviceTokens200JSONResponse{DeviceTokens: views}, nil
 }
 
+func (s *Server) ExportWalletTransactions(ctx context.Context, req api.ExportWalletTransactionsRequestObject) (api.ExportWalletTransactionsResponseObject, error) {
+	format := "csv"
+	if req.Params.Format != nil {
+		format = *req.Params.Format
+	}
+	data, _, err := s.exportWalletTx.Execute(ctx, usecase.ExportWalletTransactionsInput{
+		UserID: req.Params.XUserId.String(),
+		From:   req.Params.From.Time,
+		To:     req.Params.To.Time,
+		Format: format,
+	})
+	if err != nil {
+		return api.ExportWalletTransactions400JSONResponse{Error: err.Error()}, nil
+	}
+	if err := s.recordPIIAccess(ctx, req.Params.XUserId.String(), audit.PIIResourceWalletTransactions, map[string]any{
+		"export": true,
+		"format": format,
+	}); err != nil {
+		return nil, err
+	}
+	return api.ExportWalletTransactions200TextcsvResponse{
+		Body:          bytes.NewReader(data),
+		ContentLength: int64(len(data)),
+	}, nil
+}
+
+func (s *Server) ListWallets(ctx context.Context, req api.ListWalletsRequestObject) (api.ListWalletsResponseObject, error) {
+	balances, err := s.listWallets.Execute(ctx, req.Params.XUserId.String())
+	if err != nil {
+		return nil, err
+	}
+	views := make([]api.WalletBalance, 0, len(balances))
+	for _, b := range balances {
+		walletID, _ := uuid.Parse(b.WalletID)
+		view := api.WalletBalance{
+			WalletId:         openapi_types.UUID(walletID),
+			Currency:         b.Currency,
+			Balance:          b.Balance,
+			AvailableBalance: b.AvailableBalance,
+		}
+		if b.LedgerAccountID != "" {
+			view.LedgerAccountId = &b.LedgerAccountID
+		}
+		if b.EncumberedBalance != "" {
+			view.EncumberedBalance = &b.EncumberedBalance
+		}
+		views = append(views, view)
+	}
+	if err := s.recordPIIAccess(ctx, req.Params.XUserId.String(), audit.PIIResourceWalletBalance, map[string]any{
+		"count": len(views),
+	}); err != nil {
+		return nil, err
+	}
+	return api.ListWallets200JSONResponse{Wallets: views}, nil
+}
+
+func (s *Server) CreateReferralInvite(ctx context.Context, req api.CreateReferralInviteRequestObject) (api.CreateReferralInviteResponseObject, error) {
+	invite, err := s.createInvite.Execute(ctx, req.Params.XUserId.String())
+	if err != nil {
+		return api.CreateReferralInvite400JSONResponse{Error: err.Error()}, nil
+	}
+	return api.CreateReferralInvite201JSONResponse(toReferralInvite(*invite)), nil
+}
+
+func (s *Server) ListReferralInvites(ctx context.Context, req api.ListReferralInvitesRequestObject) (api.ListReferralInvitesResponseObject, error) {
+	limit := 20
+	if req.Params.Limit != nil {
+		limit = *req.Params.Limit
+	}
+	invites, err := s.listInvites.Execute(ctx, req.Params.XUserId.String(), limit)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]api.ReferralInvite, 0, len(invites))
+	for _, inv := range invites {
+		views = append(views, toReferralInvite(inv))
+	}
+	return api.ListReferralInvites200JSONResponse{Invites: views}, nil
+}
+
 func (s *Server) CloseAccount(ctx context.Context, req api.CloseAccountRequestObject) (api.CloseAccountResponseObject, error) {
 	if err := s.closeAccount.Execute(ctx, req.Params.XUserId.String()); err != nil {
 		return api.CloseAccount400JSONResponse{Error: err.Error()}, nil
@@ -782,6 +880,28 @@ func toDeviceToken(t domain.DeviceToken) api.DeviceToken {
 		Token:     t.Token,
 		CreatedAt: t.CreatedAt.UTC(),
 	}
+}
+
+func toReferralInvite(inv usecase.ReferralInvite) api.ReferralInvite {
+	id, _ := uuid.Parse(inv.ID)
+	inviterID, _ := uuid.Parse(inv.InviterUserID)
+	out := api.ReferralInvite{
+		Id:            openapi_types.UUID(id),
+		InviterUserId: openapi_types.UUID(inviterID),
+		InviteCode:    inv.InviteCode,
+		Status:        inv.Status,
+		CreatedAt:     inv.CreatedAt.UTC(),
+	}
+	if inv.InviteeUserID != "" {
+		inviteeID, _ := uuid.Parse(inv.InviteeUserID)
+		uid := openapi_types.UUID(inviteeID)
+		out.InviteeUserId = &uid
+	}
+	if inv.AcceptedAt != nil {
+		acceptedAt := inv.AcceptedAt.UTC()
+		out.AcceptedAt = &acceptedAt
+	}
+	return out
 }
 
 func toPayee(p domain.SavedPayee) api.Payee {

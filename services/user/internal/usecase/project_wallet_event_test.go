@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/iho/neobank/pkg/events"
@@ -25,7 +26,11 @@ func (f *fakeWalletTxRepo) ApplyCapture(_ context.Context, _ walletprojection.Ca
 	return nil
 }
 
-func (f *fakeWalletTxRepo) ListByUser(_ context.Context, _ string, _ int) ([]domain.WalletTransaction, error) {
+func (f *fakeWalletTxRepo) ListByUser(_ context.Context, _ string, _ int, _ *time.Time, _ string) ([]domain.WalletTransaction, error) {
+	return nil, nil
+}
+
+func (f *fakeWalletTxRepo) ListByUserInRange(_ context.Context, _ string, _, _ time.Time) ([]domain.WalletTransaction, error) {
 	return nil, nil
 }
 

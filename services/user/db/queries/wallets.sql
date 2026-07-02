@@ -9,3 +9,9 @@ WHERE user_id = $1 AND currency = $2;
 
 -- name: DeleteWalletByID :exec
 DELETE FROM "user".wallets WHERE id = $1;
+
+-- name: ListWalletsByUserID :many
+SELECT id, user_id, currency, ledger_account_id, status
+FROM "user".wallets
+WHERE user_id = $1
+ORDER BY currency;

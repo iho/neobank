@@ -56,12 +56,13 @@ func (e CardUnfrozen) AggregateID() string   { return e.CardID }
 func (e CardUnfrozen) Version() int          { return 1 }
 
 type CardAuthApproved struct {
-	AuthorizationID string `json:"authorization_id"`
-	CardID          string `json:"card_id"`
-	UserID          string `json:"user_id"`
-	Amount          string `json:"amount"`
-	Currency        string `json:"currency"`
-	MerchantName    string `json:"merchant_name"`
+	AuthorizationID       string `json:"authorization_id"`
+	CardID                string `json:"card_id"`
+	UserID                string `json:"user_id"`
+	Amount                string `json:"amount"`
+	Currency              string `json:"currency"`
+	MerchantName          string `json:"merchant_name"`
+	MerchantCategoryCode  string `json:"merchant_category_code,omitempty"`
 }
 
 func (e CardAuthApproved) EventType() string     { return TypeCardAuthApproved }

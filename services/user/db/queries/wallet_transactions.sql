@@ -34,3 +34,11 @@ WHERE user_id = @user_id
   )
 ORDER BY created_at DESC, id DESC
 LIMIT @limit_val;
+
+-- name: ListWalletTransactionsByUserInRange :many
+SELECT id, tx_type, amount, currency, direction, status, counterparty, memo, created_at
+FROM "user".wallet_transactions
+WHERE user_id = @user_id
+  AND created_at >= @from_date
+  AND created_at < @to_date
+ORDER BY created_at ASC, id ASC;

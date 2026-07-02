@@ -183,18 +183,20 @@ func (c *CardClient) UpdateCardControls(ctx context.Context, userID, cardID stri
 }
 
 type AuthorizeRequest struct {
-	Amount       string `json:"amount"`
-	Currency     string `json:"currency,omitempty"`
-	MerchantName string `json:"merchant_name,omitempty"`
-	Channel      string `json:"channel,omitempty"`
+	Amount               string `json:"amount"`
+	Currency             string `json:"currency,omitempty"`
+	MerchantName         string `json:"merchant_name,omitempty"`
+	MerchantCategoryCode string `json:"merchant_category_code,omitempty"`
+	Channel              string `json:"channel,omitempty"`
 }
 
 type AuthorizationView struct {
-	ID               string `json:"id"`
-	CardID           string `json:"card_id"`
-	UserID           string `json:"user_id"`
-	MerchantName     string `json:"merchant_name,omitempty"`
-	Amount           string `json:"amount"`
+	ID                   string `json:"id"`
+	CardID               string `json:"card_id"`
+	UserID               string `json:"user_id"`
+	MerchantName         string `json:"merchant_name,omitempty"`
+	MerchantCategoryCode string `json:"merchant_category_code,omitempty"`
+	Amount               string `json:"amount"`
 	Currency         string `json:"currency"`
 	Status           string `json:"status"`
 	LedgerHoldID     string `json:"ledger_hold_id,omitempty"`

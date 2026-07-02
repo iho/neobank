@@ -97,7 +97,9 @@ func main() {
 	}()
 
 	tokenIssuer := auth.NewJWT(cfg.JWTSecret)
-	registerUC := usecase.NewRegisterUseCase(userRepo, tokenIssuer)
+	referralInviteRepo := sqlcrepo.NewReferralInviteRepository(queries)
+	acceptInviteUC := usecase.NewAcceptReferralInviteUseCase(referralInviteRepo)
+	registerUC := usecase.NewRegisterUseCase(userRepo, tokenIssuer, acceptInviteUC)
 	loginUC := usecase.NewLoginUseCase(userRepo, tokenIssuer)
 	refreshUC := usecase.NewRefreshTokenUseCase(tokenIssuer, userRepo)
 	txRunner := pgutil.NewTxRunner(pool)
@@ -108,6 +110,10 @@ func main() {
 	walletBalanceUC := usecase.NewGetWalletBalanceUseCase(walletRepo, ledgerAdapter)
 	projectWalletEventUC := usecase.NewProjectWalletEventUseCase(walletTxRepo, inboxRepo)
 	listWalletTxUC := usecase.NewListWalletTransactionsUseCase(walletTxRepo)
+	exportWalletTxUC := usecase.NewExportWalletTransactionsUseCase(walletTxRepo)
+	listWalletsUC := usecase.NewListWalletsUseCase(walletRepo, ledgerAdapter)
+	createInviteUC := usecase.NewCreateReferralInviteUseCase(referralInviteRepo)
+	listInvitesUC := usecase.NewListReferralInvitesUseCase(referralInviteRepo)
 	exportGDPRUC := usecase.NewExportGDPRUseCase(userRepo, gdprRepo)
 	maskGDPRUC := usecase.NewMaskGDPRUseCase(userRepo, gdprRepo, auditRepo, txRunner)
 	depositRepo := sqlcrepo.NewDepositRepository(queries)
@@ -139,7 +145,7 @@ func main() {
 
 	strictServer := apiadapter.NewServer(
 		registerUC, loginUC, refreshUC, submitKYCUC, getKYCStatusUC, getProfileUC, walletBalanceUC,
-		listWalletTxUC, projectWalletEventUC,
+		listWalletTxUC, exportWalletTxUC, listWalletsUC, createInviteUC, listInvitesUC, projectWalletEventUC,
 		provisionWalletUC, exportGDPRUC, maskGDPRUC, depositWalletUC, changePasswordUC,
 		listPayeesUC, createPayeeUC, deletePayeeUC, upsertPayeeUC,
 		registerDeviceUC, deleteDeviceUC, listDeviceTokensUC, closeAccountUC,

@@ -43,14 +43,15 @@ func (r *AuthorizationRepository) Create(ctx context.Context, a domain.Authoriza
 		return err
 	}
 	return r.q.CreateAuthorization(ctx, sqlc.CreateAuthorizationParams{
-		ID:             id,
-		CardID:         cardID,
-		UserID:         userID,
-		IdempotencyKey: a.IdempotencyKey,
-		MerchantName:   pgutil.Text(a.MerchantName),
-		Amount:         amount,
-		Currency:       a.Currency,
-		Status:         string(a.Status),
+		ID:                   id,
+		CardID:               cardID,
+		UserID:               userID,
+		IdempotencyKey:       a.IdempotencyKey,
+		MerchantName:         pgutil.Text(a.MerchantName),
+		MerchantCategoryCode: pgutil.Text(a.MerchantCategoryCode),
+		Amount:               amount,
+		Currency:             a.Currency,
+		Status:               string(a.Status),
 	})
 }
 
@@ -149,7 +150,7 @@ func (r *AuthorizationRepository) MarkCaptured(ctx context.Context, id, transfer
 
 func mapAuthorizationByIDRow(row sqlc.GetAuthorizationByIDRow) *domain.Authorization {
 	return mapAuthorization(
-		row.ID, row.CardID, row.UserID, row.IdempotencyKey, row.MerchantName,
+		row.ID, row.CardID, row.UserID, row.IdempotencyKey, row.MerchantName, row.MerchantCategoryCode,
 		row.Amount, row.Currency, row.Status, row.LedgerHoldID, row.LedgerTransferID,
 		row.FailureReason, row.CreatedAt, row.CapturedAt,
 	)
@@ -157,7 +158,7 @@ func mapAuthorizationByIDRow(row sqlc.GetAuthorizationByIDRow) *domain.Authoriza
 
 func mapAuthorizationByKeyRow(row sqlc.GetAuthorizationByCardAndIdempotencyKeyRow) *domain.Authorization {
 	return mapAuthorization(
-		row.ID, row.CardID, row.UserID, row.IdempotencyKey, row.MerchantName,
+		row.ID, row.CardID, row.UserID, row.IdempotencyKey, row.MerchantName, row.MerchantCategoryCode,
 		row.Amount, row.Currency, row.Status, row.LedgerHoldID, row.LedgerTransferID,
 		row.FailureReason, row.CreatedAt, row.CapturedAt,
 	)
@@ -165,7 +166,7 @@ func mapAuthorizationByKeyRow(row sqlc.GetAuthorizationByCardAndIdempotencyKeyRo
 
 func mapAuthorizationListRow(row sqlc.ListAuthorizationsByUserRow) *domain.Authorization {
 	return mapAuthorization(
-		row.ID, row.CardID, row.UserID, row.IdempotencyKey, row.MerchantName,
+		row.ID, row.CardID, row.UserID, row.IdempotencyKey, row.MerchantName, row.MerchantCategoryCode,
 		row.Amount, row.Currency, row.Status, row.LedgerHoldID, row.LedgerTransferID,
 		row.FailureReason, row.CreatedAt, row.CapturedAt,
 	)
@@ -173,15 +174,16 @@ func mapAuthorizationListRow(row sqlc.ListAuthorizationsByUserRow) *domain.Autho
 
 func mapAuthorization(
 	id, cardID, userID uuid.UUID,
-	idempotencyKey, merchantName, amount, currency, status, ledgerHoldID, ledgerTransferID, failureReason string,
+	idempotencyKey, merchantName, merchantCategoryCode, amount, currency, status, ledgerHoldID, ledgerTransferID, failureReason string,
 	createdAt, capturedAt pgtype.Timestamptz,
 ) *domain.Authorization {
 	a := &domain.Authorization{
-		ID:               id.String(),
-		CardID:           cardID.String(),
-		UserID:           userID.String(),
-		IdempotencyKey:   idempotencyKey,
-		MerchantName:     merchantName,
+		ID:                   id.String(),
+		CardID:               cardID.String(),
+		UserID:               userID.String(),
+		IdempotencyKey:       idempotencyKey,
+		MerchantName:         merchantName,
+		MerchantCategoryCode: merchantCategoryCode,
 		Amount:           amount,
 		Currency:         currency,
 		Status:           domain.AuthStatus(status),

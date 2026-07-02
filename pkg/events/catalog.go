@@ -121,7 +121,7 @@ func Catalog() []CatalogEntry {
 			AggregateType: "authorization",
 			Description:   "Card authorization hold placed on the ledger",
 			Topics:        []string{"card.events"},
-			PayloadFields: []string{"authorization_id", "card_id", "user_id", "amount", "currency", "merchant_name"},
+			PayloadFields: []string{"authorization_id", "card_id", "user_id", "amount", "currency", "merchant_name", "merchant_category_code"},
 		},
 		{
 			EventType:     TypeCardAuthCaptured,
@@ -184,6 +184,7 @@ func RegisteredEvents() []Event {
 		CardAuthApproved{
 			AuthorizationID: "auth-1", CardID: "card-1", UserID: "user-1",
 			Amount: "25.00", Currency: "USD", MerchantName: "Coffee Shop",
+			MerchantCategoryCode: "5812",
 		},
 		CardAuthCaptured{
 			AuthorizationID: "auth-1", CardID: "card-1", UserID: "user-1",

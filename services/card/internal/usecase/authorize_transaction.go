@@ -29,8 +29,9 @@ type AuthorizeTransactionInput struct {
 	CardID         string
 	Amount         string
 	Currency       string
-	MerchantName   string
-	Channel        string
+	MerchantName           string
+	MerchantCategoryCode   string
+	Channel                string
 	IdempotencyKey string
 }
 
@@ -149,8 +150,9 @@ func (uc *AuthorizeTransactionUseCase) Execute(ctx context.Context, in Authorize
 			CardID:         in.CardID,
 			UserID:         card.UserID,
 			IdempotencyKey: in.IdempotencyKey,
-			MerchantName:   in.MerchantName,
-			Amount:         in.Amount,
+			MerchantName:         in.MerchantName,
+			MerchantCategoryCode: in.MerchantCategoryCode,
+			Amount:               in.Amount,
 			Currency:       in.Currency,
 			Status:         domain.AuthStatusAuthorized,
 		}); err != nil {
@@ -207,12 +209,13 @@ func (uc *AuthorizeTransactionUseCase) Execute(ctx context.Context, in Authorize
 	}
 
 	approvedEvent := events.CardAuthApproved{
-		AuthorizationID: authID,
-		CardID:          in.CardID,
-		UserID:          card.UserID,
-		Amount:          in.Amount,
-		Currency:        in.Currency,
-		MerchantName:    in.MerchantName,
+		AuthorizationID:      authID,
+		CardID:               in.CardID,
+		UserID:               card.UserID,
+		Amount:               in.Amount,
+		Currency:             in.Currency,
+		MerchantName:         in.MerchantName,
+		MerchantCategoryCode: in.MerchantCategoryCode,
 	}
 	if err := uc.tx.Run(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		if err := uc.auths.WithTx(tx).MarkHold(ctx, authID, state.Get("ledger_hold_id")); err != nil {

@@ -23,19 +23,20 @@ type CardAuditLog struct {
 }
 
 type CardAuthorization struct {
-	ID               uuid.UUID
-	CardID           uuid.UUID
-	UserID           uuid.UUID
-	IdempotencyKey   string
-	MerchantName     pgtype.Text
-	Amount           pgtype.Numeric
-	Currency         string
-	Status           string
-	LedgerHoldID     pgtype.Text
-	LedgerTransferID pgtype.Text
-	FailureReason    pgtype.Text
-	CreatedAt        pgtype.Timestamptz
-	CapturedAt       pgtype.Timestamptz
+	ID                   uuid.UUID
+	CardID               uuid.UUID
+	UserID               uuid.UUID
+	IdempotencyKey       string
+	MerchantName         pgtype.Text
+	MerchantCategoryCode pgtype.Text
+	Amount               pgtype.Numeric
+	Currency             string
+	Status               string
+	LedgerHoldID         pgtype.Text
+	LedgerTransferID     pgtype.Text
+	FailureReason        pgtype.Text
+	CreatedAt            pgtype.Timestamptz
+	CapturedAt           pgtype.Timestamptz
 }
 
 type CardCard struct {

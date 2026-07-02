@@ -16,8 +16,9 @@ type Authorization struct {
 	CardID           string
 	UserID           string
 	IdempotencyKey   string
-	MerchantName     string
-	Amount           string
+	MerchantName           string
+	MerchantCategoryCode   string
+	Amount                 string
 	Currency         string
 	Status           AuthStatus
 	LedgerHoldID     string

@@ -14,21 +14,23 @@ import (
 
 const createAuthorization = `-- name: CreateAuthorization :exec
 INSERT INTO card.authorizations (
-    id, card_id, user_id, idempotency_key, merchant_name, amount, currency, status
+    id, card_id, user_id, idempotency_key, merchant_name, merchant_category_code, amount, currency, status
 ) VALUES (
-    $1, $2, $3, $4, $5, $6::numeric, $7, $8
+    $1, $2, $3, $4, $5, $6,
+    $7::numeric, $8, $9
 )
 `
 
 type CreateAuthorizationParams struct {
-	ID             uuid.UUID
-	CardID         uuid.UUID
-	UserID         uuid.UUID
-	IdempotencyKey string
-	MerchantName   pgtype.Text
-	Amount         pgtype.Numeric
-	Currency       string
-	Status         string
+	ID                   uuid.UUID
+	CardID               uuid.UUID
+	UserID               uuid.UUID
+	IdempotencyKey       string
+	MerchantName         pgtype.Text
+	MerchantCategoryCode pgtype.Text
+	Amount               pgtype.Numeric
+	Currency             string
+	Status               string
 }
 
 func (q *Queries) CreateAuthorization(ctx context.Context, arg CreateAuthorizationParams) error {
@@ -38,6 +40,7 @@ func (q *Queries) CreateAuthorization(ctx context.Context, arg CreateAuthorizati
 		arg.UserID,
 		arg.IdempotencyKey,
 		arg.MerchantName,
+		arg.MerchantCategoryCode,
 		arg.Amount,
 		arg.Currency,
 		arg.Status,
@@ -47,6 +50,7 @@ func (q *Queries) CreateAuthorization(ctx context.Context, arg CreateAuthorizati
 
 const getAuthorizationByCardAndIdempotencyKey = `-- name: GetAuthorizationByCardAndIdempotencyKey :one
 SELECT id, card_id, user_id, idempotency_key, COALESCE(merchant_name, '') AS merchant_name,
+       COALESCE(merchant_category_code, '') AS merchant_category_code,
        amount::text AS amount, currency, status,
        COALESCE(ledger_hold_id, '') AS ledger_hold_id,
        COALESCE(ledger_transfer_id, '') AS ledger_transfer_id,
@@ -61,19 +65,20 @@ type GetAuthorizationByCardAndIdempotencyKeyParams struct {
 }
 
 type GetAuthorizationByCardAndIdempotencyKeyRow struct {
-	ID               uuid.UUID
-	CardID           uuid.UUID
-	UserID           uuid.UUID
-	IdempotencyKey   string
-	MerchantName     string
-	Amount           string
-	Currency         string
-	Status           string
-	LedgerHoldID     string
-	LedgerTransferID string
-	FailureReason    string
-	CreatedAt        pgtype.Timestamptz
-	CapturedAt       pgtype.Timestamptz
+	ID                   uuid.UUID
+	CardID               uuid.UUID
+	UserID               uuid.UUID
+	IdempotencyKey       string
+	MerchantName         string
+	MerchantCategoryCode string
+	Amount               string
+	Currency             string
+	Status               string
+	LedgerHoldID         string
+	LedgerTransferID     string
+	FailureReason        string
+	CreatedAt            pgtype.Timestamptz
+	CapturedAt           pgtype.Timestamptz
 }
 
 func (q *Queries) GetAuthorizationByCardAndIdempotencyKey(ctx context.Context, arg GetAuthorizationByCardAndIdempotencyKeyParams) (GetAuthorizationByCardAndIdempotencyKeyRow, error) {
@@ -85,6 +90,7 @@ func (q *Queries) GetAuthorizationByCardAndIdempotencyKey(ctx context.Context, a
 		&i.UserID,
 		&i.IdempotencyKey,
 		&i.MerchantName,
+		&i.MerchantCategoryCode,
 		&i.Amount,
 		&i.Currency,
 		&i.Status,
@@ -99,6 +105,7 @@ func (q *Queries) GetAuthorizationByCardAndIdempotencyKey(ctx context.Context, a
 
 const getAuthorizationByID = `-- name: GetAuthorizationByID :one
 SELECT id, card_id, user_id, idempotency_key, COALESCE(merchant_name, '') AS merchant_name,
+       COALESCE(merchant_category_code, '') AS merchant_category_code,
        amount::text AS amount, currency, status,
        COALESCE(ledger_hold_id, '') AS ledger_hold_id,
        COALESCE(ledger_transfer_id, '') AS ledger_transfer_id,
@@ -108,19 +115,20 @@ WHERE id = $1
 `
 
 type GetAuthorizationByIDRow struct {
-	ID               uuid.UUID
-	CardID           uuid.UUID
-	UserID           uuid.UUID
-	IdempotencyKey   string
-	MerchantName     string
-	Amount           string
-	Currency         string
-	Status           string
-	LedgerHoldID     string
-	LedgerTransferID string
-	FailureReason    string
-	CreatedAt        pgtype.Timestamptz
-	CapturedAt       pgtype.Timestamptz
+	ID                   uuid.UUID
+	CardID               uuid.UUID
+	UserID               uuid.UUID
+	IdempotencyKey       string
+	MerchantName         string
+	MerchantCategoryCode string
+	Amount               string
+	Currency             string
+	Status               string
+	LedgerHoldID         string
+	LedgerTransferID     string
+	FailureReason        string
+	CreatedAt            pgtype.Timestamptz
+	CapturedAt           pgtype.Timestamptz
 }
 
 func (q *Queries) GetAuthorizationByID(ctx context.Context, id uuid.UUID) (GetAuthorizationByIDRow, error) {
@@ -132,6 +140,7 @@ func (q *Queries) GetAuthorizationByID(ctx context.Context, id uuid.UUID) (GetAu
 		&i.UserID,
 		&i.IdempotencyKey,
 		&i.MerchantName,
+		&i.MerchantCategoryCode,
 		&i.Amount,
 		&i.Currency,
 		&i.Status,
@@ -146,6 +155,7 @@ func (q *Queries) GetAuthorizationByID(ctx context.Context, id uuid.UUID) (GetAu
 
 const listAuthorizationsByUser = `-- name: ListAuthorizationsByUser :many
 SELECT id, card_id, user_id, idempotency_key, COALESCE(merchant_name, '') AS merchant_name,
+       COALESCE(merchant_category_code, '') AS merchant_category_code,
        amount::text AS amount, currency, status,
        COALESCE(ledger_hold_id, '') AS ledger_hold_id,
        COALESCE(ledger_transfer_id, '') AS ledger_transfer_id,
@@ -162,19 +172,20 @@ type ListAuthorizationsByUserParams struct {
 }
 
 type ListAuthorizationsByUserRow struct {
-	ID               uuid.UUID
-	CardID           uuid.UUID
-	UserID           uuid.UUID
-	IdempotencyKey   string
-	MerchantName     string
-	Amount           string
-	Currency         string
-	Status           string
-	LedgerHoldID     string
-	LedgerTransferID string
-	FailureReason    string
-	CreatedAt        pgtype.Timestamptz
-	CapturedAt       pgtype.Timestamptz
+	ID                   uuid.UUID
+	CardID               uuid.UUID
+	UserID               uuid.UUID
+	IdempotencyKey       string
+	MerchantName         string
+	MerchantCategoryCode string
+	Amount               string
+	Currency             string
+	Status               string
+	LedgerHoldID         string
+	LedgerTransferID     string
+	FailureReason        string
+	CreatedAt            pgtype.Timestamptz
+	CapturedAt           pgtype.Timestamptz
 }
 
 func (q *Queries) ListAuthorizationsByUser(ctx context.Context, arg ListAuthorizationsByUserParams) ([]ListAuthorizationsByUserRow, error) {
@@ -192,6 +203,7 @@ func (q *Queries) ListAuthorizationsByUser(ctx context.Context, arg ListAuthoriz
 			&i.UserID,
 			&i.IdempotencyKey,
 			&i.MerchantName,
+			&i.MerchantCategoryCode,
 			&i.Amount,
 			&i.Currency,
 			&i.Status,

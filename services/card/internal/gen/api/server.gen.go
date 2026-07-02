@@ -37,18 +37,19 @@ func (e AuthorizeRequestChannel) Valid() bool {
 
 // Authorization defines model for Authorization.
 type Authorization struct {
-	Amount           string             `json:"amount"`
-	CapturedAt       *time.Time         `json:"captured_at,omitempty"`
-	CardId           openapi_types.UUID `json:"card_id"`
-	CreatedAt        *time.Time         `json:"created_at,omitempty"`
-	Currency         string             `json:"currency"`
-	FailureReason    *string            `json:"failure_reason,omitempty"`
-	Id               openapi_types.UUID `json:"id"`
-	LedgerHoldId     *string            `json:"ledger_hold_id,omitempty"`
-	LedgerTransferId *string            `json:"ledger_transfer_id,omitempty"`
-	MerchantName     *string            `json:"merchant_name,omitempty"`
-	Status           string             `json:"status"`
-	UserId           openapi_types.UUID `json:"user_id"`
+	Amount               string             `json:"amount"`
+	CapturedAt           *time.Time         `json:"captured_at,omitempty"`
+	CardId               openapi_types.UUID `json:"card_id"`
+	CreatedAt            *time.Time         `json:"created_at,omitempty"`
+	Currency             string             `json:"currency"`
+	FailureReason        *string            `json:"failure_reason,omitempty"`
+	Id                   openapi_types.UUID `json:"id"`
+	LedgerHoldId         *string            `json:"ledger_hold_id,omitempty"`
+	LedgerTransferId     *string            `json:"ledger_transfer_id,omitempty"`
+	MerchantCategoryCode *string            `json:"merchant_category_code,omitempty"`
+	MerchantName         *string            `json:"merchant_name,omitempty"`
+	Status               string             `json:"status"`
+	UserId               openapi_types.UUID `json:"user_id"`
 }
 
 // AuthorizationList defines model for AuthorizationList.
@@ -58,10 +59,11 @@ type AuthorizationList struct {
 
 // AuthorizeRequest defines model for AuthorizeRequest.
 type AuthorizeRequest struct {
-	Amount       string                   `json:"amount"`
-	Channel      *AuthorizeRequestChannel `json:"channel,omitempty"`
-	Currency     *string                  `json:"currency,omitempty"`
-	MerchantName *string                  `json:"merchant_name,omitempty"`
+	Amount               string                   `json:"amount"`
+	Channel              *AuthorizeRequestChannel `json:"channel,omitempty"`
+	Currency             *string                  `json:"currency,omitempty"`
+	MerchantCategoryCode *string                  `json:"merchant_category_code,omitempty"`
+	MerchantName         *string                  `json:"merchant_name,omitempty"`
 }
 
 // AuthorizeRequestChannel defines model for AuthorizeRequest.Channel.

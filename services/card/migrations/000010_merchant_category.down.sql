@@ -1,0 +1,1 @@
+ALTER TABLE card.authorizations DROP COLUMN IF EXISTS merchant_category_code;

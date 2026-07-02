@@ -103,3 +103,38 @@ func (r *WalletTransactionRepository) ListByUser(ctx context.Context, userID str
 	}
 	return out, nil
 }
+
+func (r *WalletTransactionRepository) ListByUserInRange(ctx context.Context, userID string, from, to time.Time) ([]domain.WalletTransaction, error) {
+	uid, err := pgutil.ParseUUID(userID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.q.ListWalletTransactionsByUserInRange(ctx, sqlc.ListWalletTransactionsByUserInRangeParams{
+		UserID:   uid,
+		FromDate: pgtype.Timestamptz{Time: from.UTC(), Valid: true},
+		ToDate:   pgtype.Timestamptz{Time: to.UTC(), Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.WalletTransaction, 0, len(rows))
+	for _, row := range rows {
+		tx := domain.WalletTransaction{
+			ID:        row.ID,
+			Type:      row.TxType,
+			Amount:    row.Amount,
+			Currency:  row.Currency,
+			Direction: row.Direction,
+			Status:    row.Status,
+			CreatedAt: row.CreatedAt.Time,
+		}
+		if row.Counterparty.Valid {
+			tx.Counterparty = row.Counterparty.String
+		}
+		if row.Memo.Valid {
+			tx.Memo = row.Memo.String
+		}
+		out = append(out, tx)
+	}
+	return out, nil
+}

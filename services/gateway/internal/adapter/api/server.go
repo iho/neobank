@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"time"
@@ -108,10 +109,15 @@ func (s *Server) Register(ctx context.Context, req api.RegisterRequestObject) (a
 		phone = *req.Body.Phone
 	}
 
+	inviteCode := ""
+	if req.Body.InviteCode != nil {
+		inviteCode = *req.Body.InviteCode
+	}
 	resp, err := s.users.Register(ctx, req.Params.IdempotencyKey, client.RegisterRequest{
-		Email:    string(req.Body.Email),
-		Phone:    phone,
-		Password: req.Body.Password,
+		Email:      string(req.Body.Email),
+		Phone:      phone,
+		Password:   req.Body.Password,
+		InviteCode: inviteCode,
 	})
 	if err != nil {
 		return api.Register502JSONResponse{Error: err.Error()}, nil
@@ -827,11 +833,16 @@ func (s *Server) AuthorizeTransaction(ctx context.Context, req api.AuthorizeTran
 	if req.Body.Channel != nil {
 		channel = string(*req.Body.Channel)
 	}
+	mcc := ""
+	if req.Body.MerchantCategoryCode != nil {
+		mcc = *req.Body.MerchantCategoryCode
+	}
 	auth, statusCode, err := s.cards.AuthorizeTransaction(ctx, userID, req.Id, req.Params.IdempotencyKey, client.AuthorizeRequest{
-		Amount:       req.Body.Amount,
-		Currency:     currency,
-		MerchantName: merchant,
-		Channel:      channel,
+		Amount:               req.Body.Amount,
+		Currency:             currency,
+		MerchantName:         merchant,
+		MerchantCategoryCode: mcc,
+		Channel:              channel,
 	})
 	if statusCode == 422 {
 		return api.AuthorizeTransaction422JSONResponse(toAuthorizationView(auth)), nil
@@ -900,6 +911,23 @@ func (s *Server) CaptureAuthorization(ctx context.Context, req api.CaptureAuthor
 	return api.CaptureAuthorization200JSONResponse(toAuthorizationView(auth)), nil
 }
 
+func toReferralInviteView(inv client.ReferralInviteView) api.ReferralInvite {
+	out := api.ReferralInvite{
+		Id:            inv.ID,
+		InviterUserId: inv.InviterUserID,
+		InviteCode:    inv.InviteCode,
+		Status:        inv.Status,
+		CreatedAt:     parseTimeOrNow(inv.CreatedAt),
+	}
+	if inv.InviteeUserID != "" {
+		out.InviteeUserId = &inv.InviteeUserID
+	}
+	if inv.AcceptedAt != "" {
+		out.AcceptedAt = parseTimePtr(inv.AcceptedAt)
+	}
+	return out
+}
+
 func toAuthorizationView(a client.AuthorizationView) api.CardAuthorization {
 	out := api.CardAuthorization{
 		Id:       a.ID,
@@ -911,6 +939,9 @@ func toAuthorizationView(a client.AuthorizationView) api.CardAuthorization {
 	}
 	if a.MerchantName != "" {
 		out.MerchantName = &a.MerchantName
+	}
+	if a.MerchantCategoryCode != "" {
+		out.MerchantCategoryCode = &a.MerchantCategoryCode
 	}
 	if a.LedgerHoldID != "" {
 		out.LedgerHoldId = &a.LedgerHoldID
@@ -1080,6 +1111,91 @@ func (s *Server) UpdateNotificationPreferences(ctx context.Context, req api.Upda
 		Push:      prefs.Push,
 		Email:     prefs.Email,
 	}, nil
+}
+
+func (s *Server) ExportWalletTransactions(ctx context.Context, req api.ExportWalletTransactionsRequestObject) (api.ExportWalletTransactionsResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.ExportWalletTransactions401JSONResponse{Error: "unauthorized"}, nil
+	}
+	format := "csv"
+	if req.Params.Format != nil {
+		format = *req.Params.Format
+	}
+	data, statusCode, err := s.users.ExportWalletTransactions(ctx, userID, format, req.Params.From.String(), req.Params.To.String())
+	if statusCode == 400 {
+		return api.ExportWalletTransactions400JSONResponse{Error: err.Error()}, nil
+	}
+	if err != nil {
+		return api.ExportWalletTransactions502JSONResponse{Error: err.Error()}, nil
+	}
+	return api.ExportWalletTransactions200TextcsvResponse{
+		Body:          bytes.NewReader(data),
+		ContentLength: int64(len(data)),
+	}, nil
+}
+
+func (s *Server) ListWallets(ctx context.Context, req api.ListWalletsRequestObject) (api.ListWalletsResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.ListWallets401JSONResponse{Error: "unauthorized"}, nil
+	}
+	list, _, err := s.users.ListWallets(ctx, userID)
+	if err != nil {
+		return api.ListWallets502JSONResponse{Error: err.Error()}, nil
+	}
+	wallets := make([]api.WalletBalance, 0, len(list.Wallets))
+	for _, w := range list.Wallets {
+		view := api.WalletBalance{
+			WalletId:         w.WalletID,
+			Currency:         w.Currency,
+			Balance:          w.Balance,
+			AvailableBalance: w.AvailableBalance,
+		}
+		if w.LedgerAccountID != "" {
+			view.LedgerAccountId = &w.LedgerAccountID
+		}
+		if w.EncumberedBalance != "" {
+			view.EncumberedBalance = &w.EncumberedBalance
+		}
+		wallets = append(wallets, view)
+	}
+	return api.ListWallets200JSONResponse{Wallets: wallets}, nil
+}
+
+func (s *Server) CreateReferralInvite(ctx context.Context, req api.CreateReferralInviteRequestObject) (api.CreateReferralInviteResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.CreateReferralInvite401JSONResponse{Error: "unauthorized"}, nil
+	}
+	invite, statusCode, err := s.users.CreateReferralInvite(ctx, userID, req.Params.IdempotencyKey)
+	if statusCode == 400 {
+		return api.CreateReferralInvite502JSONResponse{Error: err.Error()}, nil
+	}
+	if err != nil {
+		return api.CreateReferralInvite502JSONResponse{Error: err.Error()}, nil
+	}
+	return api.CreateReferralInvite201JSONResponse(toReferralInviteView(invite)), nil
+}
+
+func (s *Server) ListReferralInvites(ctx context.Context, req api.ListReferralInvitesRequestObject) (api.ListReferralInvitesResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.ListReferralInvites401JSONResponse{Error: "unauthorized"}, nil
+	}
+	limit := 20
+	if req.Params.Limit != nil {
+		limit = *req.Params.Limit
+	}
+	list, _, err := s.users.ListReferralInvites(ctx, userID, limit)
+	if err != nil {
+		return api.ListReferralInvites502JSONResponse{Error: err.Error()}, nil
+	}
+	invites := make([]api.ReferralInvite, 0, len(list.Invites))
+	for _, inv := range list.Invites {
+		invites = append(invites, toReferralInviteView(inv))
+	}
+	return api.ListReferralInvites200JSONResponse{Invites: invites}, nil
 }
 
 func (s *Server) resolveUserID(authHeader, xUserID *string) string {

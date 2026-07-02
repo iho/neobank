@@ -119,6 +119,16 @@ type UserProfile struct {
 	CountryCode          pgtype.Text
 }
 
+type UserReferralInvite struct {
+	ID            uuid.UUID
+	InviterUserID uuid.UUID
+	InviteCode    string
+	InviteeUserID pgtype.UUID
+	Status        string
+	CreatedAt     pgtype.Timestamptz
+	AcceptedAt    pgtype.Timestamptz
+}
+
 type UserSagaAlert struct {
 	ID             uuid.UUID
 	SagaInstanceID uuid.UUID

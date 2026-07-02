@@ -12,10 +12,12 @@ import (
 )
 
 type Querier interface {
+	AcceptReferralInvite(ctx context.Context, arg AcceptReferralInviteParams) (UserReferralInvite, error)
 	ApproveKYCCase(ctx context.Context, arg ApproveKYCCaseParams) error
 	ConsumerInboxExists(ctx context.Context, eventID uuid.UUID) (bool, error)
 	CountWalletTransactionsByUser(ctx context.Context, userID uuid.UUID) (int64, error)
 	CreateKYCCase(ctx context.Context, arg CreateKYCCaseParams) (CreateKYCCaseRow, error)
+	CreateReferralInvite(ctx context.Context, arg CreateReferralInviteParams) (UserReferralInvite, error)
 	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
 	CreateSavedPayee(ctx context.Context, arg CreateSavedPayeeParams) (CreateSavedPayeeRow, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) error
@@ -26,6 +28,7 @@ type Querier interface {
 	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error)
 	GetDepositByUserAndIdempotencyKey(ctx context.Context, arg GetDepositByUserAndIdempotencyKeyParams) (GetDepositByUserAndIdempotencyKeyRow, error)
 	GetLatestKYCCaseByUser(ctx context.Context, userID uuid.UUID) (GetLatestKYCCaseByUserRow, error)
+	GetReferralInviteByCode(ctx context.Context, inviteCode string) (UserReferralInvite, error)
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
 	GetSavedPayeeByID(ctx context.Context, arg GetSavedPayeeByIDParams) (GetSavedPayeeByIDRow, error)
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
@@ -46,9 +49,12 @@ type Querier interface {
 	ListDeviceTokensByUser(ctx context.Context, userID uuid.UUID) ([]UserDeviceToken, error)
 	ListKYCSubmissionsByUser(ctx context.Context, userID uuid.UUID) ([]ListKYCSubmissionsByUserRow, error)
 	ListPIIAccessBySubject(ctx context.Context, subjectUserID uuid.UUID) ([]ListPIIAccessBySubjectRow, error)
+	ListReferralInvitesByInviter(ctx context.Context, arg ListReferralInvitesByInviterParams) ([]UserReferralInvite, error)
 	ListSavedPayeesByUser(ctx context.Context, arg ListSavedPayeesByUserParams) ([]ListSavedPayeesByUserRow, error)
 	ListWalletTransactionsByUser(ctx context.Context, arg ListWalletTransactionsByUserParams) ([]ListWalletTransactionsByUserRow, error)
+	ListWalletTransactionsByUserInRange(ctx context.Context, arg ListWalletTransactionsByUserInRangeParams) ([]ListWalletTransactionsByUserInRangeRow, error)
 	ListWalletsByUser(ctx context.Context, userID uuid.UUID) ([]ListWalletsByUserRow, error)
+	ListWalletsByUserID(ctx context.Context, userID uuid.UUID) ([]ListWalletsByUserIDRow, error)
 	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
 	MaskUserAccount(ctx context.Context, arg MaskUserAccountParams) error
 	MaskUserProfile(ctx context.Context, userID uuid.UUID) error

@@ -6,3 +6,6 @@
 
 # Saga watchdog — every 15 minutes (UTC).
 */15 * * * * /usr/local/bin/saga-watchdog
+
+# AML case export — daily at 06:00 UTC (stdout JSON for log shipping).
+0 6 * * * /usr/local/bin/payment-aml-export

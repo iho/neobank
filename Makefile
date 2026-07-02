@@ -1,4 +1,4 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-jobs down-jobs migrate-user migrate-payment migrate-notification migrate-card tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export
+.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-jobs down-jobs migrate-user migrate-payment migrate-notification migrate-card tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog
 
 OAPI_CODEGEN ?= oapi-codegen
 SQLC ?= sqlc
@@ -44,6 +44,7 @@ build: generate
 	go build -o bin/card-resolve-break ./services/card/cmd/resolve-break
 	go build -o bin/saga-watchdog ./tools/saga-watchdog
 	go build -o bin/payment-aml-export ./services/payment/cmd/aml-export
+	go build -o bin/event-catalog ./tools/event-catalog
 
 test:
 	cd pkg && go test ./...
@@ -65,6 +66,7 @@ lint:
 	cd services/notification && golangci-lint run --config=../../.golangci.yml ./...
 	cd tests/integration && golangci-lint run --config=../../.golangci.yml ./...
 	cd tools/saga-watchdog && golangci-lint run --config=../../.golangci.yml ./...
+	cd tools/event-catalog && golangci-lint run --config=../../.golangci.yml ./...
 
 up:
 	docker compose -f deployments/docker-compose.yml up -d
@@ -110,3 +112,6 @@ list-saga-alerts:
 
 aml-export:
 	cd services/payment && go run ./cmd/aml-export
+
+event-catalog:
+	cd tools/event-catalog && go run .

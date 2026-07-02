@@ -149,8 +149,8 @@ validation with no environment guard.
 - [x] `EventVersion` is no longer hardcoded — `outbox.BuildRecord` reads `Event.Version()`,
       persists it, and `Worker.flush` uses the stored value (falling back to 1 for rows
       written before the migration).
-- [ ] Still open: document the event catalog as a contract (schema registry or versioned
-      JSON schemas); regulators care that replayed history is interpretable years later.
+- [x] Event catalog contract — `pkg/events/catalog.go` + `tools/event-catalog` JSON export
+      with envelope spec, event versions, topics, and payload field lists; validated by tests.
 - [x] Consumer-side inbox/dedup for at-least-once delivery — `notification.consumer_inbox`
       and `user.consumer_inbox` event-level dedup; row-level `ON CONFLICT` on notifications
       and wallet_transactions as a second layer.
@@ -171,8 +171,7 @@ validation with no environment guard.
 ## Suggested order of work — status
 
 1. ~~Correlation ID propagation + outbox columns (#1)~~ — done.
-2. ~~Append-only audit/history tables + actor recording (#2)~~ — done (actor defaults to
-   `"system"` until JWT identity is threaded into `reqctx.WithActor`).
+2. ~~Append-only audit/history tables + actor recording (#2)~~ — done.
 3. ~~Persist fraud decisions (#3)~~ — done.
 4. ~~Reconciliation job (#6)~~ — done and scheduled via `up-jobs`.
 5. Outbox retention/archival (#5) — open, needs an infra/compliance decision.

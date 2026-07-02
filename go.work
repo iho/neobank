@@ -8,5 +8,6 @@ use (
 	./services/payment
 	./services/user
 	./tests/integration
+	./tools/event-catalog
 	./tools/saga-watchdog
 )

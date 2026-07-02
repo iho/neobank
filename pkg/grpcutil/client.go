@@ -61,3 +61,13 @@ func WithIdempotencyKey(ctx context.Context, key string) context.Context {
 func DefaultTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(ctx, 10*time.Second)
 }
+
+// IdempotencyKeyFromContext reads an idempotency key from incoming gRPC metadata.
+func IdempotencyKeyFromContext(ctx context.Context) string {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if vals := md.Get(IdempotencyKeyHeader); len(vals) > 0 {
+			return vals[0]
+		}
+	}
+	return ""
+}

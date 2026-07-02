@@ -69,7 +69,12 @@ func main() {
 	amlRepo := sqlcrepo.NewAMLRepository(queries)
 	sagaStore := sqlcrepo.NewSagaStore(queries)
 
-	users := userclient.New(cfg.UserURL)
+	users, err := userclient.New(ctx, userclient.Config{Addr: cfg.UserGRPCAddr})
+	if err != nil {
+		logger.Error("user service connect failed", "error", err)
+		os.Exit(1)
+	}
+	defer users.Close()
 	velocityStore := sqlcrepo.NewPGVelocityStore(queries)
 	fraudChecker := fraud.NewCheckerWithVelocity(velocityStore)
 	amlMonitor := amlmonitor.NewMonitor(nil)

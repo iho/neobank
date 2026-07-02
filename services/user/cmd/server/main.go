@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	neobankv1 "github.com/iho/neobank/pkg/gen/neobank/v1"
+	"github.com/iho/neobank/pkg/grpcutil"
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
 	"github.com/iho/neobank/pkg/otel"
@@ -22,6 +25,7 @@ import (
 	"github.com/iho/neobank/pkg/sloghttp"
 	"github.com/iho/neobank/pkg/vault"
 	apiadapter "github.com/iho/neobank/services/user/internal/adapter/api"
+	grpcadapter "github.com/iho/neobank/services/user/internal/adapter/grpc"
 	"github.com/iho/neobank/services/user/internal/adapter/auth"
 	kafkaadapter "github.com/iho/neobank/services/user/internal/adapter/kafka"
 	ledgeradapter "github.com/iho/neobank/services/user/internal/adapter/ledger"
@@ -161,6 +165,23 @@ func main() {
 	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("user")))
 	genapi.HandlerFromMux(strictHandler, r)
 
+	grpcServer := grpcutil.NewServer()
+	neobankv1.RegisterUserInternalServiceServer(grpcServer, grpcadapter.NewServer(
+		userRepo, walletRepo, listDeviceTokensUC, upsertPayeeUC, piiAccessRepo,
+	))
+	grpcLis, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.GRPCPort))
+	if err != nil {
+		logger.Error("grpc listen failed", "error", err)
+		os.Exit(1)
+	}
+	go func() {
+		logger.Info("user service gRPC listening", "port", cfg.GRPCPort)
+		if err := grpcServer.Serve(grpcLis); err != nil {
+			logger.Error("grpc server failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%s", cfg.HTTPPort),
 		Handler:           r,
@@ -182,5 +203,6 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = shutdownOtel(shutdownCtx)
+	grpcServer.GracefulStop()
 	_ = srv.Shutdown(shutdownCtx)
 }

@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package neobank.v1;
+
+option go_package = "github.com/iho/neobank/pkg/gen/neobank/v1;neobankv1";
+
+// UserInternalService exposes service-to-service lookups used by payment, card, and notification.
+service UserInternalService {
+  rpc GetUserByID(GetUserByIDRequest) returns (GetUserResponse);
+  rpc GetUserByPhone(GetUserByPhoneRequest) returns (GetUserResponse);
+  rpc GetUserByEmail(GetUserByEmailRequest) returns (GetUserResponse);
+  rpc GetWallet(GetWalletRequest) returns (GetWalletResponse);
+  rpc ListDeviceTokens(ListDeviceTokensRequest) returns (ListDeviceTokensResponse);
+  rpc UpsertPayee(UpsertPayeeRequest) returns (UpsertPayeeResponse);
+}
+
+message InternalUser {
+  string id = 1;
+  string email = 2;
+  string phone = 3;
+  string status = 4;
+}
+
+message InternalWallet {
+  string id = 1;
+  string user_id = 2;
+  string currency = 3;
+  string ledger_account_id = 4;
+  string status = 5;
+}
+
+message InternalDeviceToken {
+  string id = 1;
+  string user_id = 2;
+  string platform = 3;
+  string token = 4;
+}
+
+message GetUserByIDRequest {
+  string user_id = 1;
+}
+
+message GetUserByPhoneRequest {
+  string phone = 1;
+}
+
+message GetUserByEmailRequest {
+  string email = 1;
+}
+
+message GetUserResponse {
+  InternalUser user = 1;
+}
+
+message GetWalletRequest {
+  string user_id = 1;
+  string currency = 2;
+}
+
+message GetWalletResponse {
+  InternalWallet wallet = 1;
+}
+
+message ListDeviceTokensRequest {
+  string user_id = 1;
+}
+
+message ListDeviceTokensResponse {
+  repeated InternalDeviceToken device_tokens = 1;
+}
+
+message UpsertPayeeRequest {
+  string user_id = 1;
+  string payee_user_id = 2;
+  string nickname = 3;
+  string idempotency_key = 4;
+}
+
+message UpsertPayeeResponse {
+  string id = 1;
+  string payee_user_id = 2;
+}

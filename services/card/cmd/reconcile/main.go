@@ -53,7 +53,12 @@ func main() {
 	}
 	defer ledger.Close()
 
-	users := userclient.New(cfg.UserURL)
+	users, err := userclient.New(ctx, userclient.Config{Addr: cfg.UserGRPCAddr})
+	if err != nil {
+		logger.Error("user service connect failed", "error", err)
+		os.Exit(1)
+	}
+	defer users.Close()
 	queries := sqlc.New(pool)
 
 	runID := uuid.New()

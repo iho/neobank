@@ -418,7 +418,9 @@ Contract source: [pkg/events/catalog.go](pkg/events/catalog.go). Export with `ma
 | `REDIS_URL` | `redis://localhost:6379/0` | gateway, user, payment, card |
 | `JWT_SECRET` | `dev-secret-change-me` | gateway, user |
 | `LEDGER_GRPC_ADDR` | `localhost:50051` | user, payment, card |
-| `USER_SERVICE_URL` | `http://localhost:8081` | gateway, payment, card |
+| `USER_SERVICE_URL` | `http://localhost:8081` | gateway (HTTP), payment/card wallet projection |
+| `USER_GRPC_ADDR` | `localhost:50052` | payment, card, notification (internal lookups) |
+| `GRPC_PORT` | `50052` | user (gRPC listener) |
 | `PAYMENT_SERVICE_URL` | `http://localhost:8082` | gateway |
 | `CARD_SERVICE_URL` | `http://localhost:8084` | gateway |
 | `NOTIFICATION_SERVICE_URL` | `http://localhost:8083` | gateway, outbox |
@@ -471,7 +473,7 @@ make up-jobs / down-jobs   # cron: reconcile + saga-watchdog
 | `idempotency` | Redis-backed `Idempotency-Key` middleware |
 | `reqctx` / `otel` / `sloghttp` | Correlation IDs, tracing, access logs |
 | `sagawatchdog` | Stuck-saga scanner and `saga_alerts` |
-| `auth` / `userclient` / `money` | JWT, internal user HTTP client, decimals |
+| `auth` / `userclient` / `money` | JWT, internal user gRPC client, decimals |
 
 ## Patterns
 
@@ -514,7 +516,7 @@ Integration tests cover P2P, card auth/capture, wallet projection dedup, notific
 
 - Standalone Fraud service (today: `pkg/fraud` in Payment/Card)
 - Real KYC/AML vendors (today: stubs with persisted evidence)
-- gRPC between Gateway and services (today: HTTP)
+- gRPC between Gateway and services (Phase 1 done: payment/card/notification → user via gRPC)
 - Kubernetes manifests and production Vault (HA, AppRole, auto-unseal)
 - Outbox partition + WORM archival to object storage
 - Background saga recovery worker (today: client retry + watchdog alerts)

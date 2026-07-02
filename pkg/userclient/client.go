@@ -14,27 +14,44 @@
 package userclient
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 
-	"github.com/iho/neobank/pkg/otel"
+	neobankv1 "github.com/iho/neobank/pkg/gen/neobank/v1"
+	"github.com/iho/neobank/pkg/grpcutil"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-type Client struct {
-	httpClient *http.Client
-	baseURL    string
+type Config struct {
+	Addr string
 }
 
-func New(baseURL string) *Client {
-	return &Client{
-		baseURL:    baseURL,
-		httpClient: &http.Client{Transport: otel.OutboundTransport(nil)},
+type Client struct {
+	conn *grpc.ClientConn
+	rpc  neobankv1.UserInternalServiceClient
+}
+
+func New(ctx context.Context, cfg Config) (*Client, error) {
+	if cfg.Addr == "" {
+		cfg.Addr = "localhost:50052"
 	}
+	conn, err := grpcutil.Dial(ctx, cfg.Addr)
+	if err != nil {
+		return nil, fmt.Errorf("dial user service: %w", err)
+	}
+	return &Client{
+		conn: conn,
+		rpc:  neobankv1.NewUserInternalServiceClient(conn),
+	}, nil
+}
+
+func (c *Client) Close() error {
+	if c.conn == nil {
+		return nil
+	}
+	return c.conn.Close()
 }
 
 type User struct {
@@ -52,61 +69,6 @@ type Wallet struct {
 	Status          string `json:"status"`
 }
 
-func (c *Client) GetByPhone(ctx context.Context, phone string) (User, error) {
-	path := fmt.Sprintf("%s/api/v1/internal/users/by-phone/%s", c.baseURL, url.PathEscape(phone))
-	return c.getUser(ctx, path)
-}
-
-func (c *Client) GetByEmail(ctx context.Context, email string) (User, error) {
-	path := fmt.Sprintf("%s/api/v1/internal/users/by-email/%s", c.baseURL, url.PathEscape(email))
-	return c.getUser(ctx, path)
-}
-
-func (c *Client) GetByID(ctx context.Context, userID string) (User, error) {
-	path := fmt.Sprintf("%s/api/v1/internal/users/%s", c.baseURL, url.PathEscape(userID))
-	return c.getUser(ctx, path)
-}
-
-func (c *Client) GetWallet(ctx context.Context, userID, currency string) (Wallet, error) {
-	u, err := url.Parse(c.baseURL + "/api/v1/internal/wallets")
-	if err != nil {
-		return Wallet{}, err
-	}
-
-	q := u.Query()
-	q.Set("user_id", userID)
-	q.Set("currency", currency)
-
-	u.RawQuery = q.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), http.NoBody)
-	if err != nil {
-		return Wallet{}, err
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return Wallet{}, fmt.Errorf("user service request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return Wallet{}, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return Wallet{}, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var wallet Wallet
-	if err := json.Unmarshal(body, &wallet); err != nil {
-		return Wallet{}, err
-	}
-
-	return wallet, nil
-}
-
 type DeviceToken struct {
 	ID       string `json:"id"`
 	UserID   string `json:"user_id"`
@@ -114,90 +76,101 @@ type DeviceToken struct {
 	Token    string `json:"token"`
 }
 
+func (c *Client) GetByPhone(ctx context.Context, phone string) (User, error) {
+	resp, err := c.rpc.GetUserByPhone(ctx, &neobankv1.GetUserByPhoneRequest{Phone: phone})
+	if err != nil {
+		return User{}, mapError(err)
+	}
+	return toUser(resp.GetUser()), nil
+}
+
+func (c *Client) GetByEmail(ctx context.Context, email string) (User, error) {
+	resp, err := c.rpc.GetUserByEmail(ctx, &neobankv1.GetUserByEmailRequest{Email: email})
+	if err != nil {
+		return User{}, mapError(err)
+	}
+	return toUser(resp.GetUser()), nil
+}
+
+func (c *Client) GetByID(ctx context.Context, userID string) (User, error) {
+	resp, err := c.rpc.GetUserByID(ctx, &neobankv1.GetUserByIDRequest{UserId: userID})
+	if err != nil {
+		return User{}, mapError(err)
+	}
+	return toUser(resp.GetUser()), nil
+}
+
+func (c *Client) GetWallet(ctx context.Context, userID, currency string) (Wallet, error) {
+	resp, err := c.rpc.GetWallet(ctx, &neobankv1.GetWalletRequest{
+		UserId:   userID,
+		Currency: currency,
+	})
+	if err != nil {
+		return Wallet{}, mapError(err)
+	}
+	w := resp.GetWallet()
+	return Wallet{
+		ID:              w.GetId(),
+		UserID:          w.GetUserId(),
+		Currency:        w.GetCurrency(),
+		LedgerAccountID: w.GetLedgerAccountId(),
+		Status:          w.GetStatus(),
+	}, nil
+}
+
 func (c *Client) ListDeviceTokens(ctx context.Context, userID string) ([]DeviceToken, error) {
-	path := fmt.Sprintf("%s/api/v1/internal/users/%s/device-tokens", c.baseURL, url.PathEscape(userID))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, path, http.NoBody)
+	resp, err := c.rpc.ListDeviceTokens(ctx, &neobankv1.ListDeviceTokensRequest{UserId: userID})
 	if err != nil {
-		return nil, err
+		return nil, mapError(err)
 	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("user service request: %w", err)
+	out := make([]DeviceToken, 0, len(resp.GetDeviceTokens()))
+	for _, token := range resp.GetDeviceTokens() {
+		out = append(out, DeviceToken{
+			ID:       token.GetId(),
+			UserID:   token.GetUserId(),
+			Platform: token.GetPlatform(),
+			Token:    token.GetToken(),
+		})
 	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(body))
-	}
-	var out struct {
-		DeviceTokens []DeviceToken `json:"device_tokens"`
-	}
-	if err := json.Unmarshal(body, &out); err != nil {
-		return nil, err
-	}
-	return out.DeviceTokens, nil
+	return out, nil
 }
 
 func (c *Client) UpsertPayee(ctx context.Context, userID, payeeUserID, nickname, idempotencyKey string) error {
-	body, err := json.Marshal(map[string]string{
-		"user_id":       userID,
-		"payee_user_id": payeeUserID,
-		"nickname":      nickname,
+	ctx = grpcutil.WithIdempotencyKey(ctx, idempotencyKey)
+	_, err := c.rpc.UpsertPayee(ctx, &neobankv1.UpsertPayeeRequest{
+		UserId:         userID,
+		PayeeUserId:    payeeUserID,
+		Nickname:       nickname,
+		IdempotencyKey: idempotencyKey,
 	})
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/internal/payees", bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if idempotencyKey != "" {
-		req.Header.Set("Idempotency-Key", idempotencyKey)
-	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("user service request: %w", err)
-	}
-	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
-	}
-	return nil
+	return mapError(err)
 }
 
-func (c *Client) getUser(ctx context.Context, path string) (User, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, path, http.NoBody)
-	if err != nil {
-		return User{}, err
+func toUser(user *neobankv1.InternalUser) User {
+	if user == nil {
+		return User{}
 	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return User{}, fmt.Errorf("user service request: %w", err)
+	return User{
+		ID:     user.GetId(),
+		Email:  user.GetEmail(),
+		Phone:  user.GetPhone(),
+		Status: user.GetStatus(),
 	}
-	defer resp.Body.Close()
+}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return User{}, err
+func mapError(err error) error {
+	if err == nil {
+		return nil
 	}
-
-	if resp.StatusCode != http.StatusOK {
-		return User{}, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(body))
+	if st, ok := status.FromError(err); ok {
+		switch st.Code() {
+		case codes.NotFound:
+			return fmt.Errorf("user service status 404: %s", st.Message())
+		case codes.InvalidArgument:
+			return fmt.Errorf("user service status 400: %s", st.Message())
+		default:
+			return fmt.Errorf("user service status %s: %s", st.Code(), st.Message())
+		}
 	}
-
-	var user User
-	if err := json.Unmarshal(body, &user); err != nil {
-		return User{}, err
-	}
-
-	return user, nil
+	return fmt.Errorf("user service request: %w", err)
 }

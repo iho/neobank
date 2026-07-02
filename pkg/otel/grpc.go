@@ -28,3 +28,14 @@ func GRPCDialOptions() []grpc.DialOption {
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	}
 }
+
+// GRPCServerOptions returns server instrumentation options when tracing is enabled.
+func GRPCServerOptions() []grpc.ServerOption {
+	if !Enabled() {
+		return nil
+	}
+
+	return []grpc.ServerOption{
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	}
+}

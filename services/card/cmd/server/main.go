@@ -71,7 +71,12 @@ func main() {
 	fraudRepo := sqlcrepo.NewFraudDecisionRepository(queries)
 	sagaStore := sqlcrepo.NewSagaStore(queries)
 
-	users := userclient.New(cfg.UserURL)
+	users, err := userclient.New(ctx, userclient.Config{Addr: cfg.UserGRPCAddr})
+	if err != nil {
+		logger.Error("user service connect failed", "error", err)
+		os.Exit(1)
+	}
+	defer users.Close()
 	proc := processor.NewMock()
 	fraudChecker := fraud.NewChecker()
 

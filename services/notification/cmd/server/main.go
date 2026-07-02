@@ -51,7 +51,12 @@ func main() {
 	inboxRepo := sqlcrepo.NewConsumerInboxRepository(queries)
 	prefsRepo := sqlcrepo.NewPreferencesRepository(queries)
 
-	userClient := userclient.New(cfg.UserURL)
+	userClient, err := userclient.New(ctx, userclient.Config{Addr: cfg.UserGRPCAddr})
+	if err != nil {
+		logger.Error("user service connect failed", "error", err)
+		os.Exit(1)
+	}
+	defer userClient.Close()
 	delivery := usecase.NewDeliveryService(
 		notify.NewLogDispatcher(logger),
 		usecase.NewUserClientDelivery(userClient),

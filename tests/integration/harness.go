@@ -39,6 +39,7 @@ type Harness struct {
 	LedgerAddr  string
 
 	UserURL         string
+	UserGRPCAddr    string
 	PaymentURL      string
 	CardURL         string
 	NotificationURL string
@@ -222,36 +223,42 @@ func (h *Harness) buildServiceBinaries() {
 func (h *Harness) startServiceProcesses() {
 	notifPort := mustFreePort(h.t)
 	userPort := mustFreePort(h.t)
+	userGrpcPort := mustFreePort(h.t)
 	paymentPort := mustFreePort(h.t)
 	cardPort := mustFreePort(h.t)
 
 	h.NotificationURL = fmt.Sprintf("http://127.0.0.1:%s", notifPort)
 	h.UserURL = fmt.Sprintf("http://127.0.0.1:%s", userPort)
+	h.UserGRPCAddr = fmt.Sprintf("127.0.0.1:%s", userGrpcPort)
 	h.PaymentURL = fmt.Sprintf("http://127.0.0.1:%s", paymentPort)
 	h.CardURL = fmt.Sprintf("http://127.0.0.1:%s", cardPort)
 
 	notificationIngest := h.NotificationURL + "/api/v1/internal/events"
 
-	h.startProcess("notification", map[string]string{
-		"DATABASE_URL": h.DatabaseURL,
-		"HTTP_PORT":    notifPort,
-		"USER_URL":     h.UserURL,
-	})
 	h.startProcess("user", map[string]string{
 		"DATABASE_URL":                    h.DatabaseURL,
 		"REDIS_URL":                       h.RedisURL,
 		"LEDGER_GRPC_ADDR":                h.LedgerAddr,
 		"HTTP_PORT":                       userPort,
+		"GRPC_PORT":                       userGrpcPort,
 		"JWT_SECRET":                      jwtSecret,
 		"NOTIFICATION_SERVICE_URL":        notificationIngest,
 		"DEPOSIT_SOURCE_LEDGER_ACCOUNT_ID": h.TreasuryAccountID,
 	})
+	waitForHTTP200(h.t, h.UserURL+"/health")
+
+	h.startProcess("notification", map[string]string{
+		"DATABASE_URL":  h.DatabaseURL,
+		"HTTP_PORT":     notifPort,
+		"USER_GRPC_ADDR": h.UserGRPCAddr,
+	})
 	h.startProcess("payment", map[string]string{
-		"DATABASE_URL":            h.DatabaseURL,
-		"REDIS_URL":               h.RedisURL,
-		"LEDGER_GRPC_ADDR":        h.LedgerAddr,
-		"HTTP_PORT":               paymentPort,
-		"USER_SERVICE_URL":        h.UserURL,
+		"DATABASE_URL":             h.DatabaseURL,
+		"REDIS_URL":                h.RedisURL,
+		"LEDGER_GRPC_ADDR":         h.LedgerAddr,
+		"HTTP_PORT":                paymentPort,
+		"USER_SERVICE_URL":         h.UserURL,
+		"USER_GRPC_ADDR":           h.UserGRPCAddr,
 		"NOTIFICATION_SERVICE_URL": notificationIngest,
 	})
 	h.startProcess("card", map[string]string{
@@ -260,12 +267,12 @@ func (h *Harness) startServiceProcesses() {
 		"LEDGER_GRPC_ADDR":             h.LedgerAddr,
 		"HTTP_PORT":                    cardPort,
 		"USER_SERVICE_URL":             h.UserURL,
+		"USER_GRPC_ADDR":               h.UserGRPCAddr,
 		"NOTIFICATION_SERVICE_URL":     notificationIngest,
 		"SETTLEMENT_LEDGER_ACCOUNT_ID": h.SettlementAccountID,
 	})
 
 	waitForHTTP200(h.t, h.NotificationURL+"/health")
-	waitForHTTP200(h.t, h.UserURL+"/health")
 	waitForHTTP200(h.t, h.PaymentURL+"/health")
 	waitForHTTP200(h.t, h.CardURL+"/health")
 }

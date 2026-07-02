@@ -13,7 +13,7 @@ services:
     environment:
       DATABASE_URL: postgres://neobank:neobank@postgres:5432/neobank?sslmode=disable
       LEDGER_GRPC_ADDR: host.docker.internal:50051
-      USER_SERVICE_URL: http://host.docker.internal:8081
+      USER_GRPC_ADDR: host.docker.internal:50052
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

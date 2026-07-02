@@ -1,0 +1,21 @@
+# Production — HA Postgres with PITR backups, Redis persistence.
+
+cnpg:
+  instances: 3
+  storageSize: 100Gi
+  backup:
+    enabled: true
+    schedule: "0 2 * * *"
+    retentionPolicy: "30d"
+    # Example: s3://neobank-postgres-backups/prod
+    destinationPath: ""
+    endpointURL: ""
+    s3CredentialsSecret: neobank-postgres-backup-s3
+
+redis:
+  architecture: standalone
+  replicas: 1
+  storageSize: 8Gi
+
+networkPolicy:
+  enabled: true

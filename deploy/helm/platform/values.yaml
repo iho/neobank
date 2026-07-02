@@ -1,0 +1,48 @@
+# Platform chart — managed stateful dependencies for neobank.
+# Redpanda and Vault are installed via deploy/argocd/deps/ (separate Helm charts).
+
+nameOverride: ""
+fullnameOverride: ""
+
+namespace:
+  create: true
+  name: neobank
+
+cnpg:
+  enabled: true
+  clusterName: neobank-postgres
+  instances: 1
+  storageClass: ""
+  storageSize: 20Gi
+  database: neobank
+  owner: neobank
+  # Dev/staging only — production must source from External Secrets / Vault.
+  password: ""
+  maxConnections: "200"
+  backup:
+    enabled: false
+    schedule: "0 2 * * *"
+    retentionPolicy: "30d"
+    # Requires object storage — see values-production.yaml
+    destinationPath: ""
+    endpointURL: ""
+    s3CredentialsSecret: neobank-postgres-backup-s3
+
+redis:
+  enabled: true
+  architecture: standalone
+  replicas: 1
+  storageClass: ""
+  storageSize: 4Gi
+  password: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+networkPolicy:
+  enabled: false
+  appNamespace: neobank

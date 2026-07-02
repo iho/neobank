@@ -1,0 +1,14 @@
+# Staging — single-instance Postgres + Redis.
+
+cnpg:
+  instances: 1
+  storageSize: 20Gi
+  backup:
+    enabled: false
+
+redis:
+  replicas: 1
+  storageSize: 4Gi
+
+networkPolicy:
+  enabled: true

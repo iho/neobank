@@ -4,9 +4,11 @@ secrets:
   create: false
   externalSecrets:
     enabled: true
+    secretStoreRef: vault-neobank
 
 config:
   appEnv: production
+  kafkaBrokers: redpanda:9092
 
 ingress:
   enabled: true

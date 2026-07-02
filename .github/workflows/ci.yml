@@ -115,6 +115,20 @@ jobs:
       - name: Render staging template
         run: make helm-template
 
+  helm-platform:
+    name: Helm platform chart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Lint platform chart
+        run: make helm-lint-platform
+
+      - name: Render platform template
+        run: make helm-template-platform
+
   integration:
     name: Integration tests
     runs-on: ubuntu-latest

@@ -77,8 +77,8 @@ services:
       - "4317:4317"
       - "4318:4318"
 
-  # Run goledger separately: clone github.com/iho/goledger and use its docker-compose.full.yml
-  # Ledger gRPC: localhost:50051, HTTP: localhost:8080
+  # goledger: use `make up-all-ledger` (docker-compose.goledger.yml overlay)
+  # or run goledger standalone — see services/ledger/README.md
 
 volumes:
   postgres_data:

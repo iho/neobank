@@ -1,0 +1,35 @@
+# Helm values for Redpanda cluster in namespace neobank.
+# helm install redpanda redpanda/redpanda -n neobank -f deploy/platform/redpanda-values.yaml
+#
+# Services connect via KAFKA_BROKERS=redpanda:9092 (plaintext internal listener).
+
+fullnameOverride: redpanda
+
+statefulset:
+  replicas: 3
+
+resources:
+  cpu:
+    cores: 1
+  memory:
+    container:
+      max: 2Gi
+
+storage:
+  persistentVolume:
+    enabled: true
+    size: 20Gi
+
+config:
+  cluster:
+    auto_create_topics_enabled: true
+
+listeners:
+  kafka:
+    port: 9092
+    tls:
+      enabled: false
+  admin:
+    port: 9644
+    tls:
+      enabled: false

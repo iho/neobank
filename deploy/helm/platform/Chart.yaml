@@ -1,0 +1,12 @@
+apiVersion: v2
+name: platform
+description: Neobank platform data plane — CNPG Postgres, Redis, backups
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - neobank
+  - cloudnative-pg
+  - redis
+maintainers:
+  - name: neobank

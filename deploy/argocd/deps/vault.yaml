@@ -1,0 +1,50 @@
+# HashiCorp Vault HA (Raft) — secret store for neobank (Transit PII, app config).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: neobank
+  source:
+    repoURL: https://helm.releases.hashicorp.com
+    chart: vault
+    targetRevision: 0.28.1
+    helm:
+      values: |
+        global:
+          enabled: true
+          tlsDisable: true
+        injector:
+          enabled: true
+          authPath: auth/kubernetes
+        server:
+          enabled: true
+          standalone:
+            enabled: false
+          ha:
+            enabled: true
+            replicas: 3
+            raft:
+              enabled: true
+              setNodeId: true
+          dataStorage:
+            enabled: true
+            size: 10Gi
+          auditStorage:
+            enabled: true
+            size: 10Gi
+          serviceAccount:
+            create: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

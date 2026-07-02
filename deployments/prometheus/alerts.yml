@@ -35,3 +35,52 @@ groups:
           severity: warning
         annotations:
           summary: "Unresolved reconciliation breaks on {{ $labels.schema }}"
+
+      - alert: NeobankRedpandaConsumerLag
+        expr: |
+          max by (redpanda_group) (
+            vectorized_kafka_consumer_group_offset_lag
+          ) > 1000
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redpanda consumer lag > 1000 for group {{ $labels.redpanda_group }}"
+
+      - alert: NeobankRedpandaDiskLow
+        expr: redpanda_storage_disk_free_space_alert > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redpanda disk space low on {{ $labels.instance }}"
+
+      - alert: NeobankPostgresDatabaseLarge
+        expr: pg_database_size_bytes{datname="neobank"} > 8e9
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Neobank database size exceeds 8 GiB on {{ $labels.instance }}"
+
+      - alert: NeobankPostgresDiskLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{mountpoint=~"/var/lib/postgresql.*"}
+            /
+            node_filesystem_size_bytes{mountpoint=~"/var/lib/postgresql.*"}
+          ) < 0.15
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Postgres data volume < 15% free on {{ $labels.instance }}"
+
+      - alert: NeobankTLSCertExpiringSoon
+        expr: |
+          (certmanager_certificate_expiration_timestamp_seconds - time()) < 7 * 24 * 3600
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "TLS cert {{ $labels.name }} expires within 7 days"

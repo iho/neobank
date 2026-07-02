@@ -1,11 +1,14 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-all down-all up-ghcr down-ghcr up-observability up-obs-all down-obs up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs helm-lint helm-template
+.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-all down-all up-ledger down-ledger up-all-ledger down-all-ledger up-ghcr down-ghcr up-observability up-obs-all down-obs up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs helm-lint helm-template helm-lint-platform helm-template-platform
 
 HELM_CHART := deploy/helm/neobank
+HELM_PLATFORM := deploy/helm/platform
 COMPOSE_OBS := $(COMPOSE_INFRA) -f deployments/docker-compose.observability.yml
 COMPOSE_OBS_ALL := $(COMPOSE_ALL) -f deployments/docker-compose.observability.yml
 
 COMPOSE_INFRA := docker compose -f deployments/docker-compose.yml
 COMPOSE_ALL   := docker compose -f deployments/docker-compose.yml -f deployments/docker-compose.services.yml
+COMPOSE_LEDGER := $(COMPOSE_INFRA) -f deployments/docker-compose.goledger.yml
+COMPOSE_ALL_LEDGER := $(COMPOSE_ALL) -f deployments/docker-compose.goledger.yml
 COMPOSE_GHCR  := $(COMPOSE_ALL) -f deployments/docker-compose.images.yml
 COMPOSE_JOBS  := $(COMPOSE_ALL) -f deployments/docker-compose.jobs.yml
 GIT_SHA       ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
@@ -97,6 +100,18 @@ up-all:
 down-all:
 	$(COMPOSE_ALL) down
 
+up-ledger:
+	GIT_SHA=$(GIT_SHA) BUILD_DATE=$(BUILD_DATE) $(COMPOSE_LEDGER) up -d --build goledger
+
+down-ledger:
+	$(COMPOSE_LEDGER) down
+
+up-all-ledger:
+	GIT_SHA=$(GIT_SHA) BUILD_DATE=$(BUILD_DATE) $(COMPOSE_ALL_LEDGER) up -d --build
+
+down-all-ledger:
+	$(COMPOSE_ALL_LEDGER) down
+
 up-ghcr:
 	$(COMPOSE_GHCR) up -d --no-build --pull always
 
@@ -169,3 +184,9 @@ helm-template:
 		--set config.redisURL=redis://redis:6379/0 \
 		--set config.jwtSecret=local-dev-secret \
 		--set config.kafkaBrokers=redpanda:9092
+
+helm-lint-platform:
+	helm lint $(HELM_PLATFORM) -f $(HELM_PLATFORM)/values-staging.yaml
+
+helm-template-platform:
+	helm template neobank-platform $(HELM_PLATFORM) -f $(HELM_PLATFORM)/values-staging.yaml

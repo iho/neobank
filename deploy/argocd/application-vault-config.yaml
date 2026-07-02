@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: neobank-vault-config
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: neobank
+  source:
+    repoURL: https://github.com/iho/neobank.git
+    targetRevision: main
+    path: deploy/vault/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: neobank
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

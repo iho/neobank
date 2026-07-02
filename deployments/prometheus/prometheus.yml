@@ -23,6 +23,26 @@ scrape_configs:
     static_configs:
       - targets: ["ops-metrics:9091"]
 
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+        labels:
+          env: local
+
+  - job_name: redpanda-public
+    metrics_path: /public_metrics
+    static_configs:
+      - targets: ["redpanda:9644"]
+        labels:
+          env: local
+
+  - job_name: redpanda-internal
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["redpanda:9644"]
+        labels:
+          env: local
+
   - job_name: neobank-services
     metrics_path: /metrics
     static_configs:

@@ -11,6 +11,8 @@ CREATE TABLE card.cards (
     expiry_year     SMALLINT NOT NULL,
     status          TEXT NOT NULL DEFAULT 'active',
     idempotency_key TEXT NOT NULL,
+    daily_limit     NUMERIC(20,8),
+    online_only     BOOLEAN NOT NULL DEFAULT false,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (user_id, idempotency_key)
 );

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/iho/neobank/pkg/otel"
 )
@@ -35,11 +36,15 @@ type NotificationView struct {
 type NotificationList struct {
 	Notifications []NotificationView `json:"notifications"`
 	UnreadCount   int64              `json:"unread_count"`
+	NextCursor    string             `json:"next_cursor,omitempty"`
 }
 
-func (c *NotificationClient) ListNotifications(ctx context.Context, userID string, limit int) (NotificationList, error) {
-	url := fmt.Sprintf("%s/api/v1/notifications?limit=%d", c.baseURL, limit)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func (c *NotificationClient) ListNotifications(ctx context.Context, userID string, limit int, cursor string) (NotificationList, error) {
+	reqURL := fmt.Sprintf("%s/api/v1/notifications?limit=%d", c.baseURL, limit)
+	if cursor != "" {
+		reqURL += "&cursor=" + url.QueryEscape(cursor)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return NotificationList{}, err
 	}

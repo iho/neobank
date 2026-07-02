@@ -2,10 +2,12 @@ package sqlcrepo
 
 import (
 	"context"
+	"time"
 
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/services/notification/internal/domain"
 	"github.com/iho/neobank/services/notification/internal/gen/sqlc"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type NotificationRepository struct {
@@ -39,14 +41,28 @@ func (r *NotificationRepository) Create(ctx context.Context, n domain.Notificati
 	})
 }
 
-func (r *NotificationRepository) ListByUser(ctx context.Context, userID string, limit int) ([]domain.Notification, error) {
+func (r *NotificationRepository) ListByUser(ctx context.Context, userID string, limit int, cursorCreatedAt *time.Time, cursorID string) ([]domain.Notification, error) {
 	uid, err := pgutil.ParseUUID(userID)
 	if err != nil {
 		return nil, err
 	}
+	var cursorAt pgtype.Timestamptz
+	if cursorCreatedAt != nil {
+		cursorAt = pgtype.Timestamptz{Time: cursorCreatedAt.UTC(), Valid: true}
+	}
+	var cursorUUID pgtype.UUID
+	if cursorID != "" {
+		parsed, parseErr := pgutil.ParseUUID(cursorID)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		cursorUUID = pgtype.UUID{Bytes: parsed, Valid: true}
+	}
 	rows, err := r.q.ListNotificationsByUser(ctx, sqlc.ListNotificationsByUserParams{
-		UserID: uid,
-		Limit:  int32(limit),
+		UserID:          uid,
+		LimitVal:        int32(limit),
+		CursorCreatedAt: cursorAt,
+		CursorID:        cursorUUID,
 	})
 	if err != nil {
 		return nil, err

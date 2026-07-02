@@ -1,0 +1,3 @@
+ALTER TABLE card.cards
+    ADD COLUMN IF NOT EXISTS daily_limit NUMERIC(20,8),
+    ADD COLUMN IF NOT EXISTS online_only BOOLEAN NOT NULL DEFAULT false;

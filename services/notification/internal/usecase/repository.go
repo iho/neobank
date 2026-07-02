@@ -2,13 +2,14 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/iho/neobank/services/notification/internal/domain"
 )
 
 type NotificationRepository interface {
 	Create(ctx context.Context, n domain.Notification, eventID string) error
-	ListByUser(ctx context.Context, userID string, limit int) ([]domain.Notification, error)
+	ListByUser(ctx context.Context, userID string, limit int, cursorCreatedAt *time.Time, cursorID string) ([]domain.Notification, error)
 	CountUnread(ctx context.Context, userID string) (int64, error)
 	MarkRead(ctx context.Context, userID, notificationID string) (domain.Notification, error)
 	MarkAllRead(ctx context.Context, userID string) (int64, error)

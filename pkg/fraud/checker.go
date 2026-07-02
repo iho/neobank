@@ -112,26 +112,26 @@ func (c *Checker) Evaluate(userID, transactionType, amount, _ string, opts Evalu
 	if c.velocity != nil {
 		_ = c.velocity.RecordAt(userID, amount, now)
 
-		if c.velocity.CountLastHour(userID, now) > 10 {
+		if c.velocity.CountLastHour(userID, now) > HourlyTransferCountLimit {
 			return c.outcome(DecisionDeny, "VELOCITY_HOURLY", 90), nil
 		}
 
-		if c.velocity.SumLast24h(userID, now).GreaterThan(decimal.NewFromInt(10000)) {
+		if c.velocity.SumLast24h(userID, now).GreaterThan(DailyTransferAmountLimitDecimal()) {
 			return c.outcome(DecisionReview, "VELOCITY_DAILY", 75), nil
 		}
 	}
 
-	if amt.GreaterThan(decimal.NewFromInt(5000)) {
+	if amt.GreaterThan(HighAmountReviewThresholdDecimal()) {
 		return c.outcome(DecisionReview, "HIGH_AMOUNT", 70), nil
 	}
 
 	if opts.AccountCreatedAt != nil && now.Sub(*opts.AccountCreatedAt) < 24*time.Hour {
-		if amt.GreaterThan(decimal.NewFromInt(500)) {
+		if amt.GreaterThan(decimal.NewFromInt(NewAccountReviewThreshold)) {
 			return c.outcome(DecisionReview, "NEW_ACCOUNT", 55), nil
 		}
 	}
 
-	if transactionType == "p2p" && amt.GreaterThan(decimal.NewFromInt(500)) {
+	if transactionType == "p2p" && amt.GreaterThan(decimal.NewFromInt(P2PReviewThreshold)) {
 		return c.outcome(DecisionReview, "P2P_THRESHOLD", 40), nil
 	}
 

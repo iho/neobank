@@ -70,13 +70,15 @@ func main() {
 	sagaStore := sqlcrepo.NewSagaStore(queries)
 
 	users := userclient.New(cfg.UserURL)
-	fraudChecker := fraud.NewChecker()
+	velocityStore := sqlcrepo.NewPGVelocityStore(queries)
+	fraudChecker := fraud.NewCheckerWithVelocity(velocityStore)
 	amlMonitor := amlmonitor.NewMonitor(nil)
 	txRunner := pgutil.NewTxRunner(pool)
 	screeningRepo := sqlcrepo.NewScreeningRepository(queries)
 	p2pUC := usecase.NewP2PTransferUseCase(transferRepo, users, ledger, fraudChecker, fraudRepo, amlMonitor, amlRepo, screeningRepo, screening.NewStubScreener(), outboxRepo, auditRepo, sagaStore, txRunner)
+	limitsUC := usecase.NewGetLimitsUseCase(velocityStore)
 
-	strictServer := apiadapter.NewServer(p2pUC)
+	strictServer := apiadapter.NewServer(p2pUC, limitsUC)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
 
 	producer := outbox.NewProducer(outbox.ProducerConfig{

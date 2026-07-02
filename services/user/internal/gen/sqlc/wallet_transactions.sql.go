@@ -58,13 +58,20 @@ const listWalletTransactionsByUser = `-- name: ListWalletTransactionsByUser :man
 SELECT id, tx_type, amount, currency, direction, status, counterparty, memo, created_at
 FROM "user".wallet_transactions
 WHERE user_id = $1
-ORDER BY created_at DESC
-LIMIT $2
+  AND (
+    $2::timestamptz IS NULL
+    OR created_at < $2::timestamptz
+    OR (created_at = $2::timestamptz AND id < $3)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $4
 `
 
 type ListWalletTransactionsByUserParams struct {
-	UserID   uuid.UUID
-	LimitVal int32
+	UserID          uuid.UUID
+	CursorCreatedAt pgtype.Timestamptz
+	CursorID        pgtype.Text
+	LimitVal        int32
 }
 
 type ListWalletTransactionsByUserRow struct {
@@ -80,7 +87,12 @@ type ListWalletTransactionsByUserRow struct {
 }
 
 func (q *Queries) ListWalletTransactionsByUser(ctx context.Context, arg ListWalletTransactionsByUserParams) ([]ListWalletTransactionsByUserRow, error) {
-	rows, err := q.db.Query(ctx, listWalletTransactionsByUser, arg.UserID, arg.LimitVal)
+	rows, err := q.db.Query(ctx, listWalletTransactionsByUser,
+		arg.UserID,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+		arg.LimitVal,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -14,25 +14,28 @@ import (
 )
 
 type Server struct {
-	issue      *usecase.IssueCardUseCase
-	freeze     *usecase.FreezeCardUseCase
-	unfreeze   *usecase.UnfreezeCardUseCase
-	authorize  *usecase.AuthorizeTransactionUseCase
-	capture    *usecase.CaptureAuthorizationUseCase
-	listAuths  *usecase.ListAuthorizationsUseCase
+	issue          *usecase.IssueCardUseCase
+	freeze         *usecase.FreezeCardUseCase
+	unfreeze       *usecase.UnfreezeCardUseCase
+	updateControls *usecase.UpdateCardControlsUseCase
+	authorize      *usecase.AuthorizeTransactionUseCase
+	capture        *usecase.CaptureAuthorizationUseCase
+	listAuths      *usecase.ListAuthorizationsUseCase
 }
 
 func NewServer(
 	issue *usecase.IssueCardUseCase,
 	freeze *usecase.FreezeCardUseCase,
 	unfreeze *usecase.UnfreezeCardUseCase,
+	updateControls *usecase.UpdateCardControlsUseCase,
 	authorize *usecase.AuthorizeTransactionUseCase,
 	capture *usecase.CaptureAuthorizationUseCase,
 	listAuths *usecase.ListAuthorizationsUseCase,
 ) *Server {
 	return &Server{
 		issue: issue, freeze: freeze, unfreeze: unfreeze,
-		authorize: authorize, capture: capture, listAuths: listAuths,
+		updateControls: updateControls,
+		authorize:      authorize, capture: capture, listAuths: listAuths,
 	}
 }
 
@@ -50,10 +53,20 @@ func (s *Server) IssueCard(ctx context.Context, req api.IssueCardRequestObject) 
 		walletID = req.Body.WalletId.String()
 	}
 
+	dailyLimit := ""
+	if req.Body.DailyLimit != nil {
+		dailyLimit = *req.Body.DailyLimit
+	}
+	onlineOnly := false
+	if req.Body.OnlineOnly != nil {
+		onlineOnly = *req.Body.OnlineOnly
+	}
 	out, err := s.issue.Execute(ctx, usecase.IssueCardInput{
 		UserID:         req.Params.XUserId.String(),
 		WalletID:       walletID,
 		CardholderName: req.Body.CardholderName,
+		DailyLimit:     dailyLimit,
+		OnlineOnly:     onlineOnly,
 		IdempotencyKey: req.Params.IdempotencyKey,
 	})
 	if err != nil {
@@ -107,6 +120,25 @@ func (s *Server) FreezeCard(ctx context.Context, req api.FreezeCardRequestObject
 	return api.FreezeCard200JSONResponse(toCard(*card)), nil
 }
 
+func (s *Server) UpdateCardControls(ctx context.Context, req api.UpdateCardControlsRequestObject) (api.UpdateCardControlsResponseObject, error) {
+	if req.Body == nil {
+		return api.UpdateCardControls400JSONResponse{Error: "invalid_json"}, nil
+	}
+	card, err := s.updateControls.Execute(ctx, usecase.UpdateCardControlsInput{
+		UserID:     req.Params.XUserId.String(),
+		CardID:     req.Id.String(),
+		DailyLimit: req.Body.DailyLimit,
+		OnlineOnly: req.Body.OnlineOnly,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return api.UpdateCardControls404JSONResponse{Error: "card_not_found"}, nil
+		}
+		return api.UpdateCardControls400JSONResponse{Error: err.Error()}, nil
+	}
+	return api.UpdateCardControls200JSONResponse(toCard(*card)), nil
+}
+
 func (s *Server) UnfreezeCard(ctx context.Context, req api.UnfreezeCardRequestObject) (api.UnfreezeCardResponseObject, error) {
 	card, err := s.unfreeze.Execute(ctx, req.Params.XUserId.String(), req.Id.String())
 	if err != nil {
@@ -132,15 +164,31 @@ func (s *Server) AuthorizeTransaction(ctx context.Context, req api.AuthorizeTran
 		merchant = *req.Body.MerchantName
 	}
 
+	channel := "pos"
+	if req.Body.Channel != nil {
+		channel = string(*req.Body.Channel)
+	}
 	out, err := s.authorize.Execute(ctx, usecase.AuthorizeTransactionInput{
 		UserID:         req.Params.XUserId.String(),
 		CardID:         req.Id.String(),
 		Amount:         req.Body.Amount,
 		Currency:       currency,
 		MerchantName:   merchant,
+		Channel:        channel,
 		IdempotencyKey: req.Params.IdempotencyKey,
 	})
 	if err != nil {
+		if biz, ok := err.(*saga.BusinessError); ok {
+			reason := biz.Code
+			return api.AuthorizeTransaction422JSONResponse(api.Authorization{
+				CardId:        req.Id,
+				UserId:        req.Params.XUserId,
+				Amount:        req.Body.Amount,
+				Currency:      currency,
+				Status:        "declined",
+				FailureReason: &reason,
+			}), nil
+		}
 		return api.AuthorizeTransaction400JSONResponse{Error: err.Error()}, nil
 	}
 
@@ -202,7 +250,7 @@ func toCard(c domain.Card) api.Card {
 	id, _ := uuid.Parse(c.ID)
 	userID, _ := uuid.Parse(c.UserID)
 	walletID, _ := uuid.Parse(c.WalletID)
-	return api.Card{
+	out := api.Card{
 		Id:          openapi_types.UUID(id),
 		UserId:      openapi_types.UUID(userID),
 		WalletId:    openapi_types.UUID(walletID),
@@ -210,7 +258,12 @@ func toCard(c domain.Card) api.Card {
 		Status:      string(c.Status),
 		ExpiryMonth: c.ExpiryMonth,
 		ExpiryYear:  c.ExpiryYear,
+		OnlineOnly:  c.OnlineOnly,
 	}
+	if c.DailyLimit != "" {
+		out.DailyLimit = &c.DailyLimit
+	}
+	return out
 }
 
 func toAuthorization(a domain.Authorization) api.Authorization {

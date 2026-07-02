@@ -24,7 +24,8 @@ import (
 func TestApplyTransferCompleted(t *testing.T) {
 	payload, _ := json.Marshal(events.TransferCompleted{
 		TransferID: "t1", SenderUserID: "u1", RecipientUserID: "u2",
-		Amount: "10.00", Currency: "USD",
+		Amount: "10.00", Currency: "USD", Memo: "thanks",
+		SenderDisplayName: "sender@example.com", RecipientDisplayName: "recipient@example.com",
 	})
 	occurred := time.Date(2026, time.January, 2, 10, 0, 0, 0, time.UTC)
 
@@ -43,11 +44,11 @@ func TestApplyTransferCompleted(t *testing.T) {
 		t.Fatalf("rows = %d, want 2", len(rows))
 	}
 
-	if rows[0].Type != "p2p_out" || rows[0].UserID != "u1" {
+	if rows[0].Type != "p2p_out" || rows[0].UserID != "u1" || rows[0].Counterparty != "recipient@example.com" || rows[0].Memo != "thanks" {
 		t.Fatalf("sender row = %+v", rows[0])
 	}
 
-	if rows[1].Type != "p2p_in" || rows[1].UserID != "u2" {
+	if rows[1].Type != "p2p_in" || rows[1].UserID != "u2" || rows[1].Counterparty != "sender@example.com" {
 		t.Fatalf("recipient row = %+v", rows[1])
 	}
 }

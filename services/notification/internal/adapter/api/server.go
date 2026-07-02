@@ -69,7 +69,11 @@ func (s *Server) ListNotifications(ctx context.Context, req api.ListNotification
 		limit = *req.Params.Limit
 	}
 
-	out, err := s.list.Execute(ctx, req.Params.XUserId.String(), limit)
+	cursor := ""
+	if req.Params.Cursor != nil {
+		cursor = *req.Params.Cursor
+	}
+	out, err := s.list.Execute(ctx, req.Params.XUserId.String(), limit, cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -88,10 +92,14 @@ func (s *Server) ListNotifications(ctx context.Context, req api.ListNotification
 			CreatedAt: n.CreatedAt.UTC(),
 		})
 	}
-	return api.ListNotifications200JSONResponse{
+	resp := api.ListNotifications200JSONResponse{
 		Notifications: views,
 		UnreadCount:   out.UnreadCount,
-	}, nil
+	}
+	if out.NextCursor != "" {
+		resp.NextCursor = &out.NextCursor
+	}
+	return resp, nil
 }
 
 func (s *Server) MarkNotificationRead(ctx context.Context, req api.MarkNotificationReadRequestObject) (api.MarkNotificationReadResponseObject, error) {

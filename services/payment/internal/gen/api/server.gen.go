@@ -38,6 +38,18 @@ type HealthResponse struct {
 	Status  string `json:"status"`
 }
 
+// LimitGauge defines model for LimitGauge.
+type LimitGauge struct {
+	Limit     string `json:"limit"`
+	Remaining string `json:"remaining"`
+	Used      string `json:"used"`
+}
+
+// LimitsResponse defines model for LimitsResponse.
+type LimitsResponse struct {
+	P2p TransferLimits `json:"p2p"`
+}
+
 // Transfer defines model for Transfer.
 type Transfer struct {
 	Amount           string             `json:"amount"`
@@ -53,9 +65,17 @@ type Transfer struct {
 	Status           string             `json:"status"`
 }
 
+// TransferLimits defines model for TransferLimits.
+type TransferLimits struct {
+	DailyTransferAmount LimitGauge `json:"daily_transfer_amount"`
+	HourlyTransferCount LimitGauge `json:"hourly_transfer_count"`
+	SingleTransferMax   string     `json:"single_transfer_max"`
+}
+
 // TransferList defines model for TransferList.
 type TransferList struct {
-	Transfers []Transfer `json:"transfers"`
+	NextCursor *string    `json:"next_cursor,omitempty"`
+	Transfers  []Transfer `json:"transfers"`
 }
 
 // IdempotencyKey defines model for IdempotencyKey.
@@ -64,10 +84,16 @@ type IdempotencyKey = string
 // XUserId defines model for XUserId.
 type XUserId = openapi_types.UUID
 
+// GetLimitsParams defines parameters for GetLimits.
+type GetLimitsParams struct {
+	XUserId XUserId `json:"X-User-Id"`
+}
+
 // ListTransfersParams defines parameters for ListTransfers.
 type ListTransfersParams struct {
 	UserId  *openapi_types.UUID `form:"user_id,omitempty" json:"user_id,omitempty"`
 	Limit   *int                `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor  *string             `form:"cursor,omitempty" json:"cursor,omitempty"`
 	XUserId XUserId             `json:"X-User-Id"`
 }
 
@@ -88,6 +114,9 @@ type CreateP2PTransferJSONRequestBody = CreateTransferRequest
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
+	// (GET /api/v1/limits)
+	GetLimits(w http.ResponseWriter, r *http.Request, params GetLimitsParams)
+
 	// (GET /api/v1/transfers)
 	ListTransfers(w http.ResponseWriter, r *http.Request, params ListTransfersParams)
 
@@ -104,6 +133,11 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// (GET /api/v1/limits)
+func (_ Unimplemented) GetLimits(w http.ResponseWriter, r *http.Request, params GetLimitsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // (GET /api/v1/transfers)
 func (_ Unimplemented) ListTransfers(w http.ResponseWriter, r *http.Request, params ListTransfersParams) {
@@ -133,6 +167,51 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetLimits operation middleware
+func (siw *ServerInterfaceWrapper) GetLimits(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetLimitsParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLimits(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ListTransfers operation middleware
 func (siw *ServerInterfaceWrapper) ListTransfers(w http.ResponseWriter, r *http.Request) {
@@ -165,6 +244,19 @@ func (siw *ServerInterfaceWrapper) ListTransfers(w http.ResponseWriter, r *http.
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
 		}
 		return
 	}
@@ -455,6 +547,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/limits", wrapper.GetLimits)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/transfers", wrapper.ListTransfers)
 	})
 	r.Group(func(r chi.Router) {
@@ -468,6 +563,42 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 
 	return r
+}
+
+type GetLimitsRequestObject struct {
+	Params GetLimitsParams
+}
+
+type GetLimitsResponseObject interface {
+	VisitGetLimitsResponse(w http.ResponseWriter) error
+}
+
+type GetLimits200JSONResponse LimitsResponse
+
+func (response GetLimits200JSONResponse) VisitGetLimitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLimits401JSONResponse ErrorResponse
+
+func (response GetLimits401JSONResponse) VisitGetLimitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type ListTransfersRequestObject struct {
@@ -646,6 +777,9 @@ func (response GetHealth200JSONResponse) VisitGetHealthResponse(w http.ResponseW
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
+	// (GET /api/v1/limits)
+	GetLimits(ctx context.Context, request GetLimitsRequestObject) (GetLimitsResponseObject, error)
+
 	// (GET /api/v1/transfers)
 	ListTransfers(ctx context.Context, request ListTransfersRequestObject) (ListTransfersResponseObject, error)
 
@@ -686,6 +820,32 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// GetLimits operation middleware
+func (sh *strictHandler) GetLimits(w http.ResponseWriter, r *http.Request, params GetLimitsParams) {
+	var request GetLimitsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetLimits(ctx, request.(GetLimitsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetLimits")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetLimitsResponseObject); ok {
+		if err := validResponse.VisitGetLimitsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // ListTransfers operation middleware

@@ -148,14 +148,21 @@ SELECT id, idempotency_key, type, status, sender_user_id, recipient_user_id,
        COALESCE(ledger_transfer_id, '') AS ledger_transfer_id,
        COALESCE(failure_reason, '') AS failure_reason, created_at, completed_at
 FROM payment.transfers
-WHERE sender_user_id = $1 OR recipient_user_id = $1
-ORDER BY created_at DESC
-LIMIT $2
+WHERE (sender_user_id = $1 OR recipient_user_id = $1)
+  AND (
+    $2::timestamptz IS NULL
+    OR created_at < $2::timestamptz
+    OR (created_at = $2::timestamptz AND id < $3::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $4
 `
 
 type ListTransfersByUserParams struct {
-	SenderUserID uuid.UUID
-	Limit        int32
+	UserID          uuid.UUID
+	CursorCreatedAt pgtype.Timestamptz
+	CursorID        pgtype.UUID
+	LimitVal        int32
 }
 
 type ListTransfersByUserRow struct {
@@ -175,7 +182,12 @@ type ListTransfersByUserRow struct {
 }
 
 func (q *Queries) ListTransfersByUser(ctx context.Context, arg ListTransfersByUserParams) ([]ListTransfersByUserRow, error) {
-	rows, err := q.db.Query(ctx, listTransfersByUser, arg.SenderUserID, arg.Limit)
+	rows, err := q.db.Query(ctx, listTransfersByUser,
+		arg.UserID,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+		arg.LimitVal,
+	)
 	if err != nil {
 		return nil, err
 	}

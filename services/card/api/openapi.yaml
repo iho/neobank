@@ -87,6 +87,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/cards/{id}/controls:
+    patch:
+      operationId: updateCardControls
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCardControlsRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/cards/{id}/freeze:
     post:
       operationId: freezeCard
@@ -294,9 +330,21 @@ components:
           format: uuid
         cardholder_name:
           type: string
+        daily_limit:
+          type: string
+        online_only:
+          type: boolean
+          default: false
+    UpdateCardControlsRequest:
+      type: object
+      properties:
+        daily_limit:
+          type: string
+        online_only:
+          type: boolean
     Card:
       type: object
-      required: [id, user_id, wallet_id, last_four, status, expiry_month, expiry_year]
+      required: [id, user_id, wallet_id, last_four, status, expiry_month, expiry_year, online_only]
       properties:
         id:
           type: string
@@ -315,6 +363,10 @@ components:
           type: integer
         expiry_year:
           type: integer
+        daily_limit:
+          type: string
+        online_only:
+          type: boolean
     CardList:
       type: object
       required: [cards]
@@ -334,6 +386,10 @@ components:
           default: USD
         merchant_name:
           type: string
+        channel:
+          type: string
+          enum: [pos, online]
+          default: pos
     Authorization:
       type: object
       required: [id, card_id, user_id, amount, currency, status]

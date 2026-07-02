@@ -116,6 +116,11 @@ func main() {
 		cfg.DepositSourceAccountID, cfg.DepositMaxAmount, txRunner,
 	)
 	changePasswordUC := usecase.NewChangePasswordUseCase(userRepo, userRepo)
+	payeeRepo := sqlcrepo.NewSavedPayeeRepository(queries)
+	listPayeesUC := usecase.NewListPayeesUseCase(payeeRepo)
+	createPayeeUC := usecase.NewCreatePayeeUseCase(payeeRepo)
+	deletePayeeUC := usecase.NewDeletePayeeUseCase(payeeRepo)
+	upsertPayeeUC := usecase.NewUpsertPayeeUseCase(payeeRepo)
 
 	if cfg.KafkaBrokers != "" {
 		consumer := kafkaadapter.NewConsumer(cfg.KafkaBrokers, "user-wallet-projection", projectWalletEventUC, logger)
@@ -131,6 +136,7 @@ func main() {
 		registerUC, loginUC, refreshUC, submitKYCUC, getKYCStatusUC, getProfileUC, walletBalanceUC,
 		listWalletTxUC, projectWalletEventUC,
 		provisionWalletUC, exportGDPRUC, maskGDPRUC, depositWalletUC, changePasswordUC,
+		listPayeesUC, createPayeeUC, deletePayeeUC, upsertPayeeUC,
 		userRepo, walletRepo, piiAccessRepo,
 	)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)

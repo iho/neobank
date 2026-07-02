@@ -2,6 +2,7 @@ package sqlcrepo
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/iho/neobank/pkg/pgutil"
@@ -78,6 +79,17 @@ func (r *AuthorizationRepository) GetByCardAndIdempotencyKey(ctx context.Context
 		return nil, err
 	}
 	return mapAuthorizationByKeyRow(row), nil
+}
+
+func (r *AuthorizationRepository) SumTodayForCard(ctx context.Context, cardID string, dayStart time.Time) (string, error) {
+	cid, err := pgutil.ParseUUID(cardID)
+	if err != nil {
+		return "", err
+	}
+	return r.q.SumAuthorizationsTodayForCard(ctx, sqlc.SumAuthorizationsTodayForCardParams{
+		CardID:    cid,
+		CreatedAt: pgtype.Timestamptz{Time: dayStart.UTC(), Valid: true},
+	})
 }
 
 func (r *AuthorizationRepository) ListByUser(ctx context.Context, userID string, limit int) ([]domain.Authorization, error) {

@@ -164,9 +164,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/KYCStatusResponse"
-  /api/v1/wallet/transactions:
+  /api/v1/payees:
     get:
-      operationId: listWalletTransactions
+      operationId: listPayees
       parameters:
         - $ref: "#/components/parameters/XUserId"
         - name: limit
@@ -180,7 +180,93 @@ paths:
           content:
             application/json:
               schema:
+                $ref: "#/components/schemas/PayeeList"
+    post:
+      operationId: createPayee
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePayeeRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payee"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/payees/{id}:
+    delete:
+      operationId: deletePayee
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/wallet/transactions:
+    get:
+      operationId: listWalletTransactions
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
                 $ref: "#/components/schemas/WalletTransactionList"
+  /api/v1/internal/payees:
+    post:
+      operationId: upsertInternalPayee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertInternalPayeeRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payee"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/wallets/balance:
     get:
       operationId: getWalletBalance
@@ -698,6 +784,59 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/WalletTransaction"
+        next_cursor:
+          type: string
+    Payee:
+      type: object
+      required: [id, payee_user_id, last_used_at, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        payee_user_id:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+        payee_email:
+          type: string
+        payee_phone:
+          type: string
+        last_used_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+    PayeeList:
+      type: object
+      required: [payees]
+      properties:
+        payees:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payee"
+    CreatePayeeRequest:
+      type: object
+      required: [payee_user_id]
+      properties:
+        payee_user_id:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+    UpsertInternalPayeeRequest:
+      type: object
+      required: [user_id, payee_user_id]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        payee_user_id:
+          type: string
+          format: uuid
+        nickname:
+          type: string
     GDPRExportResponse:
       type: object
       required: [user_id, exported_at, profile, kyc_submissions, wallets, wallet_transaction_count]

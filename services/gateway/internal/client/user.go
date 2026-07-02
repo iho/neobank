@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/iho/neobank/pkg/otel"
 )
@@ -94,6 +95,21 @@ type WalletTransactionView struct {
 
 type WalletTransactionList struct {
 	Transactions []WalletTransactionView `json:"transactions"`
+	NextCursor   string                  `json:"next_cursor,omitempty"`
+}
+
+type PayeeView struct {
+	ID          string `json:"id"`
+	PayeeUserID string `json:"payee_user_id"`
+	Nickname    string `json:"nickname,omitempty"`
+	PayeeEmail  string `json:"payee_email,omitempty"`
+	PayeePhone  string `json:"payee_phone,omitempty"`
+	LastUsedAt  string `json:"last_used_at"`
+	CreatedAt   string `json:"created_at"`
+}
+
+type PayeeList struct {
+	Payees []PayeeView `json:"payees"`
 }
 
 type ProfileView struct {
@@ -329,9 +345,12 @@ func (c *UserClient) GetWalletBalance(ctx context.Context, userID, currency stri
 	return out, resp.StatusCode, nil
 }
 
-func (c *UserClient) ListWalletTransactions(ctx context.Context, userID string, limit int) (WalletTransactionList, int, error) {
-	url := fmt.Sprintf("%s/api/v1/wallet/transactions?limit=%d", c.baseURL, limit)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func (c *UserClient) ListWalletTransactions(ctx context.Context, userID string, limit int, cursor string) (WalletTransactionList, int, error) {
+	reqURL := fmt.Sprintf("%s/api/v1/wallet/transactions?limit=%d", c.baseURL, limit)
+	if cursor != "" {
+		reqURL += "&cursor=" + url.QueryEscape(cursor)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return WalletTransactionList{}, 0, err
 	}
@@ -425,6 +444,86 @@ func (c *UserClient) ChangePassword(ctx context.Context, userID, currentPassword
 	}
 	defer resp.Body.Close()
 
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	return resp.StatusCode, nil
+}
+
+func (c *UserClient) ListPayees(ctx context.Context, userID string, limit int) (PayeeList, int, error) {
+	url := fmt.Sprintf("%s/api/v1/payees?limit=%d", c.baseURL, limit)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return PayeeList{}, 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return PayeeList{}, 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return PayeeList{}, 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return PayeeList{}, resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	var out PayeeList
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return PayeeList{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
+}
+
+func (c *UserClient) CreatePayee(ctx context.Context, userID, payeeUserID, nickname string) (PayeeView, int, error) {
+	body, err := json.Marshal(map[string]string{
+		"payee_user_id": payeeUserID,
+		"nickname":      nickname,
+	})
+	if err != nil {
+		return PayeeView{}, 0, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/payees", bytes.NewReader(body))
+	if err != nil {
+		return PayeeView{}, 0, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-User-Id", userID)
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return PayeeView{}, 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return PayeeView{}, 0, err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return PayeeView{}, resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	var out PayeeView
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return PayeeView{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
+}
+
+func (c *UserClient) DeletePayee(ctx context.Context, userID, payeeID string) (int, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.baseURL+"/api/v1/payees/"+payeeID, nil)
+	if err != nil {
+		return 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 0, err

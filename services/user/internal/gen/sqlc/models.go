@@ -140,6 +140,15 @@ type UserSagaInstance struct {
 	UpdatedAt      pgtype.Timestamptz
 }
 
+type UserSavedPayee struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	PayeeUserID uuid.UUID
+	Nickname    pgtype.Text
+	LastUsedAt  pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+}
+
 type UserScreeningCheck struct {
 	ID                uuid.UUID
 	CheckType         string

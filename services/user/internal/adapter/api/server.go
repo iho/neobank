@@ -32,6 +32,10 @@ type Server struct {
 	maskGDPR            *usecase.MaskGDPRUseCase
 	depositWallet       *usecase.DepositWalletUseCase
 	changePassword      *usecase.ChangePasswordUseCase
+	listPayees          *usecase.ListPayeesUseCase
+	createPayee         *usecase.CreatePayeeUseCase
+	deletePayee         *usecase.DeletePayeeUseCase
+	upsertPayee         *usecase.UpsertPayeeUseCase
 	users               *sqlcrepo.UserRepository
 	wallets             *sqlcrepo.WalletRepository
 	piiAccess           audit.PIIAccessRecorder
@@ -52,6 +56,10 @@ func NewServer(
 	maskGDPR *usecase.MaskGDPRUseCase,
 	depositWallet *usecase.DepositWalletUseCase,
 	changePassword *usecase.ChangePasswordUseCase,
+	listPayees *usecase.ListPayeesUseCase,
+	createPayee *usecase.CreatePayeeUseCase,
+	deletePayee *usecase.DeletePayeeUseCase,
+	upsertPayee *usecase.UpsertPayeeUseCase,
 	users *sqlcrepo.UserRepository,
 	wallets *sqlcrepo.WalletRepository,
 	piiAccess audit.PIIAccessRecorder,
@@ -71,6 +79,10 @@ func NewServer(
 		maskGDPR:           maskGDPR,
 		depositWallet:      depositWallet,
 		changePassword:     changePassword,
+		listPayees:         listPayees,
+		createPayee:        createPayee,
+		deletePayee:        deletePayee,
+		upsertPayee:        upsertPayee,
 		users:              users,
 		wallets:            wallets,
 		piiAccess:          piiAccess,
@@ -249,12 +261,16 @@ func (s *Server) ListWalletTransactions(ctx context.Context, req api.ListWalletT
 	if req.Params.Limit != nil {
 		limit = *req.Params.Limit
 	}
-	rows, err := s.listWalletTx.Execute(ctx, req.Params.XUserId.String(), limit)
+	cursor := ""
+	if req.Params.Cursor != nil {
+		cursor = *req.Params.Cursor
+	}
+	result, err := s.listWalletTx.Execute(ctx, req.Params.XUserId.String(), limit, cursor)
 	if err != nil {
 		return nil, err
 	}
-	views := make([]api.WalletTransaction, 0, len(rows))
-	for _, row := range rows {
+	views := make([]api.WalletTransaction, 0, len(result.Transactions))
+	for _, row := range result.Transactions {
 		view := api.WalletTransaction{
 			Id:        row.ID,
 			Type:      row.Type,
@@ -279,7 +295,11 @@ func (s *Server) ListWalletTransactions(ctx context.Context, req api.ListWalletT
 	}); err != nil {
 		return nil, err
 	}
-	return api.ListWalletTransactions200JSONResponse{Transactions: views}, nil
+	resp := api.ListWalletTransactions200JSONResponse{Transactions: views}
+	if result.NextCursor != "" {
+		resp.NextCursor = &result.NextCursor
+	}
+	return resp, nil
 }
 
 func (s *Server) IngestEvent(ctx context.Context, req api.IngestEventRequestObject) (api.IngestEventResponseObject, error) {
@@ -627,4 +647,85 @@ func (s *Server) MaskUserGDPR(ctx context.Context, req api.MaskUserGDPRRequestOb
 		UserId: openapi_types.UUID(userUUID),
 		Status: "masked",
 	}, nil
+}
+
+func (s *Server) ListPayees(ctx context.Context, req api.ListPayeesRequestObject) (api.ListPayeesResponseObject, error) {
+	limit := 20
+	if req.Params.Limit != nil {
+		limit = *req.Params.Limit
+	}
+	payees, err := s.listPayees.Execute(ctx, req.Params.XUserId.String(), limit)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]api.Payee, 0, len(payees))
+	for _, p := range payees {
+		views = append(views, toPayee(p))
+	}
+	return api.ListPayees200JSONResponse{Payees: views}, nil
+}
+
+func (s *Server) CreatePayee(ctx context.Context, req api.CreatePayeeRequestObject) (api.CreatePayeeResponseObject, error) {
+	if req.Body == nil {
+		return api.CreatePayee400JSONResponse{Error: "invalid_json"}, nil
+	}
+	nickname := ""
+	if req.Body.Nickname != nil {
+		nickname = *req.Body.Nickname
+	}
+	payee, err := s.createPayee.Execute(ctx, usecase.CreatePayeeInput{
+		UserID:      req.Params.XUserId.String(),
+		PayeeUserID: req.Body.PayeeUserId.String(),
+		Nickname:    nickname,
+	})
+	if err != nil {
+		return api.CreatePayee400JSONResponse{Error: err.Error()}, nil
+	}
+	return api.CreatePayee201JSONResponse(toPayee(*payee)), nil
+}
+
+func (s *Server) DeletePayee(ctx context.Context, req api.DeletePayeeRequestObject) (api.DeletePayeeResponseObject, error) {
+	if err := s.deletePayee.Execute(ctx, req.Params.XUserId.String(), req.Id.String()); err != nil {
+		if usecase.IsPayeeNotFound(err) {
+			return api.DeletePayee404JSONResponse{Error: "payee_not_found"}, nil
+		}
+		return nil, err
+	}
+	return api.DeletePayee204Response{}, nil
+}
+
+func (s *Server) UpsertInternalPayee(ctx context.Context, req api.UpsertInternalPayeeRequestObject) (api.UpsertInternalPayeeResponseObject, error) {
+	if req.Body == nil {
+		return api.UpsertInternalPayee400JSONResponse{Error: "invalid_json"}, nil
+	}
+	nickname := ""
+	if req.Body.Nickname != nil {
+		nickname = *req.Body.Nickname
+	}
+	payee, err := s.upsertPayee.Execute(ctx, req.Body.UserId.String(), req.Body.PayeeUserId.String(), nickname)
+	if err != nil {
+		return api.UpsertInternalPayee400JSONResponse{Error: err.Error()}, nil
+	}
+	return api.UpsertInternalPayee200JSONResponse(toPayee(*payee)), nil
+}
+
+func toPayee(p domain.SavedPayee) api.Payee {
+	id, _ := uuid.Parse(p.ID)
+	payeeUserID, _ := uuid.Parse(p.PayeeUserID)
+	out := api.Payee{
+		Id:          openapi_types.UUID(id),
+		PayeeUserId: openapi_types.UUID(payeeUserID),
+		LastUsedAt:  p.LastUsedAt.UTC(),
+		CreatedAt:   p.CreatedAt.UTC(),
+	}
+	if p.Nickname != "" {
+		out.Nickname = &p.Nickname
+	}
+	if p.PayeeEmail != "" {
+		out.PayeeEmail = &p.PayeeEmail
+	}
+	if p.PayeePhone != "" {
+		out.PayeePhone = &p.PayeePhone
+	}
+	return out
 }

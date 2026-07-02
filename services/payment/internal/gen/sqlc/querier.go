@@ -8,10 +8,12 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
 	CountAMLCasesByEntity(ctx context.Context, arg CountAMLCasesByEntityParams) (int64, error)
+	CountVelocityEventsLastHour(ctx context.Context, arg CountVelocityEventsLastHourParams) (int32, error)
 	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
 	CreateTransfer(ctx context.Context, arg CreateTransferParams) error
 	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error)
@@ -25,6 +27,7 @@ type Querier interface {
 	InsertFraudDecision(ctx context.Context, arg InsertFraudDecisionParams) error
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error
 	InsertScreeningCheck(ctx context.Context, arg InsertScreeningCheckParams) error
+	InsertVelocityEvent(ctx context.Context, arg InsertVelocityEventParams) error
 	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
 	ListFraudDecisionsByEntity(ctx context.Context, arg ListFraudDecisionsByEntityParams) ([]ListFraudDecisionsByEntityRow, error)
 	ListOpenAMLCasesForExport(ctx context.Context, dollar_1 []string) ([]ListOpenAMLCasesForExportRow, error)
@@ -34,8 +37,10 @@ type Querier interface {
 	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
 	MarkTransferCompleted(ctx context.Context, arg MarkTransferCompletedParams) error
 	MarkTransferFailed(ctx context.Context, arg MarkTransferFailedParams) error
+	PruneVelocityEventsOlderThan(ctx context.Context, cutoff pgtype.Timestamptz) error
 	ResolveReconciliationBreak(ctx context.Context, arg ResolveReconciliationBreakParams) (int64, error)
 	StartReconciliationRun(ctx context.Context, arg StartReconciliationRunParams) (uuid.UUID, error)
+	SumVelocityEventsLast24h(ctx context.Context, arg SumVelocityEventsLast24hParams) (string, error)
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
 	UpsertReconciliationBreak(ctx context.Context, arg UpsertReconciliationBreakParams) error
 }

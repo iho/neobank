@@ -2,6 +2,27 @@
 
 Production-oriented neobank backend monorepo in Go, built around the existing [goledger](https://github.com/iho/goledger) double-entry ledger. Mobile clients talk to a single **API Gateway (BFF)**; domain services own their data and coordinate money movement exclusively through goledger.
 
+Designed for **auditability**: correlation IDs end-to-end, append-only evidence tables, PII read logging, GDPR tooling, optional Vault Transit encryption, and reconciliation against the ledger.
+
+## Contents
+
+- [MVP status](#mvp-status)
+- [Architecture](#architecture)
+- [Orchestration vs choreography](#orchestration-vs-choreography-in-this-repo)
+- [Repository layout](#repository-layout)
+- [Quick start](#quick-start)
+- [Services & ports](#services--ports)
+- [Gateway API](#gateway-api)
+- [Operational runbooks](#operational-runbooks)
+- [Domain events](#domain-events)
+- [Environment variables](#environment-variables)
+- [Make targets](#make-targets)
+- [Shared packages](#shared-packages-pkg)
+- [Testing & CI](#testing--ci)
+- [Troubleshooting](#troubleshooting)
+- [Documentation](#documentation)
+- [Roadmap](#roadmap-deferred)
+
 ## MVP status
 
 | Capability | Status |
@@ -25,7 +46,7 @@ Production-oriented neobank backend monorepo in Go, built around the existing [g
 | golang-migrate per service | Done (`pkg/migrate`) |
 | Kafka event bus | Optional (HTTP fan-out fallback) |
 
-See [docs/architecture.md](docs/architecture.md) for the full system design and [todo.md](todo.md) for compliance backlog (WORM archival, production Vault HA, real KYC vendor).
+See [docs/architecture.md](docs/architecture.md) for design rationale and schema detail (some diagrams describe target architecture; **this README reflects what is implemented today**). See [todo.md](todo.md) for the compliance backlog (WORM archival, production Vault HA, real KYC vendor).
 
 ## Architecture
 
@@ -65,6 +86,32 @@ flowchart LR
 - **Orchestration** (`pkg/saga`) drives money-moving flows in the request path (P2P, card auth, wallet provision).
 - **Choreography** (outbox → Kafka/HTTP) drives side effects: notifications and the wallet-transaction read model. No central coordinator for those consumers.
 
+### P2P transfer flow (orchestration)
+
+```mermaid
+sequenceDiagram
+    participant App as Mobile
+    participant GW as Gateway
+    participant Pay as Payment
+    participant Fraud as pkg/fraud
+    participant Led as goledger
+    participant OB as Outbox
+    participant User as User projection
+    participant Notif as Notification
+
+    App->>GW: POST /v1/transfers
+    GW->>Pay: create transfer (saga)
+    Pay->>Fraud: evaluate sender/recipient
+    Pay->>Led: ledger transfer (idempotent)
+    Pay->>OB: payment.transfer.completed
+    OB-->>User: HTTP/Kafka ingest
+    OB-->>Notif: HTTP/Kafka ingest
+    Pay-->>GW: transfer completed
+    GW-->>App: 200 + transfer id
+```
+
+Saga state (`saga_instances.completed_steps`) survives process restarts. If a step fails, earlier steps are compensated. Stuck sagas surface as `saga_alerts` via the watchdog — they are **not** auto-resumed; retry the client request with the same `Idempotency-Key`.
+
 ## Orchestration vs choreography (in this repo)
 
 | Pattern | Used for | Examples |
@@ -96,14 +143,26 @@ neobank/
 
 Each service follows **clean architecture**: OpenAPI → oapi-codegen (strict Chi) → use cases → sqlc repositories.
 
+PostgreSQL uses **schema-per-service** (`user`, `payment`, `card`, `notification`) — see [deployments/init-db.sql](deployments/init-db.sql).
+
 ## Prerequisites
 
-- Go 1.24+
+- Go 1.24+ (see [go.work](go.work))
 - Docker & Docker Compose
-- [goledger](https://github.com/iho/goledger) on `:50051` (gRPC)
+- [goledger](https://github.com/iho/goledger) on `:50051` (gRPC) — required for wallet provisioning and money movement
 - Optional: `oapi-codegen`, `sqlc`, `buf` (or `make generate`)
 
 ## Quick start
+
+Run these in order on a fresh machine:
+
+| Step | Command | Notes |
+|------|---------|-------|
+| 1 | `make up` | Postgres, Redis, Kafka, Vault dev, OTel collector |
+| 2 | Start goledger | See [services/ledger/README.md](services/ledger/README.md) |
+| 3 | `make tools && make generate && make migrate && make build` | First-time codegen + migrations |
+| 4 | Run five binaries | See [Run services](#run-services) |
+| 5 | Smoke test | See [Smoke test](#smoke-test) |
 
 ### 1. Infrastructure
 
@@ -111,7 +170,7 @@ Each service follows **clean architecture**: OpenAPI → oapi-codegen (strict Ch
 make up
 ```
 
-Starts PostgreSQL (`:5432`), Redis (`:6379`), Kafka (`:9092`), Vault dev server (`:8200`), and an OpenTelemetry collector (`:4317` gRPC).
+Starts PostgreSQL (`:5432`), Redis (`:6379`), Kafka (`:9092`), Vault dev server (`:8200`), and an OpenTelemetry collector (`:4317` gRPC / `:4318` HTTP).
 
 Optional PII encryption at rest:
 
@@ -121,7 +180,7 @@ export VAULT_ADDR=http://localhost:8200
 export VAULT_TOKEN=dev-root-token
 ```
 
-Without `VAULT_ADDR`, the user service stores phone/DOB/document numbers in plaintext (fine for tests).
+Without `VAULT_ADDR`, the user service stores phone/DOB/document numbers in plaintext (fine for local dev and integration tests).
 
 Tracing:
 
@@ -153,6 +212,8 @@ Migrations live in `services/*/migrations/` as `00000N_name.up.sql` / `.down.sql
 
 ### 4. Run services
 
+Start each binary in its own terminal (or use a process manager):
+
 ```bash
 ./bin/user
 ./bin/payment
@@ -173,6 +234,12 @@ Card capture requires a goledger settlement account:
 export SETTLEMENT_LEDGER_ACCOUNT_ID=<ledger-account-uuid>
 ```
 
+Verify the stack:
+
+```bash
+curl -s http://localhost:8080/health
+```
+
 ### 5. Smoke test
 
 ```bash
@@ -182,21 +249,27 @@ curl -s -X POST http://localhost:8080/v1/auth/register \
   -H "Idempotency-Key: $(uuidgen)" \
   -d '{"email":"alice@example.com","phone":"+15551234567","password":"secret123"}'
 
-# Login
-curl -s -X POST http://localhost:8080/v1/auth/login \
+# Login — capture access token (requires jq)
+TOKEN=$(curl -s -X POST http://localhost:8080/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","password":"secret123"}'
+  -d '{"email":"alice@example.com","password":"secret123"}' | jq -r .access_token)
 
-# Submit KYC (auto-approved in MVP) — provisions wallet
+# Submit KYC (auto-approved in MVP) — provisions wallet via saga
 curl -s -X POST http://localhost:8080/v1/kyc \
-  -H "Authorization: Bearer <access_token>" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Idempotency-Key: $(uuidgen)" \
   -d '{"full_name":"Alice Smith","date_of_birth":"1990-01-15","country_code":"US"}'
 
 # Wallet balance
 curl -s http://localhost:8080/v1/wallet \
-  -H "Authorization: Bearer <access_token>"
+  -H "Authorization: Bearer $TOKEN" | jq .
+
+# Unified transaction history (empty until transfers/cards)
+curl -s "http://localhost:8080/v1/wallet/transactions" \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
+
+P2P transfers need a funded sender ledger account and a second registered user; see [tests/integration/p2p_transfer_test.go](tests/integration/p2p_transfer_test.go) for the full pattern.
 
 ## Services & ports
 
@@ -209,8 +282,6 @@ curl -s http://localhost:8080/v1/wallet \
 | Card | 8084 | Virtual cards, authorizations, capture |
 | Vault (local dev) | 8200 | Optional Transit encryption for PII |
 | goledger (external) | 50051 | Double-entry ledger |
-
-PostgreSQL uses **schema-per-service**: `user`, `payment`, `card`, `notification` ([deployments/init-db.sql](deployments/init-db.sql)).
 
 ## Gateway API
 
@@ -319,8 +390,25 @@ make aml-export
 ### Event catalog
 
 ```bash
-make event-catalog
+make event-catalog   # prints JSON contract from pkg/events/catalog.go
 ```
+
+## Domain events
+
+Published via the transactional outbox. Envelope fields include `event_id`, `event_type`, `event_version`, `occurred_at`, `correlation_id`, and `causation_id`.
+
+| Event type | Topic | Producer | Consumers |
+|------------|-------|----------|-----------|
+| `user.registered` | `user.events` | User | Notification |
+| `user.kyc.approved` | `user.events` | User | Notification |
+| `user.wallet.provisioned` | `user.events` | User | Notification |
+| `payment.transfer.completed` | `payment.events` | Payment | Notification, User projection |
+| `card.issued` | `card.events` | Card | Notification |
+| `card.frozen` / `card.unfrozen` | `card.events` | Card | Notification |
+| `card.auth.approved` | `card.events` | Card | Notification, User projection |
+| `card.auth.captured` | `card.events` | Card | Notification, User projection |
+
+Contract source: [pkg/events/catalog.go](pkg/events/catalog.go). Export with `make event-catalog`.
 
 ## Environment variables
 
@@ -392,18 +480,33 @@ make up-jobs / down-jobs   # cron: reconcile + saga-watchdog
 - **Idempotency** — HTTP `Idempotency-Key` + domain unique constraints + ledger idempotency keys on transfers.
 - **Append-only evidence** — `audit_log`, `fraud_decisions`, outbox payloads: DB triggers reject UPDATE/DELETE.
 
-## Testing
+## Testing & CI
 
 ```bash
 make test
 make test-integration   # ~1–2 min, requires Docker
 ```
 
-Integration tests cover P2P, card auth/capture, wallet projection dedup, notification dedup, saga watchdog, outbox/audit immutability, GDPR, PII read audit, and AML.
+Integration tests cover P2P, card auth/capture, wallet projection dedup, notification dedup, saga watchdog, outbox/audit immutability, GDPR, PII read audit, KYC screening, and AML.
+
+**CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)): unit tests, `make build` (with buf lint + codegen), `make lint`, and integration tests on every push/PR to `main`.
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `connection refused` on wallet/KYC | goledger not running | Start goledger on `:50051` |
+| `400` on register/login/transfer | Missing `Idempotency-Key` | Add header on all mutating calls |
+| `401` on gateway | Expired JWT or wrong `APP_ENV` | Re-login; or use dev token only in `development` |
+| Migrations fail | Postgres not up or wrong `DATABASE_URL` | `make up`, then `make migrate` |
+| PII fields unreadable | Vault enabled but keys missing | `make vault-init` or unset `VAULT_ADDR` |
+| Outbox events not projecting | User/Notification not running | Start all five binaries; check service URLs |
+| Card capture fails | No settlement account | Set `SETTLEMENT_LEDGER_ACCOUNT_ID` |
+| Integration tests hang | Docker not running | Start Docker Desktop / daemon |
 
 ## Documentation
 
-- [docs/architecture.md](docs/architecture.md) — system design, schemas, events
+- [docs/architecture.md](docs/architecture.md) — system design, schemas, events (extended notes)
 - [todo.md](todo.md) — regulatory backlog and status
 - [services/ledger/README.md](services/ledger/README.md) — goledger integration
 

@@ -2,6 +2,7 @@ package sqlcrepo
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/iho/neobank/pkg/pgutil"
@@ -37,6 +38,13 @@ func (r *CardRepository) Create(ctx context.Context, c domain.Card) error {
 	if err != nil {
 		return err
 	}
+	var dailyLimit pgtype.Numeric
+	if c.DailyLimit != "" {
+		dailyLimit, err = pgutil.NumericFromString(c.DailyLimit)
+		if err != nil {
+			return err
+		}
+	}
 	return r.q.CreateCard(ctx, sqlc.CreateCardParams{
 		ID:             id,
 		UserID:         userID,
@@ -48,6 +56,8 @@ func (r *CardRepository) Create(ctx context.Context, c domain.Card) error {
 		ExpiryYear:     int16(c.ExpiryYear),
 		Status:         string(c.Status),
 		IdempotencyKey: c.IdempotencyKey,
+		DailyLimit: dailyLimit,
+		OnlineOnly: pgtype.Bool{Bool: c.OnlineOnly, Valid: true},
 	})
 }
 
@@ -63,7 +73,7 @@ func (r *CardRepository) GetByID(ctx context.Context, id string) (*domain.Card, 
 	return mapCardRow(
 		row.ID, row.UserID, row.WalletID, row.ProcessorRef, row.PanToken,
 		row.LastFour, row.ExpiryMonth, row.ExpiryYear, row.Status,
-		row.IdempotencyKey, row.CreatedAt,
+		row.IdempotencyKey, dailyLimitString(row.DailyLimit), row.OnlineOnly, row.CreatedAt,
 	), nil
 }
 
@@ -82,7 +92,7 @@ func (r *CardRepository) GetByUserAndIdempotencyKey(ctx context.Context, userID,
 	return mapCardRow(
 		row.ID, row.UserID, row.WalletID, row.ProcessorRef, row.PanToken,
 		row.LastFour, row.ExpiryMonth, row.ExpiryYear, row.Status,
-		row.IdempotencyKey, row.CreatedAt,
+		row.IdempotencyKey, dailyLimitString(row.DailyLimit), row.OnlineOnly, row.CreatedAt,
 	), nil
 }
 
@@ -100,7 +110,7 @@ func (r *CardRepository) ListByUser(ctx context.Context, userID string) ([]domai
 		card := mapCardRow(
 			row.ID, row.UserID, row.WalletID, row.ProcessorRef, row.PanToken,
 			row.LastFour, row.ExpiryMonth, row.ExpiryYear, row.Status,
-			row.IdempotencyKey, row.CreatedAt,
+			row.IdempotencyKey, dailyLimitString(row.DailyLimit), row.OnlineOnly, row.CreatedAt,
 		)
 		out = append(out, *card)
 	}
@@ -123,6 +133,47 @@ func (r *CardRepository) UpdateStatus(ctx context.Context, id, userID string, st
 	})
 }
 
+func (r *CardRepository) UpdateControls(ctx context.Context, id, userID string, dailyLimit *string, onlineOnly *bool) (*domain.Card, error) {
+	cid, err := pgutil.ParseUUID(id)
+	if err != nil {
+		return nil, err
+	}
+	uid, err := pgutil.ParseUUID(userID)
+	if err != nil {
+		return nil, err
+	}
+	var limit pgtype.Numeric
+	if dailyLimit != nil {
+		if *dailyLimit == "" {
+			limit = pgtype.Numeric{Valid: false}
+		} else {
+			limit, err = pgutil.NumericFromString(*dailyLimit)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	var online pgtype.Bool
+	if onlineOnly != nil {
+		online = pgtype.Bool{Bool: *onlineOnly, Valid: true}
+	}
+	row, err := r.q.UpdateCardControls(ctx, sqlc.UpdateCardControlsParams{
+		ID:         cid,
+		UserID:     uid,
+		DailyLimit: limit,
+		OnlineOnly: online,
+	})
+	if err != nil {
+		return nil, err
+	}
+	card := mapCardRow(
+		row.ID, row.UserID, row.WalletID, row.ProcessorRef, row.PanToken,
+		row.LastFour, row.ExpiryMonth, row.ExpiryYear, row.Status,
+		row.IdempotencyKey, dailyLimitString(row.DailyLimit), row.OnlineOnly, row.CreatedAt,
+	)
+	return card, nil
+}
+
 func (r *CardRepository) MarkCancelled(ctx context.Context, id string) error {
 	cid, err := pgutil.ParseUUID(id)
 	if err != nil {
@@ -131,11 +182,24 @@ func (r *CardRepository) MarkCancelled(ctx context.Context, id string) error {
 	return r.q.MarkCardCancelled(ctx, cid)
 }
 
+func dailyLimitString(v interface{}) string {
+	if v == nil {
+		return ""
+	}
+	switch val := v.(type) {
+	case string:
+		return val
+	default:
+		return fmt.Sprint(val)
+	}
+}
+
 func mapCardRow(
 	id, userID, walletID uuid.UUID,
 	processorRef, panToken, lastFour string,
 	expiryMonth, expiryYear int16,
-	status, idempotencyKey string,
+	status, idempotencyKey, dailyLimit string,
+	onlineOnly bool,
 	createdAt pgtype.Timestamptz,
 ) *domain.Card {
 	c := &domain.Card{
@@ -149,6 +213,8 @@ func mapCardRow(
 		ExpiryYear:     int(expiryYear),
 		Status:         domain.CardStatus(status),
 		IdempotencyKey: idempotencyKey,
+		DailyLimit:     dailyLimit,
+		OnlineOnly:     onlineOnly,
 	}
 	if createdAt.Valid {
 		c.CreatedAt = createdAt.Time.UTC()

@@ -21,5 +21,7 @@ type Card struct {
 	ExpiryYear     int
 	Status         CardStatus
 	IdempotencyKey string
+	DailyLimit     string
+	OnlineOnly     bool
 	CreatedAt      time.Time
 }

@@ -79,11 +79,12 @@ func main() {
 	issueUC := usecase.NewIssueCardUseCase(cardRepo, users, proc, fraudChecker, fraudRepo, outboxRepo, auditRepo, sagaStore, txRunner)
 	freezeUC := usecase.NewFreezeCardUseCase(cardRepo, outboxRepo, auditRepo, txRunner)
 	unfreezeUC := usecase.NewUnfreezeCardUseCase(cardRepo, outboxRepo, auditRepo, txRunner)
+	updateControlsUC := usecase.NewUpdateCardControlsUseCase(cardRepo)
 	authorizeUC := usecase.NewAuthorizeTransactionUseCase(cardRepo, authRepo, users, ledger, fraudChecker, fraudRepo, outboxRepo, auditRepo, sagaStore, txRunner)
 	captureUC := usecase.NewCaptureAuthorizationUseCase(authRepo, ledger, outboxRepo, auditRepo, cfg.SettlementLedgerAcctID, txRunner)
 	listAuthsUC := usecase.NewListAuthorizationsUseCase(authRepo)
 
-	strictServer := apiadapter.NewServer(issueUC, freezeUC, unfreezeUC, authorizeUC, captureUC, listAuthsUC)
+	strictServer := apiadapter.NewServer(issueUC, freezeUC, unfreezeUC, updateControlsUC, authorizeUC, captureUC, listAuthsUC)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
 
 	producer := outbox.NewProducer(outbox.ProducerConfig{

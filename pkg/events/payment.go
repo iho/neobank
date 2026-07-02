@@ -16,12 +16,15 @@ package events
 const TypeTransferCompleted = "payment.transfer.completed"
 
 type TransferCompleted struct {
-	TransferID       string `json:"transfer_id"`
-	LedgerTransferID string `json:"ledger_transfer_id"`
-	SenderUserID     string `json:"sender_user_id"`
-	RecipientUserID  string `json:"recipient_user_id"`
-	Amount           string `json:"amount"`
-	Currency         string `json:"currency"`
+	TransferID           string `json:"transfer_id"`
+	LedgerTransferID     string `json:"ledger_transfer_id"`
+	SenderUserID         string `json:"sender_user_id"`
+	RecipientUserID      string `json:"recipient_user_id"`
+	Amount               string `json:"amount"`
+	Currency             string `json:"currency"`
+	Memo                 string `json:"memo,omitempty"`
+	SenderDisplayName    string `json:"sender_display_name,omitempty"`
+	RecipientDisplayName string `json:"recipient_display_name,omitempty"`
 }
 
 func (e TransferCompleted) EventType() string     { return TypeTransferCompleted }

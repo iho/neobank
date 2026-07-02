@@ -23,6 +23,8 @@ type IssueCardInput struct {
 	UserID         string
 	WalletID       string
 	CardholderName string
+	DailyLimit     string
+	OnlineOnly     bool
 	IdempotencyKey string
 }
 
@@ -95,6 +97,8 @@ func (uc *IssueCardUseCase) Execute(ctx context.Context, in IssueCardInput) (Iss
 		"user_id":         in.UserID,
 		"wallet_id":       walletID,
 		"cardholder_name": in.CardholderName,
+		"daily_limit":     in.DailyLimit,
+		"online_only":     fmt.Sprintf("%t", in.OnlineOnly),
 		"idempotency_key": in.IdempotencyKey,
 	})
 
@@ -181,6 +185,8 @@ func (uc *IssueCardUseCase) steps() []saga.Step {
 						ExpiryYear:     parseInt(state.Get("expiry_year")),
 						Status:         domain.CardStatusActive,
 						IdempotencyKey: state.Get("idempotency_key"),
+						DailyLimit:     state.Get("daily_limit"),
+						OnlineOnly:     state.Get("online_only") == "true",
 					}); err != nil {
 						return err
 					}

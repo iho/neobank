@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/iho/neobank/pkg/events"
 	"github.com/iho/neobank/pkg/walletprojection"
@@ -12,7 +13,7 @@ import (
 type WalletTransactionRepository interface {
 	Insert(ctx context.Context, row walletprojection.Row) error
 	ApplyCapture(ctx context.Context, update walletprojection.CaptureUpdate) error
-	ListByUser(ctx context.Context, userID string, limit int) ([]domain.WalletTransaction, error)
+	ListByUser(ctx context.Context, userID string, limit int, cursorCreatedAt *time.Time, cursorID string) ([]domain.WalletTransaction, error)
 }
 
 type ConsumerInboxRepository interface {

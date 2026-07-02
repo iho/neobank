@@ -15,10 +15,11 @@ import (
 const createCard = `-- name: CreateCard :exec
 INSERT INTO card.cards (
     id, user_id, wallet_id, processor_ref, pan_token, last_four,
-    expiry_month, expiry_year, status, idempotency_key
+    expiry_month, expiry_year, status, idempotency_key, daily_limit, online_only
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
-    $7, $8, $9, $10
+    $7, $8, $9, $10,
+    $11::numeric, COALESCE($12, false)
 )
 `
 
@@ -33,6 +34,8 @@ type CreateCardParams struct {
 	ExpiryYear     int16
 	Status         string
 	IdempotencyKey string
+	DailyLimit     pgtype.Numeric
+	OnlineOnly     interface{}
 }
 
 func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) error {
@@ -47,13 +50,16 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) error {
 		arg.ExpiryYear,
 		arg.Status,
 		arg.IdempotencyKey,
+		arg.DailyLimit,
+		arg.OnlineOnly,
 	)
 	return err
 }
 
 const getCardByID = `-- name: GetCardByID :one
 SELECT id, user_id, wallet_id, COALESCE(processor_ref, '') AS processor_ref,
-       pan_token, last_four, expiry_month, expiry_year, status, idempotency_key, created_at
+       pan_token, last_four, expiry_month, expiry_year, status, idempotency_key,
+       COALESCE(daily_limit::text, '') AS daily_limit, online_only, created_at
 FROM card.cards
 WHERE id = $1
 `
@@ -69,6 +75,8 @@ type GetCardByIDRow struct {
 	ExpiryYear     int16
 	Status         string
 	IdempotencyKey string
+	DailyLimit     interface{}
+	OnlineOnly     bool
 	CreatedAt      pgtype.Timestamptz
 }
 
@@ -86,6 +94,8 @@ func (q *Queries) GetCardByID(ctx context.Context, id uuid.UUID) (GetCardByIDRow
 		&i.ExpiryYear,
 		&i.Status,
 		&i.IdempotencyKey,
+		&i.DailyLimit,
+		&i.OnlineOnly,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -93,7 +103,8 @@ func (q *Queries) GetCardByID(ctx context.Context, id uuid.UUID) (GetCardByIDRow
 
 const getCardByUserAndIdempotencyKey = `-- name: GetCardByUserAndIdempotencyKey :one
 SELECT id, user_id, wallet_id, COALESCE(processor_ref, '') AS processor_ref,
-       pan_token, last_four, expiry_month, expiry_year, status, idempotency_key, created_at
+       pan_token, last_four, expiry_month, expiry_year, status, idempotency_key,
+       COALESCE(daily_limit::text, '') AS daily_limit, online_only, created_at
 FROM card.cards
 WHERE user_id = $1 AND idempotency_key = $2
 `
@@ -114,6 +125,8 @@ type GetCardByUserAndIdempotencyKeyRow struct {
 	ExpiryYear     int16
 	Status         string
 	IdempotencyKey string
+	DailyLimit     interface{}
+	OnlineOnly     bool
 	CreatedAt      pgtype.Timestamptz
 }
 
@@ -131,6 +144,8 @@ func (q *Queries) GetCardByUserAndIdempotencyKey(ctx context.Context, arg GetCar
 		&i.ExpiryYear,
 		&i.Status,
 		&i.IdempotencyKey,
+		&i.DailyLimit,
+		&i.OnlineOnly,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -138,7 +153,8 @@ func (q *Queries) GetCardByUserAndIdempotencyKey(ctx context.Context, arg GetCar
 
 const listCardsByUser = `-- name: ListCardsByUser :many
 SELECT id, user_id, wallet_id, COALESCE(processor_ref, '') AS processor_ref,
-       pan_token, last_four, expiry_month, expiry_year, status, idempotency_key, created_at
+       pan_token, last_four, expiry_month, expiry_year, status, idempotency_key,
+       COALESCE(daily_limit::text, '') AS daily_limit, online_only, created_at
 FROM card.cards
 WHERE user_id = $1
 ORDER BY created_at DESC
@@ -155,6 +171,8 @@ type ListCardsByUserRow struct {
 	ExpiryYear     int16
 	Status         string
 	IdempotencyKey string
+	DailyLimit     interface{}
+	OnlineOnly     bool
 	CreatedAt      pgtype.Timestamptz
 }
 
@@ -178,6 +196,8 @@ func (q *Queries) ListCardsByUser(ctx context.Context, userID uuid.UUID) ([]List
 			&i.ExpiryYear,
 			&i.Status,
 			&i.IdempotencyKey,
+			&i.DailyLimit,
+			&i.OnlineOnly,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -197,6 +217,65 @@ UPDATE card.cards SET status = 'cancelled' WHERE id = $1
 func (q *Queries) MarkCardCancelled(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, markCardCancelled, id)
 	return err
+}
+
+const updateCardControls = `-- name: UpdateCardControls :one
+UPDATE card.cards
+SET daily_limit = $3::numeric,
+    online_only = COALESCE($4, online_only)
+WHERE id = $1 AND user_id = $2
+RETURNING id, user_id, wallet_id, COALESCE(processor_ref, '') AS processor_ref,
+          pan_token, last_four, expiry_month, expiry_year, status, idempotency_key,
+          COALESCE(daily_limit::text, '') AS daily_limit, online_only, created_at
+`
+
+type UpdateCardControlsParams struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	DailyLimit pgtype.Numeric
+	OnlineOnly pgtype.Bool
+}
+
+type UpdateCardControlsRow struct {
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	WalletID       uuid.UUID
+	ProcessorRef   string
+	PanToken       string
+	LastFour       string
+	ExpiryMonth    int16
+	ExpiryYear     int16
+	Status         string
+	IdempotencyKey string
+	DailyLimit     interface{}
+	OnlineOnly     bool
+	CreatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateCardControls(ctx context.Context, arg UpdateCardControlsParams) (UpdateCardControlsRow, error) {
+	row := q.db.QueryRow(ctx, updateCardControls,
+		arg.ID,
+		arg.UserID,
+		arg.DailyLimit,
+		arg.OnlineOnly,
+	)
+	var i UpdateCardControlsRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.WalletID,
+		&i.ProcessorRef,
+		&i.PanToken,
+		&i.LastFour,
+		&i.ExpiryMonth,
+		&i.ExpiryYear,
+		&i.Status,
+		&i.IdempotencyKey,
+		&i.DailyLimit,
+		&i.OnlineOnly,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const updateCardStatus = `-- name: UpdateCardStatus :exec

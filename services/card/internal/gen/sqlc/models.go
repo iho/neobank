@@ -49,6 +49,8 @@ type CardCard struct {
 	ExpiryYear     int16
 	Status         string
 	IdempotencyKey string
+	DailyLimit     pgtype.Numeric
+	OnlineOnly     bool
 	CreatedAt      pgtype.Timestamptz
 }
 

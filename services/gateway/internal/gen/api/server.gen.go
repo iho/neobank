@@ -18,6 +18,24 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AuthorizeRequestChannel.
+const (
+	Online AuthorizeRequestChannel = "online"
+	Pos    AuthorizeRequestChannel = "pos"
+)
+
+// Valid indicates whether the value is a known member of the AuthorizeRequestChannel enum.
+func (e AuthorizeRequestChannel) Valid() bool {
+	switch e {
+	case Online:
+		return true
+	case Pos:
+		return true
+	default:
+		return false
+	}
+}
+
 // AuthorizationList defines model for AuthorizationList.
 type AuthorizationList struct {
 	Authorizations []CardAuthorization `json:"authorizations"`
@@ -25,20 +43,26 @@ type AuthorizationList struct {
 
 // AuthorizeRequest defines model for AuthorizeRequest.
 type AuthorizeRequest struct {
-	Amount       string  `json:"amount"`
-	Currency     *string `json:"currency,omitempty"`
-	MerchantName *string `json:"merchant_name,omitempty"`
+	Amount       string                   `json:"amount"`
+	Channel      *AuthorizeRequestChannel `json:"channel,omitempty"`
+	Currency     *string                  `json:"currency,omitempty"`
+	MerchantName *string                  `json:"merchant_name,omitempty"`
 }
+
+// AuthorizeRequestChannel defines model for AuthorizeRequest.Channel.
+type AuthorizeRequestChannel string
 
 // Card defines model for Card.
 type Card struct {
-	ExpiryMonth int    `json:"expiry_month"`
-	ExpiryYear  int    `json:"expiry_year"`
-	Id          string `json:"id"`
-	LastFour    string `json:"last_four"`
-	Status      string `json:"status"`
-	UserId      string `json:"user_id"`
-	WalletId    string `json:"wallet_id"`
+	DailyLimit  *string `json:"daily_limit,omitempty"`
+	ExpiryMonth int     `json:"expiry_month"`
+	ExpiryYear  int     `json:"expiry_year"`
+	Id          string  `json:"id"`
+	LastFour    string  `json:"last_four"`
+	OnlineOnly  bool    `json:"online_only"`
+	Status      string  `json:"status"`
+	UserId      string  `json:"user_id"`
+	WalletId    string  `json:"wallet_id"`
 }
 
 // CardAuthorization defines model for CardAuthorization.
@@ -66,6 +90,12 @@ type CardList struct {
 type ChangePasswordRequest struct {
 	CurrentPassword string `json:"current_password"`
 	NewPassword     string `json:"new_password"`
+}
+
+// CreatePayeeRequest defines model for CreatePayeeRequest.
+type CreatePayeeRequest struct {
+	Nickname    *string `json:"nickname,omitempty"`
+	PayeeUserId string  `json:"payee_user_id"`
 }
 
 // CreateTransferRequest defines model for CreateTransferRequest.
@@ -109,6 +139,8 @@ type HealthResponse struct {
 // IssueCardRequest defines model for IssueCardRequest.
 type IssueCardRequest struct {
 	CardholderName string  `json:"cardholder_name"`
+	DailyLimit     *string `json:"daily_limit,omitempty"`
+	OnlineOnly     *bool   `json:"online_only,omitempty"`
 	WalletId       *string `json:"wallet_id,omitempty"`
 }
 
@@ -116,6 +148,18 @@ type IssueCardRequest struct {
 type KYCStatusResponse struct {
 	RejectionReason *string `json:"rejection_reason,omitempty"`
 	Status          string  `json:"status"`
+}
+
+// LimitGauge defines model for LimitGauge.
+type LimitGauge struct {
+	Limit     string `json:"limit"`
+	Remaining string `json:"remaining"`
+	Used      string `json:"used"`
+}
+
+// LimitsResponse defines model for LimitsResponse.
+type LimitsResponse struct {
+	P2p TransferLimits `json:"p2p"`
 }
 
 // LoginRequest defines model for LoginRequest.
@@ -149,8 +193,25 @@ type Notification struct {
 
 // NotificationList defines model for NotificationList.
 type NotificationList struct {
+	NextCursor    *string        `json:"next_cursor,omitempty"`
 	Notifications []Notification `json:"notifications"`
 	UnreadCount   int64          `json:"unread_count"`
+}
+
+// Payee defines model for Payee.
+type Payee struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Id          string    `json:"id"`
+	LastUsedAt  time.Time `json:"last_used_at"`
+	Nickname    *string   `json:"nickname,omitempty"`
+	PayeeEmail  *string   `json:"payee_email,omitempty"`
+	PayeePhone  *string   `json:"payee_phone,omitempty"`
+	PayeeUserId string    `json:"payee_user_id"`
+}
+
+// PayeeList defines model for PayeeList.
+type PayeeList struct {
+	Payees []Payee `json:"payees"`
 }
 
 // Profile defines model for Profile.
@@ -227,9 +288,23 @@ type Transfer struct {
 	Status           *string    `json:"status,omitempty"`
 }
 
+// TransferLimits defines model for TransferLimits.
+type TransferLimits struct {
+	DailyTransferAmount LimitGauge `json:"daily_transfer_amount"`
+	HourlyTransferCount LimitGauge `json:"hourly_transfer_count"`
+	SingleTransferMax   string     `json:"single_transfer_max"`
+}
+
 // TransferList defines model for TransferList.
 type TransferList struct {
-	Transfers []Transfer `json:"transfers"`
+	NextCursor *string    `json:"next_cursor,omitempty"`
+	Transfers  []Transfer `json:"transfers"`
+}
+
+// UpdateCardControlsRequest defines model for UpdateCardControlsRequest.
+type UpdateCardControlsRequest struct {
+	DailyLimit *string `json:"daily_limit,omitempty"`
+	OnlineOnly *bool   `json:"online_only,omitempty"`
 }
 
 // WalletBalance defines model for WalletBalance.
@@ -262,6 +337,7 @@ type WalletTransaction struct {
 
 // WalletTransactionList defines model for WalletTransactionList.
 type WalletTransactionList struct {
+	NextCursor   *string             `json:"next_cursor,omitempty"`
 	Transactions []WalletTransaction `json:"transactions"`
 }
 
@@ -330,6 +406,12 @@ type AuthorizeTransactionParams struct {
 	XUserId        *XUserId       `json:"X-User-Id,omitempty"`
 }
 
+// UpdateCardControlsParams defines parameters for UpdateCardControls.
+type UpdateCardControlsParams struct {
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
 // FreezeCardParams defines parameters for FreezeCard.
 type FreezeCardParams struct {
 	Authorization *Authorization `json:"Authorization,omitempty"`
@@ -355,6 +437,12 @@ type GetKYCStatusParams struct {
 	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
 }
 
+// GetLimitsParams defines parameters for GetLimits.
+type GetLimitsParams struct {
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
 // GetProfileParams defines parameters for GetProfile.
 type GetProfileParams struct {
 	Authorization *Authorization `json:"Authorization,omitempty"`
@@ -364,6 +452,7 @@ type GetProfileParams struct {
 // ListNotificationsParams defines parameters for ListNotifications.
 type ListNotificationsParams struct {
 	Limit         *int           `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor        *string        `form:"cursor,omitempty" json:"cursor,omitempty"`
 	Authorization *Authorization `json:"Authorization,omitempty"`
 	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
 }
@@ -380,9 +469,29 @@ type MarkNotificationReadParams struct {
 	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
 }
 
+// ListPayeesParams defines parameters for ListPayees.
+type ListPayeesParams struct {
+	Limit         *int           `form:"limit,omitempty" json:"limit,omitempty"`
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
+// CreatePayeeParams defines parameters for CreatePayee.
+type CreatePayeeParams struct {
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
+// DeletePayeeParams defines parameters for DeletePayee.
+type DeletePayeeParams struct {
+	Authorization *Authorization `json:"Authorization,omitempty"`
+	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
+}
+
 // ListTransfersParams defines parameters for ListTransfers.
 type ListTransfersParams struct {
 	Limit         *int           `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor        *string        `form:"cursor,omitempty" json:"cursor,omitempty"`
 	Authorization *Authorization `json:"Authorization,omitempty"`
 	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
 }
@@ -417,6 +526,7 @@ type DepositWalletParams struct {
 // ListWalletTransactionsParams defines parameters for ListWalletTransactions.
 type ListWalletTransactionsParams struct {
 	Limit         *int           `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor        *string        `form:"cursor,omitempty" json:"cursor,omitempty"`
 	Authorization *Authorization `json:"Authorization,omitempty"`
 	XUserId       *XUserId       `json:"X-User-Id,omitempty"`
 }
@@ -446,8 +556,14 @@ type IssueCardJSONRequestBody = IssueCardRequest
 // AuthorizeTransactionJSONRequestBody defines body for AuthorizeTransaction for application/json ContentType.
 type AuthorizeTransactionJSONRequestBody = AuthorizeRequest
 
+// UpdateCardControlsJSONRequestBody defines body for UpdateCardControls for application/json ContentType.
+type UpdateCardControlsJSONRequestBody = UpdateCardControlsRequest
+
 // SubmitKYCJSONRequestBody defines body for SubmitKYC for application/json ContentType.
 type SubmitKYCJSONRequestBody = SubmitKYCRequest
+
+// CreatePayeeJSONRequestBody defines body for CreatePayee for application/json ContentType.
+type CreatePayeeJSONRequestBody = CreatePayeeRequest
 
 // CreateTransferJSONRequestBody defines body for CreateTransfer for application/json ContentType.
 type CreateTransferJSONRequestBody = CreateTransferRequest
@@ -497,6 +613,9 @@ type ServerInterface interface {
 	// (POST /v1/cards/{id}/authorize)
 	AuthorizeTransaction(w http.ResponseWriter, r *http.Request, id string, params AuthorizeTransactionParams)
 
+	// (PATCH /v1/cards/{id}/controls)
+	UpdateCardControls(w http.ResponseWriter, r *http.Request, id string, params UpdateCardControlsParams)
+
 	// (POST /v1/cards/{id}/freeze)
 	FreezeCard(w http.ResponseWriter, r *http.Request, id string, params FreezeCardParams)
 
@@ -509,6 +628,9 @@ type ServerInterface interface {
 	// (GET /v1/kyc/status)
 	GetKYCStatus(w http.ResponseWriter, r *http.Request, params GetKYCStatusParams)
 
+	// (GET /v1/limits)
+	GetLimits(w http.ResponseWriter, r *http.Request, params GetLimitsParams)
+
 	// (GET /v1/me)
 	GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams)
 
@@ -520,6 +642,15 @@ type ServerInterface interface {
 
 	// (POST /v1/notifications/{id}/read)
 	MarkNotificationRead(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params MarkNotificationReadParams)
+
+	// (GET /v1/payees)
+	ListPayees(w http.ResponseWriter, r *http.Request, params ListPayeesParams)
+
+	// (POST /v1/payees)
+	CreatePayee(w http.ResponseWriter, r *http.Request, params CreatePayeeParams)
+
+	// (DELETE /v1/payees/{id})
+	DeletePayee(w http.ResponseWriter, r *http.Request, id string, params DeletePayeeParams)
 
 	// (GET /v1/transfers)
 	ListTransfers(w http.ResponseWriter, r *http.Request, params ListTransfersParams)
@@ -607,6 +738,11 @@ func (_ Unimplemented) AuthorizeTransaction(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (PATCH /v1/cards/{id}/controls)
+func (_ Unimplemented) UpdateCardControls(w http.ResponseWriter, r *http.Request, id string, params UpdateCardControlsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (POST /v1/cards/{id}/freeze)
 func (_ Unimplemented) FreezeCard(w http.ResponseWriter, r *http.Request, id string, params FreezeCardParams) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -627,6 +763,11 @@ func (_ Unimplemented) GetKYCStatus(w http.ResponseWriter, r *http.Request, para
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (GET /v1/limits)
+func (_ Unimplemented) GetLimits(w http.ResponseWriter, r *http.Request, params GetLimitsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (GET /v1/me)
 func (_ Unimplemented) GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -644,6 +785,21 @@ func (_ Unimplemented) MarkAllNotificationsRead(w http.ResponseWriter, r *http.R
 
 // (POST /v1/notifications/{id}/read)
 func (_ Unimplemented) MarkNotificationRead(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params MarkNotificationReadParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /v1/payees)
+func (_ Unimplemented) ListPayees(w http.ResponseWriter, r *http.Request, params ListPayeesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /v1/payees)
+func (_ Unimplemented) CreatePayee(w http.ResponseWriter, r *http.Request, params CreatePayeeParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (DELETE /v1/payees/{id})
+func (_ Unimplemented) DeletePayee(w http.ResponseWriter, r *http.Request, id string, params DeletePayeeParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1353,6 +1509,75 @@ func (siw *ServerInterfaceWrapper) AuthorizeTransaction(w http.ResponseWriter, r
 	handler.ServeHTTP(w, r)
 }
 
+// UpdateCardControls operation middleware
+func (siw *ServerInterfaceWrapper) UpdateCardControls(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateCardControlsParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateCardControls(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // FreezeCard operation middleware
 func (siw *ServerInterfaceWrapper) FreezeCard(w http.ResponseWriter, r *http.Request) {
 
@@ -1634,6 +1859,66 @@ func (siw *ServerInterfaceWrapper) GetKYCStatus(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
+// GetLimits operation middleware
+func (siw *ServerInterfaceWrapper) GetLimits(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetLimitsParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLimits(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetProfile operation middleware
 func (siw *ServerInterfaceWrapper) GetProfile(w http.ResponseWriter, r *http.Request) {
 
@@ -1712,6 +1997,19 @@ func (siw *ServerInterfaceWrapper) ListNotifications(w http.ResponseWriter, r *h
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
 		}
 		return
 	}
@@ -1896,6 +2194,208 @@ func (siw *ServerInterfaceWrapper) MarkNotificationRead(w http.ResponseWriter, r
 	handler.ServeHTTP(w, r)
 }
 
+// ListPayees operation middleware
+func (siw *ServerInterfaceWrapper) ListPayees(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPayeesParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPayees(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreatePayee operation middleware
+func (siw *ServerInterfaceWrapper) CreatePayee(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreatePayeeParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreatePayee(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeletePayee operation middleware
+func (siw *ServerInterfaceWrapper) DeletePayee(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeletePayeeParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Authorization" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
+		var Authorization Authorization
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
+			return
+		}
+
+		params.Authorization = &Authorization
+
+	}
+
+	// ------------- Optional header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = &XUserId
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeletePayee(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListTransfers operation middleware
 func (siw *ServerInterfaceWrapper) ListTransfers(w http.ResponseWriter, r *http.Request) {
 
@@ -1914,6 +2414,19 @@ func (siw *ServerInterfaceWrapper) ListTransfers(w http.ResponseWriter, r *http.
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
 		}
 		return
 	}
@@ -2299,6 +2812,19 @@ func (siw *ServerInterfaceWrapper) ListWalletTransactions(w http.ResponseWriter,
 		return
 	}
 
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
 	headers := r.Header
 
 	// ------------- Optional header parameter "Authorization" -------------
@@ -2583,6 +3109,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/v1/cards/{id}/authorize", wrapper.AuthorizeTransaction)
 	})
 	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/v1/cards/{id}/controls", wrapper.UpdateCardControls)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/cards/{id}/freeze", wrapper.FreezeCard)
 	})
 	r.Group(func(r chi.Router) {
@@ -2595,6 +3124,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/v1/kyc/status", wrapper.GetKYCStatus)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/limits", wrapper.GetLimits)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/me", wrapper.GetProfile)
 	})
 	r.Group(func(r chi.Router) {
@@ -2605,6 +3137,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/notifications/{id}/read", wrapper.MarkNotificationRead)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/payees", wrapper.ListPayees)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/payees", wrapper.CreatePayee)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/payees/{id}", wrapper.DeletePayee)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/transfers", wrapper.ListTransfers)
@@ -3316,6 +3857,86 @@ func (response AuthorizeTransaction502JSONResponse) VisitAuthorizeTransactionRes
 	return err
 }
 
+type UpdateCardControlsRequestObject struct {
+	Id     string `json:"id"`
+	Params UpdateCardControlsParams
+	Body   *UpdateCardControlsJSONRequestBody
+}
+
+type UpdateCardControlsResponseObject interface {
+	VisitUpdateCardControlsResponse(w http.ResponseWriter) error
+}
+
+type UpdateCardControls200JSONResponse Card
+
+func (response UpdateCardControls200JSONResponse) VisitUpdateCardControlsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCardControls400JSONResponse ErrorResponse
+
+func (response UpdateCardControls400JSONResponse) VisitUpdateCardControlsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCardControls401JSONResponse ErrorResponse
+
+func (response UpdateCardControls401JSONResponse) VisitUpdateCardControlsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCardControls404JSONResponse ErrorResponse
+
+func (response UpdateCardControls404JSONResponse) VisitUpdateCardControlsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCardControls502JSONResponse ErrorResponse
+
+func (response UpdateCardControls502JSONResponse) VisitUpdateCardControlsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type FreezeCardRequestObject struct {
 	Id     string `json:"id"`
 	Params FreezeCardParams
@@ -3561,6 +4182,56 @@ func (response GetKYCStatus502JSONResponse) VisitGetKYCStatusResponse(w http.Res
 	return err
 }
 
+type GetLimitsRequestObject struct {
+	Params GetLimitsParams
+}
+
+type GetLimitsResponseObject interface {
+	VisitGetLimitsResponse(w http.ResponseWriter) error
+}
+
+type GetLimits200JSONResponse LimitsResponse
+
+func (response GetLimits200JSONResponse) VisitGetLimitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLimits401JSONResponse ErrorResponse
+
+func (response GetLimits401JSONResponse) VisitGetLimitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLimits502JSONResponse ErrorResponse
+
+func (response GetLimits502JSONResponse) VisitGetLimitsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetProfileRequestObject struct {
 	Params GetProfileParams
 }
@@ -3779,6 +4450,180 @@ func (response MarkNotificationRead404JSONResponse) VisitMarkNotificationReadRes
 type MarkNotificationRead502JSONResponse ErrorResponse
 
 func (response MarkNotificationRead502JSONResponse) VisitMarkNotificationReadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPayeesRequestObject struct {
+	Params ListPayeesParams
+}
+
+type ListPayeesResponseObject interface {
+	VisitListPayeesResponse(w http.ResponseWriter) error
+}
+
+type ListPayees200JSONResponse PayeeList
+
+func (response ListPayees200JSONResponse) VisitListPayeesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPayees401JSONResponse ErrorResponse
+
+func (response ListPayees401JSONResponse) VisitListPayeesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPayees502JSONResponse ErrorResponse
+
+func (response ListPayees502JSONResponse) VisitListPayeesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePayeeRequestObject struct {
+	Params CreatePayeeParams
+	Body   *CreatePayeeJSONRequestBody
+}
+
+type CreatePayeeResponseObject interface {
+	VisitCreatePayeeResponse(w http.ResponseWriter) error
+}
+
+type CreatePayee201JSONResponse Payee
+
+func (response CreatePayee201JSONResponse) VisitCreatePayeeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePayee400JSONResponse ErrorResponse
+
+func (response CreatePayee400JSONResponse) VisitCreatePayeeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePayee401JSONResponse ErrorResponse
+
+func (response CreatePayee401JSONResponse) VisitCreatePayeeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePayee502JSONResponse ErrorResponse
+
+func (response CreatePayee502JSONResponse) VisitCreatePayeeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePayeeRequestObject struct {
+	Id     string `json:"id"`
+	Params DeletePayeeParams
+}
+
+type DeletePayeeResponseObject interface {
+	VisitDeletePayeeResponse(w http.ResponseWriter) error
+}
+
+type DeletePayee204Response struct {
+}
+
+func (response DeletePayee204Response) VisitDeletePayeeResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeletePayee401JSONResponse ErrorResponse
+
+func (response DeletePayee401JSONResponse) VisitDeletePayeeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePayee404JSONResponse ErrorResponse
+
+func (response DeletePayee404JSONResponse) VisitDeletePayeeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePayee502JSONResponse ErrorResponse
+
+func (response DeletePayee502JSONResponse) VisitDeletePayeeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -4267,6 +5112,9 @@ type StrictServerInterface interface {
 	// (POST /v1/cards/{id}/authorize)
 	AuthorizeTransaction(ctx context.Context, request AuthorizeTransactionRequestObject) (AuthorizeTransactionResponseObject, error)
 
+	// (PATCH /v1/cards/{id}/controls)
+	UpdateCardControls(ctx context.Context, request UpdateCardControlsRequestObject) (UpdateCardControlsResponseObject, error)
+
 	// (POST /v1/cards/{id}/freeze)
 	FreezeCard(ctx context.Context, request FreezeCardRequestObject) (FreezeCardResponseObject, error)
 
@@ -4279,6 +5127,9 @@ type StrictServerInterface interface {
 	// (GET /v1/kyc/status)
 	GetKYCStatus(ctx context.Context, request GetKYCStatusRequestObject) (GetKYCStatusResponseObject, error)
 
+	// (GET /v1/limits)
+	GetLimits(ctx context.Context, request GetLimitsRequestObject) (GetLimitsResponseObject, error)
+
 	// (GET /v1/me)
 	GetProfile(ctx context.Context, request GetProfileRequestObject) (GetProfileResponseObject, error)
 
@@ -4290,6 +5141,15 @@ type StrictServerInterface interface {
 
 	// (POST /v1/notifications/{id}/read)
 	MarkNotificationRead(ctx context.Context, request MarkNotificationReadRequestObject) (MarkNotificationReadResponseObject, error)
+
+	// (GET /v1/payees)
+	ListPayees(ctx context.Context, request ListPayeesRequestObject) (ListPayeesResponseObject, error)
+
+	// (POST /v1/payees)
+	CreatePayee(ctx context.Context, request CreatePayeeRequestObject) (CreatePayeeResponseObject, error)
+
+	// (DELETE /v1/payees/{id})
+	DeletePayee(ctx context.Context, request DeletePayeeRequestObject) (DeletePayeeResponseObject, error)
 
 	// (GET /v1/transfers)
 	ListTransfers(ctx context.Context, request ListTransfersRequestObject) (ListTransfersResponseObject, error)
@@ -4694,6 +5554,40 @@ func (sh *strictHandler) AuthorizeTransaction(w http.ResponseWriter, r *http.Req
 	}
 }
 
+// UpdateCardControls operation middleware
+func (sh *strictHandler) UpdateCardControls(w http.ResponseWriter, r *http.Request, id string, params UpdateCardControlsParams) {
+	var request UpdateCardControlsRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	var body UpdateCardControlsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateCardControls(ctx, request.(UpdateCardControlsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateCardControls")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateCardControlsResponseObject); ok {
+		if err := validResponse.VisitUpdateCardControlsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // FreezeCard operation middleware
 func (sh *strictHandler) FreezeCard(w http.ResponseWriter, r *http.Request, id string, params FreezeCardParams) {
 	var request FreezeCardRequestObject
@@ -4807,6 +5701,32 @@ func (sh *strictHandler) GetKYCStatus(w http.ResponseWriter, r *http.Request, pa
 	}
 }
 
+// GetLimits operation middleware
+func (sh *strictHandler) GetLimits(w http.ResponseWriter, r *http.Request, params GetLimitsParams) {
+	var request GetLimitsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetLimits(ctx, request.(GetLimitsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetLimits")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetLimitsResponseObject); ok {
+		if err := validResponse.VisitGetLimitsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetProfile operation middleware
 func (sh *strictHandler) GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams) {
 	var request GetProfileRequestObject
@@ -4905,6 +5825,92 @@ func (sh *strictHandler) MarkNotificationRead(w http.ResponseWriter, r *http.Req
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(MarkNotificationReadResponseObject); ok {
 		if err := validResponse.VisitMarkNotificationReadResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListPayees operation middleware
+func (sh *strictHandler) ListPayees(w http.ResponseWriter, r *http.Request, params ListPayeesParams) {
+	var request ListPayeesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListPayees(ctx, request.(ListPayeesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListPayees")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListPayeesResponseObject); ok {
+		if err := validResponse.VisitListPayeesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreatePayee operation middleware
+func (sh *strictHandler) CreatePayee(w http.ResponseWriter, r *http.Request, params CreatePayeeParams) {
+	var request CreatePayeeRequestObject
+
+	request.Params = params
+
+	var body CreatePayeeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreatePayee(ctx, request.(CreatePayeeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreatePayee")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreatePayeeResponseObject); ok {
+		if err := validResponse.VisitCreatePayeeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeletePayee operation middleware
+func (sh *strictHandler) DeletePayee(w http.ResponseWriter, r *http.Request, id string, params DeletePayeeParams) {
+	var request DeletePayeeRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeletePayee(ctx, request.(DeletePayeeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeletePayee")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeletePayeeResponseObject); ok {
+		if err := validResponse.VisitDeletePayeeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

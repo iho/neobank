@@ -66,6 +66,10 @@ paths:
           schema:
             type: integer
             default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -73,6 +77,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TransferList"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/limits:
+    get:
+      operationId: getLimits
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitsResponse"
         "401":
           description: Unauthorized
           content:
@@ -197,3 +219,31 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Transfer"
+        next_cursor:
+          type: string
+    LimitGauge:
+      type: object
+      required: [limit, used, remaining]
+      properties:
+        limit:
+          type: string
+        used:
+          type: string
+        remaining:
+          type: string
+    TransferLimits:
+      type: object
+      required: [hourly_transfer_count, daily_transfer_amount, single_transfer_max]
+      properties:
+        hourly_transfer_count:
+          $ref: "#/components/schemas/LimitGauge"
+        daily_transfer_amount:
+          $ref: "#/components/schemas/LimitGauge"
+        single_transfer_max:
+          type: string
+    LimitsResponse:
+      type: object
+      required: [p2p]
+      properties:
+        p2p:
+          $ref: "#/components/schemas/TransferLimits"

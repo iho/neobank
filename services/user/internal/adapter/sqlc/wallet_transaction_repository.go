@@ -2,6 +2,7 @@ package sqlcrepo
 
 import (
 	"context"
+	"time"
 
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/walletprojection"
@@ -63,14 +64,20 @@ func (r *WalletTransactionRepository) ApplyCapture(ctx context.Context, update w
 	})
 }
 
-func (r *WalletTransactionRepository) ListByUser(ctx context.Context, userID string, limit int) ([]domain.WalletTransaction, error) {
+func (r *WalletTransactionRepository) ListByUser(ctx context.Context, userID string, limit int, cursorCreatedAt *time.Time, cursorID string) ([]domain.WalletTransaction, error) {
 	uid, err := pgutil.ParseUUID(userID)
 	if err != nil {
 		return nil, err
 	}
+	var cursorAt pgtype.Timestamptz
+	if cursorCreatedAt != nil {
+		cursorAt = pgtype.Timestamptz{Time: cursorCreatedAt.UTC(), Valid: true}
+	}
 	rows, err := r.q.ListWalletTransactionsByUser(ctx, sqlc.ListWalletTransactionsByUserParams{
-		UserID:   uid,
-		LimitVal: int32(limit),
+		UserID:          uid,
+		LimitVal:        int32(limit),
+		CursorCreatedAt: cursorAt,
+		CursorID:        pgutil.Text(cursorID),
 	})
 	if err != nil {
 		return nil, err

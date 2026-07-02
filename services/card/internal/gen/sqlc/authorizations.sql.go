@@ -258,3 +258,23 @@ func (q *Queries) MarkAuthorizationHold(ctx context.Context, arg MarkAuthorizati
 	_, err := q.db.Exec(ctx, markAuthorizationHold, arg.ID, arg.LedgerHoldID)
 	return err
 }
+
+const sumAuthorizationsTodayForCard = `-- name: SumAuthorizationsTodayForCard :one
+SELECT COALESCE(SUM(amount), 0)::text AS total
+FROM card.authorizations
+WHERE card_id = $1
+  AND status IN ('authorized', 'captured')
+  AND created_at >= $2
+`
+
+type SumAuthorizationsTodayForCardParams struct {
+	CardID    uuid.UUID
+	CreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) SumAuthorizationsTodayForCard(ctx context.Context, arg SumAuthorizationsTodayForCardParams) (string, error) {
+	row := q.db.QueryRow(ctx, sumAuthorizationsTodayForCard, arg.CardID, arg.CreatedAt)
+	var total string
+	err := row.Scan(&total)
+	return total, err
+}

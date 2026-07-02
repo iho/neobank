@@ -26,6 +26,13 @@ func NewCardClient(baseURL string) *CardClient {
 type IssueCardRequest struct {
 	WalletID       string `json:"wallet_id,omitempty"`
 	CardholderName string `json:"cardholder_name"`
+	DailyLimit     string `json:"daily_limit,omitempty"`
+	OnlineOnly     bool   `json:"online_only,omitempty"`
+}
+
+type UpdateCardControlsRequest struct {
+	DailyLimit *string `json:"daily_limit,omitempty"`
+	OnlineOnly *bool   `json:"online_only,omitempty"`
 }
 
 type CardView struct {
@@ -36,6 +43,8 @@ type CardView struct {
 	Status      string `json:"status"`
 	ExpiryMonth int    `json:"expiry_month"`
 	ExpiryYear  int    `json:"expiry_year"`
+	DailyLimit  string `json:"daily_limit,omitempty"`
+	OnlineOnly  bool   `json:"online_only"`
 }
 
 type CardList struct {
@@ -142,10 +151,42 @@ func (c *CardClient) UnfreezeCard(ctx context.Context, userID, cardID string) (C
 	return c.cardAction(ctx, userID, cardID, "unfreeze")
 }
 
+func (c *CardClient) UpdateCardControls(ctx context.Context, userID, cardID string, req UpdateCardControlsRequest) (CardView, int, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return CardView{}, 0, err
+	}
+	reqURL := fmt.Sprintf("%s/api/v1/cards/%s/controls", c.baseURL, cardID)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPatch, reqURL, bytes.NewReader(body))
+	if err != nil {
+		return CardView{}, 0, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-User-Id", userID)
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return CardView{}, 0, fmt.Errorf("card service request: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return CardView{}, 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return CardView{}, resp.StatusCode, fmt.Errorf("card service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	var out CardView
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return CardView{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
+}
+
 type AuthorizeRequest struct {
 	Amount       string `json:"amount"`
 	Currency     string `json:"currency,omitempty"`
 	MerchantName string `json:"merchant_name,omitempty"`
+	Channel      string `json:"channel,omitempty"`
 }
 
 type AuthorizationView struct {

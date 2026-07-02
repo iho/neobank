@@ -13,11 +13,12 @@ import (
 )
 
 type Server struct {
-	p2p *usecase.P2PTransferUseCase
+	p2p    *usecase.P2PTransferUseCase
+	limits *usecase.GetLimitsUseCase
 }
 
-func NewServer(p2p *usecase.P2PTransferUseCase) *Server {
-	return &Server{p2p: p2p}
+func NewServer(p2p *usecase.P2PTransferUseCase, limits *usecase.GetLimitsUseCase) *Server {
+	return &Server{p2p: p2p, limits: limits}
 }
 
 func (s *Server) GetHealth(_ context.Context, _ api.GetHealthRequestObject) (api.GetHealthResponseObject, error) {
@@ -96,17 +97,47 @@ func (s *Server) ListTransfers(ctx context.Context, req api.ListTransfersRequest
 	if req.Params.Limit != nil {
 		limit = *req.Params.Limit
 	}
+	cursor := ""
+	if req.Params.Cursor != nil {
+		cursor = *req.Params.Cursor
+	}
 
-	transfers, err := s.p2p.List(ctx, userID, limit)
+	result, err := s.p2p.List(ctx, userID, limit, cursor)
 	if err != nil {
 		return nil, err
 	}
 
-	views := make([]api.Transfer, 0, len(transfers))
-	for _, t := range transfers {
+	views := make([]api.Transfer, 0, len(result.Transfers))
+	for _, t := range result.Transfers {
 		views = append(views, toTransfer(t))
 	}
-	return api.ListTransfers200JSONResponse{Transfers: views}, nil
+	resp := api.ListTransfers200JSONResponse{Transfers: views}
+	if result.NextCursor != "" {
+		resp.NextCursor = &result.NextCursor
+	}
+	return resp, nil
+}
+
+func (s *Server) GetLimits(ctx context.Context, req api.GetLimitsRequestObject) (api.GetLimitsResponseObject, error) {
+	limits, err := s.limits.Execute(ctx, req.Params.XUserId.String())
+	if err != nil {
+		return nil, err
+	}
+	return api.GetLimits200JSONResponse{
+		P2p: api.TransferLimits{
+			HourlyTransferCount: api.LimitGauge{
+				Limit:     limits.P2P.HourlyTransferCount.Limit,
+				Used:      limits.P2P.HourlyTransferCount.Used,
+				Remaining: limits.P2P.HourlyTransferCount.Remaining,
+			},
+			DailyTransferAmount: api.LimitGauge{
+				Limit:     limits.P2P.DailyTransferAmount.Limit,
+				Used:      limits.P2P.DailyTransferAmount.Used,
+				Remaining: limits.P2P.DailyTransferAmount.Remaining,
+			},
+			SingleTransferMax: limits.P2P.SingleTransferMax,
+		},
+	}, nil
 }
 
 func toTransfer(t domain.Transfer) api.Transfer {

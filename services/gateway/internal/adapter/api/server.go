@@ -257,7 +257,11 @@ func (s *Server) ListWalletTransactions(ctx context.Context, req api.ListWalletT
 		limit = *req.Params.Limit
 	}
 
-	list, statusCode, err := s.users.ListWalletTransactions(ctx, userID, limit)
+	cursor := ""
+	if req.Params.Cursor != nil {
+		cursor = *req.Params.Cursor
+	}
+	list, statusCode, err := s.users.ListWalletTransactions(ctx, userID, limit, cursor)
 	if err != nil {
 		if statusCode >= 400 && statusCode < 500 {
 			return api.ListWalletTransactions401JSONResponse{Error: err.Error()}, nil
@@ -289,7 +293,11 @@ func (s *Server) ListWalletTransactions(ctx context.Context, req api.ListWalletT
 		tx.ReferenceId = &ref
 		transactions = append(transactions, tx)
 	}
-	return api.ListWalletTransactions200JSONResponse{Transactions: transactions}, nil
+	resp := api.ListWalletTransactions200JSONResponse{Transactions: transactions}
+	if list.NextCursor != "" {
+		resp.NextCursor = &list.NextCursor
+	}
+	return resp, nil
 }
 
 func (s *Server) ListTransfers(ctx context.Context, req api.ListTransfersRequestObject) (api.ListTransfersResponseObject, error) {
@@ -303,7 +311,11 @@ func (s *Server) ListTransfers(ctx context.Context, req api.ListTransfersRequest
 		limit = *req.Params.Limit
 	}
 
-	list, _, err := s.payments.ListTransfers(ctx, userID, limit)
+	cursor := ""
+	if req.Params.Cursor != nil {
+		cursor = *req.Params.Cursor
+	}
+	list, _, err := s.payments.ListTransfers(ctx, userID, limit, cursor)
 	if err != nil {
 		return api.ListTransfers502JSONResponse{Error: err.Error()}, nil
 	}
@@ -331,7 +343,37 @@ func (s *Server) ListTransfers(ctx context.Context, req api.ListTransfersRequest
 		view.CompletedAt = parseTimePtr(t.CompletedAt)
 		transfers = append(transfers, view)
 	}
-	return api.ListTransfers200JSONResponse{Transfers: transfers}, nil
+	resp := api.ListTransfers200JSONResponse{Transfers: transfers}
+	if list.NextCursor != "" {
+		resp.NextCursor = &list.NextCursor
+	}
+	return resp, nil
+}
+
+func (s *Server) GetLimits(ctx context.Context, req api.GetLimitsRequestObject) (api.GetLimitsResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.GetLimits401JSONResponse{Error: "unauthorized"}, nil
+	}
+	limits, _, err := s.payments.GetLimits(ctx, userID)
+	if err != nil {
+		return api.GetLimits502JSONResponse{Error: err.Error()}, nil
+	}
+	return api.GetLimits200JSONResponse{
+		P2p: api.TransferLimits{
+			HourlyTransferCount: api.LimitGauge{
+				Limit:     limits.P2P.HourlyTransferCount.Limit,
+				Used:      limits.P2P.HourlyTransferCount.Used,
+				Remaining: limits.P2P.HourlyTransferCount.Remaining,
+			},
+			DailyTransferAmount: api.LimitGauge{
+				Limit:     limits.P2P.DailyTransferAmount.Limit,
+				Used:      limits.P2P.DailyTransferAmount.Used,
+				Remaining: limits.P2P.DailyTransferAmount.Remaining,
+			},
+			SingleTransferMax: limits.P2P.SingleTransferMax,
+		},
+	}, nil
 }
 
 func (s *Server) GetTransfer(ctx context.Context, req api.GetTransferRequestObject) (api.GetTransferResponseObject, error) {
@@ -436,9 +478,19 @@ func (s *Server) IssueCard(ctx context.Context, req api.IssueCardRequestObject) 
 		walletID = *req.Body.WalletId
 	}
 
+	dailyLimit := ""
+	if req.Body.DailyLimit != nil {
+		dailyLimit = *req.Body.DailyLimit
+	}
+	onlineOnly := false
+	if req.Body.OnlineOnly != nil {
+		onlineOnly = *req.Body.OnlineOnly
+	}
 	card, statusCode, err := s.cards.IssueCard(ctx, userID, req.Params.IdempotencyKey, client.IssueCardRequest{
 		WalletID:       walletID,
 		CardholderName: req.Body.CardholderName,
+		DailyLimit:     dailyLimit,
+		OnlineOnly:     onlineOnly,
 	})
 	if statusCode == 422 {
 		return api.IssueCard422JSONResponse{Error: err.Error()}, nil
@@ -488,6 +540,30 @@ func (s *Server) GetCard(ctx context.Context, req api.GetCardRequestObject) (api
 	return api.GetCard200JSONResponse(toCardView(card)), nil
 }
 
+func (s *Server) UpdateCardControls(ctx context.Context, req api.UpdateCardControlsRequestObject) (api.UpdateCardControlsResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.UpdateCardControls401JSONResponse{Error: "unauthorized"}, nil
+	}
+	if req.Body == nil {
+		return api.UpdateCardControls400JSONResponse{Error: "invalid_json"}, nil
+	}
+	card, statusCode, err := s.cards.UpdateCardControls(ctx, userID, req.Id, client.UpdateCardControlsRequest{
+		DailyLimit: req.Body.DailyLimit,
+		OnlineOnly: req.Body.OnlineOnly,
+	})
+	if statusCode == 404 {
+		return api.UpdateCardControls404JSONResponse{Error: "card_not_found"}, nil
+	}
+	if statusCode == 400 {
+		return api.UpdateCardControls400JSONResponse{Error: err.Error()}, nil
+	}
+	if err != nil {
+		return api.UpdateCardControls502JSONResponse{Error: err.Error()}, nil
+	}
+	return api.UpdateCardControls200JSONResponse(toCardView(card)), nil
+}
+
 func (s *Server) FreezeCard(ctx context.Context, req api.FreezeCardRequestObject) (api.FreezeCardResponseObject, error) {
 	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
 	if userID == "" {
@@ -531,7 +607,11 @@ func (s *Server) ListNotifications(ctx context.Context, req api.ListNotification
 		limit = *req.Params.Limit
 	}
 
-	list, err := s.notifications.ListNotifications(ctx, userID, limit)
+	cursor := ""
+	if req.Params.Cursor != nil {
+		cursor = *req.Params.Cursor
+	}
+	list, err := s.notifications.ListNotifications(ctx, userID, limit, cursor)
 	if err != nil {
 		return api.ListNotifications502JSONResponse{Error: err.Error()}, nil
 	}
@@ -549,10 +629,95 @@ func (s *Server) ListNotifications(ctx context.Context, req api.ListNotification
 			CreatedAt: createdAt,
 		})
 	}
-	return api.ListNotifications200JSONResponse{
+	resp := api.ListNotifications200JSONResponse{
 		Notifications: notifications,
 		UnreadCount:   list.UnreadCount,
-	}, nil
+	}
+	if list.NextCursor != "" {
+		resp.NextCursor = &list.NextCursor
+	}
+	return resp, nil
+}
+
+func (s *Server) ListPayees(ctx context.Context, req api.ListPayeesRequestObject) (api.ListPayeesResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.ListPayees401JSONResponse{Error: "unauthorized"}, nil
+	}
+	limit := 20
+	if req.Params.Limit != nil {
+		limit = *req.Params.Limit
+	}
+	list, _, err := s.users.ListPayees(ctx, userID, limit)
+	if err != nil {
+		return api.ListPayees502JSONResponse{Error: err.Error()}, nil
+	}
+	payees := make([]api.Payee, 0, len(list.Payees))
+	for _, p := range list.Payees {
+		payee := api.Payee{
+			Id:          p.ID,
+			PayeeUserId: p.PayeeUserID,
+			LastUsedAt:  parseTimeOrNow(p.LastUsedAt),
+			CreatedAt:   parseTimeOrNow(p.CreatedAt),
+		}
+		if p.Nickname != "" {
+			payee.Nickname = &p.Nickname
+		}
+		if p.PayeeEmail != "" {
+			payee.PayeeEmail = &p.PayeeEmail
+		}
+		if p.PayeePhone != "" {
+			payee.PayeePhone = &p.PayeePhone
+		}
+		payees = append(payees, payee)
+	}
+	return api.ListPayees200JSONResponse{Payees: payees}, nil
+}
+
+func (s *Server) CreatePayee(ctx context.Context, req api.CreatePayeeRequestObject) (api.CreatePayeeResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.CreatePayee401JSONResponse{Error: "unauthorized"}, nil
+	}
+	if req.Body == nil {
+		return api.CreatePayee400JSONResponse{Error: "invalid_json"}, nil
+	}
+	nickname := ""
+	if req.Body.Nickname != nil {
+		nickname = *req.Body.Nickname
+	}
+	payee, statusCode, err := s.users.CreatePayee(ctx, userID, req.Body.PayeeUserId, nickname)
+	if statusCode == 400 {
+		return api.CreatePayee400JSONResponse{Error: err.Error()}, nil
+	}
+	if err != nil {
+		return api.CreatePayee502JSONResponse{Error: err.Error()}, nil
+	}
+	view := api.Payee{
+		Id:          payee.ID,
+		PayeeUserId: payee.PayeeUserID,
+		LastUsedAt:  parseTimeOrNow(payee.LastUsedAt),
+		CreatedAt:   parseTimeOrNow(payee.CreatedAt),
+	}
+	if payee.Nickname != "" {
+		view.Nickname = &payee.Nickname
+	}
+	return api.CreatePayee201JSONResponse(view), nil
+}
+
+func (s *Server) DeletePayee(ctx context.Context, req api.DeletePayeeRequestObject) (api.DeletePayeeResponseObject, error) {
+	userID := s.resolveUserID(req.Params.Authorization, req.Params.XUserId)
+	if userID == "" {
+		return api.DeletePayee401JSONResponse{Error: "unauthorized"}, nil
+	}
+	statusCode, err := s.users.DeletePayee(ctx, userID, req.Id)
+	if statusCode == 404 {
+		return api.DeletePayee404JSONResponse{Error: "payee_not_found"}, nil
+	}
+	if err != nil {
+		return api.DeletePayee502JSONResponse{Error: err.Error()}, nil
+	}
+	return api.DeletePayee204Response{}, nil
 }
 
 func (s *Server) MarkNotificationRead(ctx context.Context, req api.MarkNotificationReadRequestObject) (api.MarkNotificationReadResponseObject, error) {
@@ -652,10 +817,15 @@ func (s *Server) AuthorizeTransaction(ctx context.Context, req api.AuthorizeTran
 		merchant = *req.Body.MerchantName
 	}
 
+	channel := "pos"
+	if req.Body.Channel != nil {
+		channel = string(*req.Body.Channel)
+	}
 	auth, statusCode, err := s.cards.AuthorizeTransaction(ctx, userID, req.Id, req.Params.IdempotencyKey, client.AuthorizeRequest{
 		Amount:       req.Body.Amount,
 		Currency:     currency,
 		MerchantName: merchant,
+		Channel:      channel,
 	})
 	if statusCode == 422 {
 		return api.AuthorizeTransaction422JSONResponse(toAuthorizationView(auth)), nil
@@ -774,7 +944,7 @@ func toTransferView(t client.TransferView) api.Transfer {
 }
 
 func toCardView(c client.CardView) api.Card {
-	return api.Card{
+	out := api.Card{
 		Id:          c.ID,
 		UserId:      c.UserID,
 		WalletId:    c.WalletID,
@@ -782,7 +952,12 @@ func toCardView(c client.CardView) api.Card {
 		Status:      c.Status,
 		ExpiryMonth: c.ExpiryMonth,
 		ExpiryYear:  c.ExpiryYear,
+		OnlineOnly:  c.OnlineOnly,
 	}
+	if c.DailyLimit != "" {
+		out.DailyLimit = &c.DailyLimit
+	}
+	return out
 }
 
 func (s *Server) resolveUserID(authHeader, xUserID *string) string {

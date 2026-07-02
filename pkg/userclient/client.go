@@ -14,6 +14,7 @@
 package userclient
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -104,6 +105,38 @@ func (c *Client) GetWallet(ctx context.Context, userID, currency string) (Wallet
 	}
 
 	return wallet, nil
+}
+
+func (c *Client) UpsertPayee(ctx context.Context, userID, payeeUserID, nickname, idempotencyKey string) error {
+	body, err := json.Marshal(map[string]string{
+		"user_id":       userID,
+		"payee_user_id": payeeUserID,
+		"nickname":      nickname,
+	})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/internal/payees", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if idempotencyKey != "" {
+		req.Header.Set("Idempotency-Key", idempotencyKey)
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	return nil
 }
 
 func (c *Client) getUser(ctx context.Context, path string) (User, error) {

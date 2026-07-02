@@ -2,6 +2,7 @@ package port
 
 import (
 	"context"
+	"time"
 
 	"github.com/iho/neobank/pkg/amlmonitor"
 	"github.com/iho/neobank/pkg/fraud"
@@ -15,7 +16,7 @@ type TransferRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.Transfer, error)
 	MarkCompleted(ctx context.Context, id, ledgerTransferID string) error
 	MarkFailed(ctx context.Context, id, reason string) error
-	ListByUser(ctx context.Context, userID string, limit int) ([]domain.Transfer, error)
+	ListByUser(ctx context.Context, userID string, limit int, cursorCreatedAt *time.Time, cursorID string) ([]domain.Transfer, error)
 	WithTx(tx pgx.Tx) TransferRepository
 }
 

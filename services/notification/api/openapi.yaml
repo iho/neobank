@@ -85,6 +85,10 @@ paths:
           schema:
             type: integer
             default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -173,6 +177,8 @@ components:
         unread_count:
           type: integer
           format: int64
+        next_cursor:
+          type: string
     MarkNotificationsReadResponse:
       type: object
       required: [marked_count]

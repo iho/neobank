@@ -35,6 +35,11 @@ SELECT id, idempotency_key, type, status, sender_user_id, recipient_user_id,
        COALESCE(ledger_transfer_id, '') AS ledger_transfer_id,
        COALESCE(failure_reason, '') AS failure_reason, created_at, completed_at
 FROM payment.transfers
-WHERE sender_user_id = $1 OR recipient_user_id = $1
-ORDER BY created_at DESC
-LIMIT $2;
+WHERE (sender_user_id = @user_id OR recipient_user_id = @user_id)
+  AND (
+    sqlc.narg(cursor_created_at)::timestamptz IS NULL
+    OR created_at < sqlc.narg(cursor_created_at)::timestamptz
+    OR (created_at = sqlc.narg(cursor_created_at)::timestamptz AND id < sqlc.narg(cursor_id)::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT @limit_val;

@@ -77,6 +77,15 @@ func applyTransferCompleted(envelope events.Envelope) ([]Row, *CaptureUpdate, er
 		createdAt = time.Now().UTC()
 	}
 
+	senderCounterparty := payload.RecipientDisplayName
+	if senderCounterparty == "" {
+		senderCounterparty = payload.RecipientUserID
+	}
+	recipientCounterparty := payload.SenderDisplayName
+	if recipientCounterparty == "" {
+		recipientCounterparty = payload.SenderUserID
+	}
+
 	rows := []Row{
 		{
 			UserID:        payload.SenderUserID,
@@ -87,7 +96,8 @@ func applyTransferCompleted(envelope events.Envelope) ([]Row, *CaptureUpdate, er
 			Currency:      payload.Currency,
 			Direction:     "debit",
 			Status:        "completed",
-			Counterparty:  payload.RecipientUserID,
+			Counterparty:  senderCounterparty,
+			Memo:          payload.Memo,
 			CreatedAt:     createdAt,
 		},
 		{
@@ -99,7 +109,8 @@ func applyTransferCompleted(envelope events.Envelope) ([]Row, *CaptureUpdate, er
 			Currency:      payload.Currency,
 			Direction:     "credit",
 			Status:        "completed",
-			Counterparty:  payload.SenderUserID,
+			Counterparty:  recipientCounterparty,
+			Memo:          payload.Memo,
 			CreatedAt:     createdAt,
 		},
 	}

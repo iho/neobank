@@ -48,3 +48,10 @@ WHERE id = $1;
 UPDATE card.authorizations
 SET status = 'captured', ledger_transfer_id = $2, captured_at = now()
 WHERE id = $1;
+
+-- name: SumAuthorizationsTodayForCard :one
+SELECT COALESCE(SUM(amount), 0)::text AS total
+FROM card.authorizations
+WHERE card_id = $1
+  AND status IN ('authorized', 'captured')
+  AND created_at >= $2;

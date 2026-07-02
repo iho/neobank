@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/iho/neobank/pkg/amlmonitor"
@@ -15,6 +16,7 @@ import (
 	"github.com/iho/neobank/pkg/ledgerclient"
 	"github.com/iho/neobank/pkg/money"
 	"github.com/iho/neobank/pkg/outbox"
+	"github.com/iho/neobank/pkg/pagination"
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/reqctx"
 	"github.com/iho/neobank/pkg/saga"
@@ -227,13 +229,17 @@ func (uc *P2PTransferUseCase) Execute(ctx context.Context, in P2PTransferInput) 
 
 	uc.runAMLMonitoring(ctx, state)
 
+	senderUser, _ := uc.users.GetByID(ctx, in.SenderUserID)
 	completedEvent := events.TransferCompleted{
-		TransferID:       transferID,
-		LedgerTransferID: state.Get("ledger_transfer_id"),
-		SenderUserID:     in.SenderUserID,
-		RecipientUserID:  state.Get("recipient_user_id"),
-		Amount:           in.Amount,
-		Currency:         in.Currency,
+		TransferID:           transferID,
+		LedgerTransferID:       state.Get("ledger_transfer_id"),
+		SenderUserID:         in.SenderUserID,
+		RecipientUserID:      state.Get("recipient_user_id"),
+		Amount:               in.Amount,
+		Currency:             in.Currency,
+		Memo:                 in.Memo,
+		SenderDisplayName:    displayName(senderUser),
+		RecipientDisplayName: displayName(recipient),
 	}
 	if err := uc.tx.Run(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		if err := uc.transfers.WithTx(tx).MarkCompleted(ctx, transferID, state.Get("ledger_transfer_id")); err != nil {
@@ -254,15 +260,56 @@ func (uc *P2PTransferUseCase) Execute(ctx context.Context, in P2PTransferInput) 
 		return nil, err
 	}
 
+	if upsertErr := uc.users.UpsertPayee(ctx, in.SenderUserID, recipient.ID, "", in.IdempotencyKey+"-payee"); upsertErr != nil {
+		slog.WarnContext(ctx, "upsert saved payee failed", "error", upsertErr, "sender", in.SenderUserID, "recipient", recipient.ID)
+	}
+
 	return uc.transfers.GetByID(ctx, transferID)
+}
+
+func displayName(user userclient.User) string {
+	if user.Email != "" {
+		return user.Email
+	}
+	if user.Phone != "" {
+		return user.Phone
+	}
+	return user.ID
 }
 
 func (uc *P2PTransferUseCase) GetByID(ctx context.Context, id string) (*domain.Transfer, error) {
 	return uc.transfers.GetByID(ctx, id)
 }
 
-func (uc *P2PTransferUseCase) List(ctx context.Context, userID string, limit int) ([]domain.Transfer, error) {
-	return uc.transfers.ListByUser(ctx, userID, limit)
+type TransferListResult struct {
+	Transfers  []domain.Transfer
+	NextCursor string
+}
+
+func (uc *P2PTransferUseCase) List(ctx context.Context, userID string, limit int, cursor string) (TransferListResult, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	pageSize := limit + 1
+	var cursorAt *time.Time
+	var cursorID string
+	if cursor != "" {
+		decoded, err := pagination.Decode(cursor)
+		if err != nil {
+			return TransferListResult{}, err
+		}
+		at := decoded.CreatedAt
+		cursorAt = &at
+		cursorID = decoded.ID
+	}
+	rows, err := uc.transfers.ListByUser(ctx, userID, pageSize, cursorAt, cursorID)
+	if err != nil {
+		return TransferListResult{}, err
+	}
+	items, next := pagination.Trim(rows, limit, func(t domain.Transfer) pagination.Cursor {
+		return pagination.Cursor{CreatedAt: t.CreatedAt, ID: t.ID}
+	})
+	return TransferListResult{Transfers: items, NextCursor: next}, nil
 }
 
 func (uc *P2PTransferUseCase) runAMLMonitoring(ctx context.Context, state *saga.State) {

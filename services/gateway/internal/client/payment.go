@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/iho/neobank/pkg/otel"
 )
@@ -47,12 +48,32 @@ type TransferView struct {
 }
 
 type TransferList struct {
-	Transfers []TransferView `json:"transfers"`
+	Transfers  []TransferView `json:"transfers"`
+	NextCursor string         `json:"next_cursor,omitempty"`
 }
 
-func (c *PaymentClient) ListTransfers(ctx context.Context, userID string, limit int) (TransferList, int, error) {
-	url := fmt.Sprintf("%s/api/v1/transfers?limit=%d", c.baseURL, limit)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+type LimitGaugeView struct {
+	Limit     string `json:"limit"`
+	Used      string `json:"used"`
+	Remaining string `json:"remaining"`
+}
+
+type TransferLimitsView struct {
+	HourlyTransferCount LimitGaugeView `json:"hourly_transfer_count"`
+	DailyTransferAmount LimitGaugeView `json:"daily_transfer_amount"`
+	SingleTransferMax   string         `json:"single_transfer_max"`
+}
+
+type LimitsResponse struct {
+	P2P TransferLimitsView `json:"p2p"`
+}
+
+func (c *PaymentClient) ListTransfers(ctx context.Context, userID string, limit int, cursor string) (TransferList, int, error) {
+	reqURL := fmt.Sprintf("%s/api/v1/transfers?limit=%d", c.baseURL, limit)
+	if cursor != "" {
+		reqURL += "&cursor=" + url.QueryEscape(cursor)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return TransferList{}, 0, err
 	}
@@ -79,9 +100,34 @@ func (c *PaymentClient) ListTransfers(ctx context.Context, userID string, limit 
 	return out, resp.StatusCode, nil
 }
 
+func (c *PaymentClient) GetLimits(ctx context.Context, userID string) (LimitsResponse, int, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/limits", nil)
+	if err != nil {
+		return LimitsResponse{}, 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return LimitsResponse{}, 0, fmt.Errorf("payment service request: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return LimitsResponse{}, 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return LimitsResponse{}, resp.StatusCode, fmt.Errorf("payment service status %d: %s", resp.StatusCode, string(respBody))
+	}
+	var out LimitsResponse
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return LimitsResponse{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
+}
+
 func (c *PaymentClient) GetTransfer(ctx context.Context, userID, transferID string) (TransferView, int, error) {
-	url := fmt.Sprintf("%s/api/v1/transfers/%s", c.baseURL, transferID)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	reqURL := fmt.Sprintf("%s/api/v1/transfers/%s", c.baseURL, transferID)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return TransferView{}, 0, err
 	}

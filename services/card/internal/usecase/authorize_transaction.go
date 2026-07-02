@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/iho/neobank/pkg/audit"
@@ -29,6 +30,7 @@ type AuthorizeTransactionInput struct {
 	Amount         string
 	Currency       string
 	MerchantName   string
+	Channel        string
 	IdempotencyKey string
 }
 
@@ -104,6 +106,35 @@ func (uc *AuthorizeTransactionUseCase) Execute(ctx context.Context, in Authorize
 	}
 	if card.Status != domain.CardStatusActive {
 		return AuthorizeTransactionOutput{}, saga.NewBusinessError("card_not_active", "card is not active")
+	}
+	channel := in.Channel
+	if channel == "" {
+		channel = "pos"
+	}
+	if card.OnlineOnly && channel != "online" {
+		return AuthorizeTransactionOutput{}, saga.NewBusinessError("online_only", "card is restricted to online purchases")
+	}
+	if card.DailyLimit != "" {
+		dayStart := time.Now().UTC().Truncate(24 * time.Hour)
+		spent, sumErr := uc.auths.SumTodayForCard(ctx, in.CardID, dayStart)
+		if sumErr != nil {
+			return AuthorizeTransactionOutput{}, sumErr
+		}
+		spentAmt, err := money.Parse(spent)
+		if err != nil {
+			return AuthorizeTransactionOutput{}, err
+		}
+		txAmt, err := money.Parse(in.Amount)
+		if err != nil {
+			return AuthorizeTransactionOutput{}, err
+		}
+		limitAmt, err := money.Parse(card.DailyLimit)
+		if err != nil {
+			return AuthorizeTransactionOutput{}, err
+		}
+		if spentAmt.Add(txAmt).GreaterThan(limitAmt) {
+			return AuthorizeTransactionOutput{}, saga.NewBusinessError("daily_limit_exceeded", "card daily spend limit exceeded")
+		}
 	}
 
 	wallet, err := uc.users.GetWallet(ctx, card.UserID, in.Currency)

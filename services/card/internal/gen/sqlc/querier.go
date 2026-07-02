@@ -37,6 +37,8 @@ type Querier interface {
 	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
 	ResolveReconciliationBreak(ctx context.Context, arg ResolveReconciliationBreakParams) (int64, error)
 	StartReconciliationRun(ctx context.Context, arg StartReconciliationRunParams) (uuid.UUID, error)
+	SumAuthorizationsTodayForCard(ctx context.Context, arg SumAuthorizationsTodayForCardParams) (string, error)
+	UpdateCardControls(ctx context.Context, arg UpdateCardControlsParams) (UpdateCardControlsRow, error)
 	UpdateCardStatus(ctx context.Context, arg UpdateCardStatusParams) error
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
 	UpsertReconciliationBreak(ctx context.Context, arg UpsertReconciliationBreakParams) error

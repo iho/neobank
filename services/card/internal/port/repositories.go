@@ -2,6 +2,7 @@ package port
 
 import (
 	"context"
+	"time"
 
 	"github.com/iho/neobank/pkg/fraud"
 	"github.com/iho/neobank/services/card/internal/domain"
@@ -14,6 +15,7 @@ type CardRepository interface {
 	GetByUserAndIdempotencyKey(ctx context.Context, userID, key string) (*domain.Card, error)
 	ListByUser(ctx context.Context, userID string) ([]domain.Card, error)
 	UpdateStatus(ctx context.Context, id, userID string, status domain.CardStatus) error
+	UpdateControls(ctx context.Context, id, userID string, dailyLimit *string, onlineOnly *bool) (*domain.Card, error)
 	MarkCancelled(ctx context.Context, id string) error
 	WithTx(tx pgx.Tx) CardRepository
 }
@@ -22,6 +24,7 @@ type AuthorizationRepository interface {
 	Create(ctx context.Context, a domain.Authorization) error
 	GetByID(ctx context.Context, id string) (*domain.Authorization, error)
 	GetByCardAndIdempotencyKey(ctx context.Context, cardID, key string) (*domain.Authorization, error)
+	SumTodayForCard(ctx context.Context, cardID string, dayStart time.Time) (string, error)
 	ListByUser(ctx context.Context, userID string, limit int) ([]domain.Authorization, error)
 	MarkHold(ctx context.Context, id, holdID string) error
 	MarkFailed(ctx context.Context, id, reason string) error

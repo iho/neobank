@@ -17,6 +17,24 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AuthorizeRequestChannel.
+const (
+	Online AuthorizeRequestChannel = "online"
+	Pos    AuthorizeRequestChannel = "pos"
+)
+
+// Valid indicates whether the value is a known member of the AuthorizeRequestChannel enum.
+func (e AuthorizeRequestChannel) Valid() bool {
+	switch e {
+	case Online:
+		return true
+	case Pos:
+		return true
+	default:
+		return false
+	}
+}
+
 // Authorization defines model for Authorization.
 type Authorization struct {
 	Amount           string             `json:"amount"`
@@ -40,17 +58,23 @@ type AuthorizationList struct {
 
 // AuthorizeRequest defines model for AuthorizeRequest.
 type AuthorizeRequest struct {
-	Amount       string  `json:"amount"`
-	Currency     *string `json:"currency,omitempty"`
-	MerchantName *string `json:"merchant_name,omitempty"`
+	Amount       string                   `json:"amount"`
+	Channel      *AuthorizeRequestChannel `json:"channel,omitempty"`
+	Currency     *string                  `json:"currency,omitempty"`
+	MerchantName *string                  `json:"merchant_name,omitempty"`
 }
+
+// AuthorizeRequestChannel defines model for AuthorizeRequest.Channel.
+type AuthorizeRequestChannel string
 
 // Card defines model for Card.
 type Card struct {
+	DailyLimit  *string            `json:"daily_limit,omitempty"`
 	ExpiryMonth int                `json:"expiry_month"`
 	ExpiryYear  int                `json:"expiry_year"`
 	Id          openapi_types.UUID `json:"id"`
 	LastFour    string             `json:"last_four"`
+	OnlineOnly  bool               `json:"online_only"`
 	Status      string             `json:"status"`
 	UserId      openapi_types.UUID `json:"user_id"`
 	WalletId    openapi_types.UUID `json:"wallet_id"`
@@ -75,7 +99,15 @@ type HealthResponse struct {
 // IssueCardRequest defines model for IssueCardRequest.
 type IssueCardRequest struct {
 	CardholderName string              `json:"cardholder_name"`
+	DailyLimit     *string             `json:"daily_limit,omitempty"`
+	OnlineOnly     *bool               `json:"online_only,omitempty"`
 	WalletId       *openapi_types.UUID `json:"wallet_id,omitempty"`
+}
+
+// UpdateCardControlsRequest defines model for UpdateCardControlsRequest.
+type UpdateCardControlsRequest struct {
+	DailyLimit *string `json:"daily_limit,omitempty"`
+	OnlineOnly *bool   `json:"online_only,omitempty"`
 }
 
 // IdempotencyKey defines model for IdempotencyKey.
@@ -122,6 +154,11 @@ type AuthorizeTransactionParams struct {
 	XUserId        XUserId        `json:"X-User-Id"`
 }
 
+// UpdateCardControlsParams defines parameters for UpdateCardControls.
+type UpdateCardControlsParams struct {
+	XUserId XUserId `json:"X-User-Id"`
+}
+
 // FreezeCardParams defines parameters for FreezeCard.
 type FreezeCardParams struct {
 	XUserId XUserId `json:"X-User-Id"`
@@ -137,6 +174,9 @@ type IssueCardJSONRequestBody = IssueCardRequest
 
 // AuthorizeTransactionJSONRequestBody defines body for AuthorizeTransaction for application/json ContentType.
 type AuthorizeTransactionJSONRequestBody = AuthorizeRequest
+
+// UpdateCardControlsJSONRequestBody defines body for UpdateCardControls for application/json ContentType.
+type UpdateCardControlsJSONRequestBody = UpdateCardControlsRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -161,6 +201,9 @@ type ServerInterface interface {
 
 	// (POST /api/v1/cards/{id}/authorize)
 	AuthorizeTransaction(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params AuthorizeTransactionParams)
+
+	// (PATCH /api/v1/cards/{id}/controls)
+	UpdateCardControls(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params UpdateCardControlsParams)
 
 	// (POST /api/v1/cards/{id}/freeze)
 	FreezeCard(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params FreezeCardParams)
@@ -208,6 +251,11 @@ func (_ Unimplemented) GetCard(w http.ResponseWriter, r *http.Request, id openap
 
 // (POST /api/v1/cards/{id}/authorize)
 func (_ Unimplemented) AuthorizeTransaction(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params AuthorizeTransactionParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (PATCH /api/v1/cards/{id}/controls)
+func (_ Unimplemented) UpdateCardControls(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params UpdateCardControlsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -645,6 +693,60 @@ func (siw *ServerInterfaceWrapper) AuthorizeTransaction(w http.ResponseWriter, r
 	handler.ServeHTTP(w, r)
 }
 
+// UpdateCardControls operation middleware
+func (siw *ServerInterfaceWrapper) UpdateCardControls(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateCardControlsParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateCardControls(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // FreezeCard operation middleware
 func (siw *ServerInterfaceWrapper) FreezeCard(w http.ResponseWriter, r *http.Request) {
 
@@ -900,6 +1002,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/cards/{id}/authorize", wrapper.AuthorizeTransaction)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/cards/{id}/controls", wrapper.UpdateCardControls)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/cards/{id}/freeze", wrapper.FreezeCard)
@@ -1228,6 +1333,58 @@ func (response AuthorizeTransaction422JSONResponse) VisitAuthorizeTransactionRes
 	return err
 }
 
+type UpdateCardControlsRequestObject struct {
+	Id     openapi_types.UUID `json:"id"`
+	Params UpdateCardControlsParams
+	Body   *UpdateCardControlsJSONRequestBody
+}
+
+type UpdateCardControlsResponseObject interface {
+	VisitUpdateCardControlsResponse(w http.ResponseWriter) error
+}
+
+type UpdateCardControls200JSONResponse Card
+
+func (response UpdateCardControls200JSONResponse) VisitUpdateCardControlsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCardControls400JSONResponse ErrorResponse
+
+func (response UpdateCardControls400JSONResponse) VisitUpdateCardControlsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCardControls404JSONResponse ErrorResponse
+
+func (response UpdateCardControls404JSONResponse) VisitUpdateCardControlsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type FreezeCardRequestObject struct {
 	Id     openapi_types.UUID `json:"id"`
 	Params FreezeCardParams
@@ -1346,6 +1503,9 @@ type StrictServerInterface interface {
 
 	// (POST /api/v1/cards/{id}/authorize)
 	AuthorizeTransaction(ctx context.Context, request AuthorizeTransactionRequestObject) (AuthorizeTransactionResponseObject, error)
+
+	// (PATCH /api/v1/cards/{id}/controls)
+	UpdateCardControls(ctx context.Context, request UpdateCardControlsRequestObject) (UpdateCardControlsResponseObject, error)
 
 	// (POST /api/v1/cards/{id}/freeze)
 	FreezeCard(ctx context.Context, request FreezeCardRequestObject) (FreezeCardResponseObject, error)
@@ -1579,6 +1739,40 @@ func (sh *strictHandler) AuthorizeTransaction(w http.ResponseWriter, r *http.Req
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(AuthorizeTransactionResponseObject); ok {
 		if err := validResponse.VisitAuthorizeTransactionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateCardControls operation middleware
+func (sh *strictHandler) UpdateCardControls(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params UpdateCardControlsParams) {
+	var request UpdateCardControlsRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	var body UpdateCardControlsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateCardControls(ctx, request.(UpdateCardControlsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateCardControls")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateCardControlsResponseObject); ok {
+		if err := validResponse.VisitUpdateCardControlsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -17,13 +17,16 @@ type Querier interface {
 	CountWalletTransactionsByUser(ctx context.Context, userID uuid.UUID) (int64, error)
 	CreateKYCCase(ctx context.Context, arg CreateKYCCaseParams) (CreateKYCCaseRow, error)
 	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
+	CreateSavedPayee(ctx context.Context, arg CreateSavedPayeeParams) (CreateSavedPayeeRow, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	CreateWallet(ctx context.Context, arg CreateWalletParams) error
+	DeleteSavedPayee(ctx context.Context, arg DeleteSavedPayeeParams) (int64, error)
 	DeleteWalletByID(ctx context.Context, id uuid.UUID) error
 	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error)
 	GetDepositByUserAndIdempotencyKey(ctx context.Context, arg GetDepositByUserAndIdempotencyKeyParams) (GetDepositByUserAndIdempotencyKeyRow, error)
 	GetLatestKYCCaseByUser(ctx context.Context, userID uuid.UUID) (GetLatestKYCCaseByUserRow, error)
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
+	GetSavedPayeeByID(ctx context.Context, arg GetSavedPayeeByIDParams) (GetSavedPayeeByIDRow, error)
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	GetUserByPhone(ctx context.Context, phoneLookup pgtype.Text) (GetUserByPhoneRow, error)
@@ -41,6 +44,7 @@ type Querier interface {
 	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
 	ListKYCSubmissionsByUser(ctx context.Context, userID uuid.UUID) ([]ListKYCSubmissionsByUserRow, error)
 	ListPIIAccessBySubject(ctx context.Context, subjectUserID uuid.UUID) ([]ListPIIAccessBySubjectRow, error)
+	ListSavedPayeesByUser(ctx context.Context, arg ListSavedPayeesByUserParams) ([]ListSavedPayeesByUserRow, error)
 	ListWalletTransactionsByUser(ctx context.Context, arg ListWalletTransactionsByUserParams) ([]ListWalletTransactionsByUserRow, error)
 	ListWalletsByUser(ctx context.Context, userID uuid.UUID) ([]ListWalletsByUserRow, error)
 	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
@@ -50,6 +54,7 @@ type Querier interface {
 	UpdatePasswordHash(ctx context.Context, arg UpdatePasswordHashParams) error
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
 	UpsertProfile(ctx context.Context, arg UpsertProfileParams) error
+	UpsertSavedPayee(ctx context.Context, arg UpsertSavedPayeeParams) (UpsertSavedPayeeRow, error)
 	UpsertWalletTransactionCapture(ctx context.Context, arg UpsertWalletTransactionCaptureParams) error
 }
 

@@ -2,6 +2,7 @@ package sqlcrepo
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/iho/neobank/pkg/pgutil"
@@ -104,7 +105,7 @@ func (r *TransferRepository) MarkFailed(ctx context.Context, id, reason string) 
 	})
 }
 
-func (r *TransferRepository) ListByUser(ctx context.Context, userID string, limit int) ([]domain.Transfer, error) {
+func (r *TransferRepository) ListByUser(ctx context.Context, userID string, limit int, cursorCreatedAt *time.Time, cursorID string) ([]domain.Transfer, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -112,9 +113,23 @@ func (r *TransferRepository) ListByUser(ctx context.Context, userID string, limi
 	if err != nil {
 		return nil, err
 	}
+	var cursorAt pgtype.Timestamptz
+	if cursorCreatedAt != nil {
+		cursorAt = pgtype.Timestamptz{Time: cursorCreatedAt.UTC(), Valid: true}
+	}
+	var cursorUUID pgtype.UUID
+	if cursorID != "" {
+		parsed, parseErr := pgutil.ParseUUID(cursorID)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		cursorUUID = pgtype.UUID{Bytes: parsed, Valid: true}
+	}
 	rows, err := r.q.ListTransfersByUser(ctx, sqlc.ListTransfersByUserParams{
-		SenderUserID: uid,
-		Limit:        int32(limit),
+		UserID:          uid,
+		LimitVal:        int32(limit),
+		CursorCreatedAt: cursorAt,
+		CursorID:        cursorUUID,
 	})
 	if err != nil {
 		return nil, err
@@ -131,7 +146,7 @@ func mapTransferByIDRow(row sqlc.GetTransferByIDRow) *domain.Transfer {
 		row.ID, row.IdempotencyKey, row.Type, row.Status,
 		row.SenderUserID, row.RecipientUserID,
 		row.Amount, row.Currency, row.Memo, row.LedgerTransferID, row.FailureReason,
-		row.CompletedAt,
+		row.CreatedAt, row.CompletedAt,
 	)
 }
 
@@ -140,7 +155,7 @@ func mapTransferByKeyRow(row sqlc.GetTransferBySenderAndIdempotencyKeyRow) *doma
 		row.ID, row.IdempotencyKey, row.Type, row.Status,
 		row.SenderUserID, row.RecipientUserID,
 		row.Amount, row.Currency, row.Memo, row.LedgerTransferID, row.FailureReason,
-		row.CompletedAt,
+		row.CreatedAt, row.CompletedAt,
 	)
 }
 
@@ -149,7 +164,7 @@ func mapTransferListRow(row sqlc.ListTransfersByUserRow) *domain.Transfer {
 		row.ID, row.IdempotencyKey, row.Type, row.Status,
 		row.SenderUserID, row.RecipientUserID,
 		row.Amount, row.Currency, row.Memo, row.LedgerTransferID, row.FailureReason,
-		row.CompletedAt,
+		row.CreatedAt, row.CompletedAt,
 	)
 }
 
@@ -158,7 +173,7 @@ func mapTransfer(
 	idempotencyKey, typ, status string,
 	senderID, recipientID uuid.UUID,
 	amount, currency, memo, ledgerTransferID, failureReason string,
-	completedAt pgtype.Timestamptz,
+	createdAt, completedAt pgtype.Timestamptz,
 ) *domain.Transfer {
 	t := &domain.Transfer{
 		ID:               id.String(),
@@ -172,6 +187,9 @@ func mapTransfer(
 		Memo:             memo,
 		LedgerTransferID: ledgerTransferID,
 		FailureReason:    failureReason,
+	}
+	if createdAt.Valid {
+		t.CreatedAt = createdAt.Time.UTC()
 	}
 	if completedAt.Valid {
 		ts := completedAt.Time

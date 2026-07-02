@@ -23,6 +23,12 @@ type ChangePasswordRequest struct {
 	NewPassword     string `json:"new_password"`
 }
 
+// CreatePayeeRequest defines model for CreatePayeeRequest.
+type CreatePayeeRequest struct {
+	Nickname    *string            `json:"nickname,omitempty"`
+	PayeeUserId openapi_types.UUID `json:"payee_user_id"`
+}
+
 // DepositWalletRequest defines model for DepositWalletRequest.
 type DepositWalletRequest struct {
 	Amount   string  `json:"amount"`
@@ -108,6 +114,22 @@ type LoginResponse struct {
 	UserId       openapi_types.UUID `json:"user_id"`
 }
 
+// Payee defines model for Payee.
+type Payee struct {
+	CreatedAt   time.Time          `json:"created_at"`
+	Id          openapi_types.UUID `json:"id"`
+	LastUsedAt  time.Time          `json:"last_used_at"`
+	Nickname    *string            `json:"nickname,omitempty"`
+	PayeeEmail  *string            `json:"payee_email,omitempty"`
+	PayeePhone  *string            `json:"payee_phone,omitempty"`
+	PayeeUserId openapi_types.UUID `json:"payee_user_id"`
+}
+
+// PayeeList defines model for PayeeList.
+type PayeeList struct {
+	Payees []Payee `json:"payees"`
+}
+
 // Profile defines model for Profile.
 type Profile struct {
 	CountryCode *string             `json:"country_code,omitempty"`
@@ -170,6 +192,13 @@ type SubmitKYCResponse struct {
 	WalletId  openapi_types.UUID `json:"wallet_id"`
 }
 
+// UpsertInternalPayeeRequest defines model for UpsertInternalPayeeRequest.
+type UpsertInternalPayeeRequest struct {
+	Nickname    *string            `json:"nickname,omitempty"`
+	PayeeUserId openapi_types.UUID `json:"payee_user_id"`
+	UserId      openapi_types.UUID `json:"user_id"`
+}
+
 // User defines model for User.
 type User struct {
 	Email  string             `json:"email"`
@@ -213,6 +242,7 @@ type WalletTransaction struct {
 
 // WalletTransactionList defines model for WalletTransactionList.
 type WalletTransactionList struct {
+	NextCursor   *string             `json:"next_cursor,omitempty"`
 	Transactions []WalletTransaction `json:"transactions"`
 }
 
@@ -264,9 +294,26 @@ type GetProfileParams struct {
 	XUserId XUserId `json:"X-User-Id"`
 }
 
+// ListPayeesParams defines parameters for ListPayees.
+type ListPayeesParams struct {
+	Limit   *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	XUserId XUserId `json:"X-User-Id"`
+}
+
+// CreatePayeeParams defines parameters for CreatePayee.
+type CreatePayeeParams struct {
+	XUserId XUserId `json:"X-User-Id"`
+}
+
+// DeletePayeeParams defines parameters for DeletePayee.
+type DeletePayeeParams struct {
+	XUserId XUserId `json:"X-User-Id"`
+}
+
 // ListWalletTransactionsParams defines parameters for ListWalletTransactions.
 type ListWalletTransactionsParams struct {
 	Limit   *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor  *string `form:"cursor,omitempty" json:"cursor,omitempty"`
 	XUserId XUserId `json:"X-User-Id"`
 }
 
@@ -303,8 +350,14 @@ type RegisterJSONRequestBody = RegisterRequest
 // IngestEventJSONRequestBody defines body for IngestEvent for application/json ContentType.
 type IngestEventJSONRequestBody = EventEnvelope
 
+// UpsertInternalPayeeJSONRequestBody defines body for UpsertInternalPayee for application/json ContentType.
+type UpsertInternalPayeeJSONRequestBody = UpsertInternalPayeeRequest
+
 // SubmitKYCJSONRequestBody defines body for SubmitKYC for application/json ContentType.
 type SubmitKYCJSONRequestBody = SubmitKYCRequest
+
+// CreatePayeeJSONRequestBody defines body for CreatePayee for application/json ContentType.
+type CreatePayeeJSONRequestBody = CreatePayeeRequest
 
 // ProvisionWalletJSONRequestBody defines body for ProvisionWallet for application/json ContentType.
 type ProvisionWalletJSONRequestBody = ProvisionWalletRequest
@@ -329,6 +382,9 @@ type ServerInterface interface {
 
 	// (POST /api/v1/internal/events)
 	IngestEvent(w http.ResponseWriter, r *http.Request)
+
+	// (POST /api/v1/internal/payees)
+	UpsertInternalPayee(w http.ResponseWriter, r *http.Request)
 
 	// (GET /api/v1/internal/users/by-email/{email})
 	GetUserByEmail(w http.ResponseWriter, r *http.Request, email string)
@@ -356,6 +412,15 @@ type ServerInterface interface {
 
 	// (GET /api/v1/me)
 	GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams)
+
+	// (GET /api/v1/payees)
+	ListPayees(w http.ResponseWriter, r *http.Request, params ListPayeesParams)
+
+	// (POST /api/v1/payees)
+	CreatePayee(w http.ResponseWriter, r *http.Request, params CreatePayeeParams)
+
+	// (DELETE /api/v1/payees/{id})
+	DeletePayee(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params DeletePayeeParams)
 
 	// (GET /api/v1/wallet/transactions)
 	ListWalletTransactions(w http.ResponseWriter, r *http.Request, params ListWalletTransactionsParams)
@@ -402,6 +467,11 @@ func (_ Unimplemented) IngestEvent(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (POST /api/v1/internal/payees)
+func (_ Unimplemented) UpsertInternalPayee(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (GET /api/v1/internal/users/by-email/{email})
 func (_ Unimplemented) GetUserByEmail(w http.ResponseWriter, r *http.Request, email string) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -444,6 +514,21 @@ func (_ Unimplemented) GetKYCStatus(w http.ResponseWriter, r *http.Request, para
 
 // (GET /api/v1/me)
 func (_ Unimplemented) GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /api/v1/payees)
+func (_ Unimplemented) ListPayees(w http.ResponseWriter, r *http.Request, params ListPayeesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /api/v1/payees)
+func (_ Unimplemented) CreatePayee(w http.ResponseWriter, r *http.Request, params CreatePayeeParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (DELETE /api/v1/payees/{id})
+func (_ Unimplemented) DeletePayee(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params DeletePayeeParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -604,6 +689,20 @@ func (siw *ServerInterfaceWrapper) IngestEvent(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.IngestEvent(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpsertInternalPayee operation middleware
+func (siw *ServerInterfaceWrapper) UpsertInternalPayee(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpsertInternalPayee(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1003,6 +1102,163 @@ func (siw *ServerInterfaceWrapper) GetProfile(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
+// ListPayees operation middleware
+func (siw *ServerInterfaceWrapper) ListPayees(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPayeesParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPayees(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreatePayee operation middleware
+func (siw *ServerInterfaceWrapper) CreatePayee(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreatePayeeParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreatePayee(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeletePayee operation middleware
+func (siw *ServerInterfaceWrapper) DeletePayee(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeletePayeeParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeletePayee(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListWalletTransactions operation middleware
 func (siw *ServerInterfaceWrapper) ListWalletTransactions(w http.ResponseWriter, r *http.Request) {
 
@@ -1021,6 +1277,19 @@ func (siw *ServerInterfaceWrapper) ListWalletTransactions(w http.ResponseWriter,
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
 		}
 		return
 	}
@@ -1398,6 +1667,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/api/v1/internal/events", wrapper.IngestEvent)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/internal/payees", wrapper.UpsertInternalPayee)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/internal/users/by-email/{email}", wrapper.GetUserByEmail)
 	})
 	r.Group(func(r chi.Router) {
@@ -1423,6 +1695,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/me", wrapper.GetProfile)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/payees", wrapper.ListPayees)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/payees", wrapper.CreatePayee)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/payees/{id}", wrapper.DeletePayee)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/wallet/transactions", wrapper.ListWalletTransactions)
@@ -1616,6 +1897,42 @@ func (response IngestEvent202Response) VisitIngestEventResponse(w http.ResponseW
 type IngestEvent400JSONResponse ErrorResponse
 
 func (response IngestEvent400JSONResponse) VisitIngestEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpsertInternalPayeeRequestObject struct {
+	Body *UpsertInternalPayeeJSONRequestBody
+}
+
+type UpsertInternalPayeeResponseObject interface {
+	VisitUpsertInternalPayeeResponse(w http.ResponseWriter) error
+}
+
+type UpsertInternalPayee200JSONResponse Payee
+
+func (response UpsertInternalPayee200JSONResponse) VisitUpsertInternalPayeeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpsertInternalPayee400JSONResponse ErrorResponse
+
+func (response UpsertInternalPayee400JSONResponse) VisitUpsertInternalPayeeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -1940,6 +2257,96 @@ func (response GetProfile404JSONResponse) VisitGetProfileResponse(w http.Respons
 	return err
 }
 
+type ListPayeesRequestObject struct {
+	Params ListPayeesParams
+}
+
+type ListPayeesResponseObject interface {
+	VisitListPayeesResponse(w http.ResponseWriter) error
+}
+
+type ListPayees200JSONResponse PayeeList
+
+func (response ListPayees200JSONResponse) VisitListPayeesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePayeeRequestObject struct {
+	Params CreatePayeeParams
+	Body   *CreatePayeeJSONRequestBody
+}
+
+type CreatePayeeResponseObject interface {
+	VisitCreatePayeeResponse(w http.ResponseWriter) error
+}
+
+type CreatePayee201JSONResponse Payee
+
+func (response CreatePayee201JSONResponse) VisitCreatePayeeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePayee400JSONResponse ErrorResponse
+
+func (response CreatePayee400JSONResponse) VisitCreatePayeeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePayeeRequestObject struct {
+	Id     openapi_types.UUID `json:"id"`
+	Params DeletePayeeParams
+}
+
+type DeletePayeeResponseObject interface {
+	VisitDeletePayeeResponse(w http.ResponseWriter) error
+}
+
+type DeletePayee204Response struct {
+}
+
+func (response DeletePayee204Response) VisitDeletePayeeResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeletePayee404JSONResponse ErrorResponse
+
+func (response DeletePayee404JSONResponse) VisitDeletePayeeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListWalletTransactionsRequestObject struct {
 	Params ListWalletTransactionsParams
 }
@@ -2125,6 +2532,9 @@ type StrictServerInterface interface {
 	// (POST /api/v1/internal/events)
 	IngestEvent(ctx context.Context, request IngestEventRequestObject) (IngestEventResponseObject, error)
 
+	// (POST /api/v1/internal/payees)
+	UpsertInternalPayee(ctx context.Context, request UpsertInternalPayeeRequestObject) (UpsertInternalPayeeResponseObject, error)
+
 	// (GET /api/v1/internal/users/by-email/{email})
 	GetUserByEmail(ctx context.Context, request GetUserByEmailRequestObject) (GetUserByEmailResponseObject, error)
 
@@ -2151,6 +2561,15 @@ type StrictServerInterface interface {
 
 	// (GET /api/v1/me)
 	GetProfile(ctx context.Context, request GetProfileRequestObject) (GetProfileResponseObject, error)
+
+	// (GET /api/v1/payees)
+	ListPayees(ctx context.Context, request ListPayeesRequestObject) (ListPayeesResponseObject, error)
+
+	// (POST /api/v1/payees)
+	CreatePayee(ctx context.Context, request CreatePayeeRequestObject) (CreatePayeeResponseObject, error)
+
+	// (DELETE /api/v1/payees/{id})
+	DeletePayee(ctx context.Context, request DeletePayeeRequestObject) (DeletePayeeResponseObject, error)
 
 	// (GET /api/v1/wallet/transactions)
 	ListWalletTransactions(ctx context.Context, request ListWalletTransactionsRequestObject) (ListWalletTransactionsResponseObject, error)
@@ -2349,6 +2768,37 @@ func (sh *strictHandler) IngestEvent(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(IngestEventResponseObject); ok {
 		if err := validResponse.VisitIngestEventResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpsertInternalPayee operation middleware
+func (sh *strictHandler) UpsertInternalPayee(w http.ResponseWriter, r *http.Request) {
+	var request UpsertInternalPayeeRequestObject
+
+	var body UpsertInternalPayeeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpsertInternalPayee(ctx, request.(UpsertInternalPayeeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpsertInternalPayee")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpsertInternalPayeeResponseObject); ok {
+		if err := validResponse.VisitUpsertInternalPayeeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -2592,6 +3042,92 @@ func (sh *strictHandler) GetProfile(w http.ResponseWriter, r *http.Request, para
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProfileResponseObject); ok {
 		if err := validResponse.VisitGetProfileResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListPayees operation middleware
+func (sh *strictHandler) ListPayees(w http.ResponseWriter, r *http.Request, params ListPayeesParams) {
+	var request ListPayeesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListPayees(ctx, request.(ListPayeesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListPayees")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListPayeesResponseObject); ok {
+		if err := validResponse.VisitListPayeesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreatePayee operation middleware
+func (sh *strictHandler) CreatePayee(w http.ResponseWriter, r *http.Request, params CreatePayeeParams) {
+	var request CreatePayeeRequestObject
+
+	request.Params = params
+
+	var body CreatePayeeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreatePayee(ctx, request.(CreatePayeeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreatePayee")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreatePayeeResponseObject); ok {
+		if err := validResponse.VisitCreatePayeeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeletePayee operation middleware
+func (sh *strictHandler) DeletePayee(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params DeletePayeeParams) {
+	var request DeletePayeeRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeletePayee(ctx, request.(DeletePayeeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeletePayee")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeletePayeeResponseObject); ok {
+		if err := validResponse.VisitDeletePayeeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

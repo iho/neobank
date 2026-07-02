@@ -218,3 +218,13 @@ CREATE INDEX idx_payment_aml_cases_status
 
 CREATE INDEX idx_payment_aml_cases_user
     ON payment.aml_cases (user_id, created_at DESC);
+
+CREATE TABLE payment.velocity_events (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID NOT NULL,
+    amount      NUMERIC(20,8) NOT NULL CHECK (amount >= 0),
+    recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_velocity_events_user_recorded
+    ON payment.velocity_events (user_id, recorded_at DESC);

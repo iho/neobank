@@ -173,3 +173,10 @@ type PaymentTransfer struct {
 	CreatedAt        pgtype.Timestamptz
 	CompletedAt      pgtype.Timestamptz
 }
+
+type PaymentVelocityEvent struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	Amount     pgtype.Numeric
+	RecordedAt pgtype.Timestamptz
+}

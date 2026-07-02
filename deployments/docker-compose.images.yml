@@ -1,0 +1,34 @@
+# Pull pre-built images from GHCR instead of building locally.
+#
+#   IMAGE_TAG=sha-<git-sha> make up-ghcr
+#   IMAGE_TAG=latest make up-ghcr
+#
+# NEOBANK_IMAGE_REGISTRY defaults to ghcr.io/iho/neobank/
+
+x-image: &image-defaults
+  pull_policy: always
+
+services:
+  migrate:
+    <<: *image-defaults
+    image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}migrate:${IMAGE_TAG:-latest}
+
+  user:
+    <<: *image-defaults
+    image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}user:${IMAGE_TAG:-latest}
+
+  notification:
+    <<: *image-defaults
+    image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}notification:${IMAGE_TAG:-latest}
+
+  payment:
+    <<: *image-defaults
+    image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}payment:${IMAGE_TAG:-latest}
+
+  card:
+    <<: *image-defaults
+    image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}card:${IMAGE_TAG:-latest}
+
+  gateway:
+    <<: *image-defaults
+    image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}gateway:${IMAGE_TAG:-latest}

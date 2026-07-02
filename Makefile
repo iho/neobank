@@ -1,7 +1,8 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-all down-all up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs
+.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-all down-all up-ghcr down-ghcr up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs
 
 COMPOSE_INFRA := docker compose -f deployments/docker-compose.yml
 COMPOSE_ALL   := docker compose -f deployments/docker-compose.yml -f deployments/docker-compose.services.yml
+COMPOSE_GHCR  := $(COMPOSE_ALL) -f deployments/docker-compose.images.yml
 COMPOSE_JOBS  := $(COMPOSE_ALL) -f deployments/docker-compose.jobs.yml
 GIT_SHA       ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 BUILD_DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -89,6 +90,12 @@ up-all:
 
 down-all:
 	$(COMPOSE_ALL) down
+
+up-ghcr:
+	$(COMPOSE_GHCR) up -d --no-build --pull always
+
+down-ghcr:
+	$(COMPOSE_GHCR) down
 
 up-jobs:
 	GIT_SHA=$(GIT_SHA) BUILD_DATE=$(BUILD_DATE) $(COMPOSE_JOBS) up -d --build reconcile-jobs

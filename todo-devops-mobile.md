@@ -48,13 +48,13 @@ deployable beyond a laptop, and building the mobile client the BFF was designed 
 
 ### Phase 2: CI → images → CD
 
-- [ ] CI job: build & push images to GHCR on `main` (tags: `sha-<short>`, `latest`),
+- [x] CI job: build & push images to GHCR on `main` (tags: `sha-<short>`, `latest`),
       with Go build cache + buildx layer cache.
-- [ ] Vulnerability scanning (Trivy/Grype) + SBOM (syft) on images; `govulncheck` job on code.
-- [ ] Version/release flow: tag → GitHub Release → immutable image tags.
-- [ ] Staging environment deploy on merge to `main` (compose on a VM is fine as step one;
+- [x] Vulnerability scanning (Trivy/Grype) + SBOM (syft) on images; `govulncheck` job on code.
+- [x] Version/release flow: tag → GitHub Release → immutable image tags.
+- [x] Staging environment deploy on merge to `main` (compose on a VM is fine as step one;
       k8s in Phase 3). Smoke test job hits `/health` + register/login after deploy.
-- [ ] Gate deploys on migrations succeeding (run migrator, then roll services).
+- [x] Gate deploys on migrations succeeding (run migrator, then roll services).
 
 ### Phase 3: Kubernetes (README roadmap item)
 

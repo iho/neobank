@@ -470,8 +470,10 @@ make test              # unit tests (pkg/)
 make test-integration  # testcontainers (requires Docker)
 make lint              # golangci-lint
 
-make up / make down    # docker-compose infra
-make migrate           # golang-migrate all services
+make up / make down       # docker-compose infra (Postgres, Redis, Redpanda, Vault, OTel)
+make up-all / down-all    # infra + migrate + all five services (local build)
+make up-ghcr / down-ghcr  # same stack from GHCR images (IMAGE_TAG=sha-<short>|latest)
+make migrate              # golang-migrate all services
 make migrate-user      # … payment, notification, card
 make vault-init        # local Vault Transit keys
 make grpc-mtls-certs   # dev PKI for internal gRPC mTLS

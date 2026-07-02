@@ -59,6 +59,31 @@ jobs:
       - name: Build all binaries
         run: make build
 
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache: true
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Scan shared packages
+        run: govulncheck ./...
+        working-directory: pkg
+
+      - name: Scan services
+        run: |
+          for svc in gateway user payment card notification; do
+            echo "==> services/$svc"
+            (cd "services/$svc" && govulncheck ./...)
+          done
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

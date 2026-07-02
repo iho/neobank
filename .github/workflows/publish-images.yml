@@ -1,0 +1,207 @@
+name: Publish images
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "pkg/**"
+      - "services/**"
+      - "deployments/Dockerfile.service"
+      - "deployments/Dockerfile.migrate"
+      - "deployments/Dockerfile.jobs"
+      - "go.work"
+      - "go.work.sum"
+      - ".github/workflows/publish-images.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "pkg/**"
+      - "services/**"
+      - "deployments/Dockerfile.service"
+      - "deployments/Dockerfile.migrate"
+      - "deployments/Dockerfile.jobs"
+      - "go.work"
+      - "go.work.sum"
+      - ".github/workflows/publish-images.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+concurrency:
+  group: publish-images-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+
+jobs:
+  vars:
+    name: Resolve image tag
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.sha.outputs.tag }}
+    steps:
+      - id: sha
+        run: echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build images
+    needs: vars
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            dockerfile: deployments/Dockerfile.service
+            build_args: SERVICE=gateway
+          - service: user
+            dockerfile: deployments/Dockerfile.service
+            build_args: SERVICE=user
+          - service: payment
+            dockerfile: deployments/Dockerfile.service
+            build_args: SERVICE=payment
+          - service: card
+            dockerfile: deployments/Dockerfile.service
+            build_args: SERVICE=card
+          - service: notification
+            dockerfile: deployments/Dockerfile.service
+            build_args: SERVICE=notification
+          - service: migrate
+            dockerfile: deployments/Dockerfile.migrate
+            build_args: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
+          tags: |
+            type=raw,value=${{ needs.vars.outputs.image_tag }},enable=${{ github.event_name != 'pull_request' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            ${{ matrix.build_args }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  scan:
+    name: Scan ${{ matrix.service }}
+    needs: [vars, build]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [gateway, user, payment, card, notification, migrate]
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ needs.vars.outputs.image_tag }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0.17.9
+        with:
+          image: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ needs.vars.outputs.image_tag }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.service }}.spdx.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.service }}
+          path: sbom-${{ matrix.service }}.spdx.json
+          retention-days: 30
+
+  smoke:
+    name: Smoke test published images
+    needs: [vars, build, scan]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Start stack from GHCR images
+        env:
+          IMAGE_TAG: ${{ needs.vars.outputs.image_tag }}
+          NEOBANK_IMAGE_REGISTRY: ghcr.io/${{ github.repository }}/
+        run: |
+          docker compose \
+            -f deployments/docker-compose.yml \
+            -f deployments/docker-compose.services.yml \
+            -f deployments/docker-compose.images.yml \
+            up -d --no-build --pull always --wait --wait-timeout 300 \
+            postgres redis redpanda vault otel-collector migrate user notification payment card gateway
+
+      - name: Gateway health
+        run: curl -fsS http://localhost:8080/health
+
+      - name: Register and login
+        run: |
+          IDEM=$(uuidgen)
+          curl -fsS -X POST http://localhost:8080/v1/auth/register \
+            -H "Content-Type: application/json" \
+            -H "Idempotency-Key: ${IDEM}" \
+            -d '{"email":"ci@example.com","phone":"+15550001111","password":"secret123"}'
+          curl -fsS -X POST http://localhost:8080/v1/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"ci@example.com","password":"secret123"}' | grep -q access_token
+
+      - name: Tear down
+        if: always()
+        env:
+          IMAGE_TAG: ${{ needs.vars.outputs.image_tag }}
+          NEOBANK_IMAGE_REGISTRY: ghcr.io/${{ github.repository }}/
+        run: |
+          docker compose \
+            -f deployments/docker-compose.yml \
+            -f deployments/docker-compose.services.yml \
+            -f deployments/docker-compose.images.yml \
+            down -v --remove-orphans

@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            Immutable container images (also tagged `${{ github.ref_name }}`):
+
+            | Service | Image |
+            |---------|-------|
+            | gateway | `ghcr.io/${{ github.repository }}/gateway:${{ github.ref_name }}` |
+            | user | `ghcr.io/${{ github.repository }}/user:${{ github.ref_name }}` |
+            | payment | `ghcr.io/${{ github.repository }}/payment:${{ github.ref_name }}` |
+            | card | `ghcr.io/${{ github.repository }}/card:${{ github.ref_name }}` |
+            | notification | `ghcr.io/${{ github.repository }}/notification:${{ github.ref_name }}` |
+            | migrate | `ghcr.io/${{ github.repository }}/migrate:${{ github.ref_name }}` |
+
+            Deploy on a host with compose:
+
+            ```bash
+            export IMAGE_TAG=${{ github.ref_name }}
+            make up-ghcr
+            ```

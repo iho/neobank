@@ -1,0 +1,98 @@
+name: Staging deploy
+
+# Deploy published images to a staging VM via SSH + docker compose.
+# Required repository secrets:
+#   STAGING_HOST     — hostname or IP
+#   STAGING_SSH_KEY  — private key (ed25519)
+# Optional variables:
+#   STAGING_USER     — SSH user (default: deploy)
+#   STAGING_PATH     — deploy directory on host (default: /opt/neobank)
+
+on:
+  workflow_run:
+    workflows: [Publish images]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag to deploy (e.g. sha-abc1234 or latest)
+        required: true
+        default: latest
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  deploy:
+    if: >
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check staging secrets
+        id: gate
+        run: |
+          if [ -z "${{ secrets.STAGING_HOST }}" ] || [ -z "${{ secrets.STAGING_SSH_KEY }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Set STAGING_HOST and STAGING_SSH_KEY secrets to enable staging deploy."
+            exit 0
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.configured == 'true'
+
+      - name: Resolve image tag
+        if: steps.gate.outputs.configured == 'true'
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            SHA="${{ github.event.workflow_run.head_sha }}"
+            echo "tag=sha-${SHA::12}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy over SSH
+        if: steps.gate.outputs.configured == 'true'
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER || 'deploy' }}
+          STAGING_PATH: ${{ vars.STAGING_PATH || '/opt/neobank' }}
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          NEOBANK_IMAGE_REGISTRY: ghcr.io/${{ github.repository }}/
+        run: |
+          install -m 600 /dev/stdin ~/.ssh_key <<< "${{ secrets.STAGING_SSH_KEY }}"
+          ssh -i ~/.ssh_key -o StrictHostKeyChecking=accept-new \
+            "${STAGING_USER}@${STAGING_HOST}" \
+            "cd '${STAGING_PATH}' && \
+             git pull --ff-only && \
+             export IMAGE_TAG='${IMAGE_TAG}' NEOBANK_IMAGE_REGISTRY='${NEOBANK_IMAGE_REGISTRY}' && \
+             docker compose -f deployments/docker-compose.yml up -d --wait postgres redis redpanda vault otel-collector && \
+             docker compose \
+               -f deployments/docker-compose.yml \
+               -f deployments/docker-compose.services.yml \
+               -f deployments/docker-compose.images.yml \
+               run --rm migrate && \
+             docker compose \
+               -f deployments/docker-compose.yml \
+               -f deployments/docker-compose.services.yml \
+               -f deployments/docker-compose.images.yml \
+               up -d --no-build --pull always --wait --wait-timeout 300 \
+               user notification payment card gateway"
+
+      - name: Staging smoke test
+        if: steps.gate.outputs.configured == 'true'
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "http://${STAGING_HOST}:8080/health"; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "staging health check failed" >&2
+          exit 1

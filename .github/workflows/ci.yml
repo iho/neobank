@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache: true
+
+      - name: Test shared packages
+        run: make test
+
+      - name: Test services
+        run: |
+          for svc in gateway user payment card notification; do
+            echo "==> services/$svc"
+            (cd "services/$svc" && go test ./...)
+          done
+
+  build:
+    name: Generate & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache: true
+
+      - uses: bufbuild/buf-setup-action@v1
+
+      - name: Install codegen tools
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.4.1
+
+      - name: Lint protobuf definitions
+        run: cd proto && buf lint
+
+      - name: Build all binaries
+        run: make build
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache: true
+
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2.1.6
+          install-only: true
+
+      - name: Lint workspace modules
+        run: make lint
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache: true
+
+      - uses: bufbuild/buf-setup-action@v1
+
+      - name: Install codegen tools
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.4.1
+
+      - name: Run integration tests
+        run: cd tests/integration && go test -count=1 -timeout 15m ./...

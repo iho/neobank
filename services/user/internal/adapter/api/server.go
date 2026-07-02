@@ -2,10 +2,12 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/iho/neobank/pkg/events"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	sqlcrepo "github.com/iho/neobank/services/user/internal/adapter/sqlc"
 	"github.com/iho/neobank/services/user/internal/gen/api"
@@ -20,10 +22,12 @@ type Server struct {
 	submitKYC         *usecase.SubmitKYCUseCase
 	getKYCStatus      *usecase.GetKYCStatusUseCase
 	getProfile        *usecase.GetProfileUseCase
-	walletBalance     *usecase.GetWalletBalanceUseCase
-	provisionWallet   *usecase.ProvisionWalletUseCase
-	users             *sqlcrepo.UserRepository
-	wallets           *sqlcrepo.WalletRepository
+	walletBalance       *usecase.GetWalletBalanceUseCase
+	listWalletTx        *usecase.ListWalletTransactionsUseCase
+	projectWalletEvent  *usecase.ProjectWalletEventUseCase
+	provisionWallet     *usecase.ProvisionWalletUseCase
+	users               *sqlcrepo.UserRepository
+	wallets             *sqlcrepo.WalletRepository
 }
 
 func NewServer(
@@ -34,21 +38,25 @@ func NewServer(
 	getKYCStatus *usecase.GetKYCStatusUseCase,
 	getProfile *usecase.GetProfileUseCase,
 	walletBalance *usecase.GetWalletBalanceUseCase,
+	listWalletTx *usecase.ListWalletTransactionsUseCase,
+	projectWalletEvent *usecase.ProjectWalletEventUseCase,
 	provisionWallet *usecase.ProvisionWalletUseCase,
 	users *sqlcrepo.UserRepository,
 	wallets *sqlcrepo.WalletRepository,
 ) *Server {
 	return &Server{
-		register:        register,
-		login:           login,
-		refresh:         refresh,
-		submitKYC:       submitKYC,
-		getKYCStatus:    getKYCStatus,
-		getProfile:      getProfile,
-		walletBalance:   walletBalance,
-		provisionWallet: provisionWallet,
-		users:           users,
-		wallets:         wallets,
+		register:           register,
+		login:              login,
+		refresh:            refresh,
+		submitKYC:          submitKYC,
+		getKYCStatus:       getKYCStatus,
+		getProfile:         getProfile,
+		walletBalance:      walletBalance,
+		listWalletTx:       listWalletTx,
+		projectWalletEvent: projectWalletEvent,
+		provisionWallet:    provisionWallet,
+		users:              users,
+		wallets:            wallets,
 	}
 }
 
@@ -164,13 +172,20 @@ func (s *Server) SubmitKYC(ctx context.Context, req api.SubmitKYCRequestObject) 
 	if req.Body == nil {
 		return api.SubmitKYC400JSONResponse{Error: "invalid_json"}, nil
 	}
-	out, err := s.submitKYC.Execute(ctx, usecase.SubmitKYCInput{
+	in := usecase.SubmitKYCInput{
 		UserID:         req.Params.XUserId.String(),
 		FullName:       req.Body.FullName,
 		DateOfBirth:    req.Body.DateOfBirth.String(),
 		CountryCode:    req.Body.CountryCode,
 		IdempotencyKey: req.Params.IdempotencyKey,
-	})
+	}
+	if req.Body.DocumentType != nil {
+		in.DocumentType = *req.Body.DocumentType
+	}
+	if req.Body.DocumentNumber != nil {
+		in.DocumentNumber = *req.Body.DocumentNumber
+	}
+	out, err := s.submitKYC.Execute(ctx, in)
 	if err != nil {
 		return api.SubmitKYC400JSONResponse{Error: err.Error()}, nil
 	}
@@ -193,6 +208,66 @@ func (s *Server) GetKYCStatus(ctx context.Context, req api.GetKYCStatusRequestOb
 		resp.RejectionReason = &kycCase.RejectionReason
 	}
 	return api.GetKYCStatus200JSONResponse(resp), nil
+}
+
+func (s *Server) ListWalletTransactions(ctx context.Context, req api.ListWalletTransactionsRequestObject) (api.ListWalletTransactionsResponseObject, error) {
+	limit := 20
+	if req.Params.Limit != nil {
+		limit = *req.Params.Limit
+	}
+	rows, err := s.listWalletTx.Execute(ctx, req.Params.XUserId.String(), limit)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]api.WalletTransaction, 0, len(rows))
+	for _, row := range rows {
+		view := api.WalletTransaction{
+			Id:        row.ID,
+			Type:      row.Type,
+			Amount:    row.Amount,
+			Currency:  row.Currency,
+			Direction: row.Direction,
+			Status:    row.Status,
+			CreatedAt: row.CreatedAt.UTC(),
+		}
+		ref := row.ID
+		view.ReferenceId = &ref
+		if row.Counterparty != "" {
+			view.Counterparty = &row.Counterparty
+		}
+		if row.Memo != "" {
+			view.Memo = &row.Memo
+		}
+		views = append(views, view)
+	}
+	return api.ListWalletTransactions200JSONResponse{Transactions: views}, nil
+}
+
+func (s *Server) IngestEvent(ctx context.Context, req api.IngestEventRequestObject) (api.IngestEventResponseObject, error) {
+	if req.Body == nil {
+		return api.IngestEvent400JSONResponse{Error: "invalid_json"}, nil
+	}
+	payload, err := json.Marshal(req.Body.Payload)
+	if err != nil {
+		return api.IngestEvent400JSONResponse{Error: "invalid_payload"}, nil
+	}
+	envelope := events.Envelope{
+		EventID:       req.Body.EventId,
+		EventType:     req.Body.EventType,
+		AggregateType: req.Body.AggregateType,
+		AggregateID:   req.Body.AggregateId,
+		Payload:       payload,
+	}
+	if req.Body.EventVersion != nil {
+		envelope.EventVersion = *req.Body.EventVersion
+	}
+	if req.Body.OccurredAt != nil {
+		envelope.OccurredAt = *req.Body.OccurredAt
+	}
+	if err := s.projectWalletEvent.Execute(ctx, envelope); err != nil {
+		return api.IngestEvent400JSONResponse{Error: err.Error()}, nil
+	}
+	return api.IngestEvent202Response{}, nil
 }
 
 func (s *Server) GetWalletBalance(ctx context.Context, req api.GetWalletBalanceRequestObject) (api.GetWalletBalanceResponseObject, error) {

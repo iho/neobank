@@ -15,8 +15,8 @@ import (
 const insertFraudDecision = `-- name: InsertFraudDecision :exec
 INSERT INTO card.fraud_decisions (
     id, entity_type, entity_id, user_id, transaction_type, amount, currency,
-    decision, reason_code, risk_score, correlation_id, created_at
-) VALUES ($1, $2, $3, $4, $5, $6::numeric, $7, $8, $9, $10, $12, $11)
+    decision, reason_code, risk_score, rule_set_version, correlation_id, created_at
+) VALUES ($1, $2, $3, $4, $5, $6::numeric, $7, $8, $9, $10, $11, $13, $12)
 `
 
 type InsertFraudDecisionParams struct {
@@ -30,6 +30,7 @@ type InsertFraudDecisionParams struct {
 	Decision        string
 	ReasonCode      string
 	RiskScore       int32
+	RuleSetVersion  string
 	CreatedAt       pgtype.Timestamptz
 	CorrelationID   pgtype.Text
 }
@@ -46,6 +47,7 @@ func (q *Queries) InsertFraudDecision(ctx context.Context, arg InsertFraudDecisi
 		arg.Decision,
 		arg.ReasonCode,
 		arg.RiskScore,
+		arg.RuleSetVersion,
 		arg.CreatedAt,
 		arg.CorrelationID,
 	)
@@ -54,7 +56,8 @@ func (q *Queries) InsertFraudDecision(ctx context.Context, arg InsertFraudDecisi
 
 const listFraudDecisionsByEntity = `-- name: ListFraudDecisionsByEntity :many
 SELECT id, entity_type, entity_id, user_id, transaction_type, amount::text AS amount, currency,
-       decision, reason_code, risk_score, COALESCE(correlation_id, '') AS correlation_id, created_at
+       decision, reason_code, risk_score, rule_set_version,
+       COALESCE(correlation_id, '') AS correlation_id, created_at
 FROM card.fraud_decisions
 WHERE entity_type = $1 AND entity_id = $2
 ORDER BY created_at
@@ -76,6 +79,7 @@ type ListFraudDecisionsByEntityRow struct {
 	Decision        string
 	ReasonCode      string
 	RiskScore       int32
+	RuleSetVersion  string
 	CorrelationID   string
 	CreatedAt       pgtype.Timestamptz
 }
@@ -100,6 +104,7 @@ func (q *Queries) ListFraudDecisionsByEntity(ctx context.Context, arg ListFraudD
 			&i.Decision,
 			&i.ReasonCode,
 			&i.RiskScore,
+			&i.RuleSetVersion,
 			&i.CorrelationID,
 			&i.CreatedAt,
 		); err != nil {

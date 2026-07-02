@@ -15,6 +15,9 @@ func main() {
 		"migrations/001_init.sql",
 		"migrations/002_authorizations.sql",
 		"migrations/003_traceability.sql",
+		"migrations/004_fraud_rule_version.sql",
+		"migrations/005_reconciliation_breaks.sql",
+		"migrations/006_saga_alerts.sql",
 	}
 
 	ctx := context.Background()

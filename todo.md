@@ -82,13 +82,16 @@ lifecycle, not snapshots.
 - [ ] Still open: version the rule configuration so past decisions can be explained
       (`pkg/fraud.Checker` has no rule-set version today).
 
-### 4. KYC has no evidence trail — HIGH (blocking for any real license)
-KYC is auto-approve with no document storage, no decision provenance, no screening.
+### 4. KYC has no evidence trail — HIGH — partially done
+KYC still auto-approves via stub screening, but submission evidence and screening
+audit rows are now persisted.
 
-- [ ] Store KYC submission artifacts (document type/number already there; add provider
-      reference, raw provider response, reviewer/system decision, decided_by).
-- [ ] Sanctions/PEP screening hook at onboarding and on every transfer counterparty
-      (even a stub interface now, so the call site exists and is audited).
+- [x] Store KYC submission artifacts — `user.kyc_submissions` (document type/number,
+      provider, provider_reference, provider_response JSON, screening decision/reason,
+      correlation_id); `kyc_cases.decided_by` set on approve/reject.
+- [x] Sanctions/PEP screening hook — `pkg/screening` stub at KYC onboarding and P2P
+      counterparty checks; persisted to `user.screening_checks` and
+      `payment.screening_checks`.
 - [ ] AML transaction-monitoring layer distinct from fraud (structuring/threshold rules,
       case creation, SAR/CTR export format) — Phase 3 in architecture.md; pull the data
       model forward so history exists when it ships.
@@ -158,8 +161,10 @@ validation with no environment guard.
       actually flow to a collector. `pkg/reqctx` correlation IDs now flow end-to-end
       independently of OTel, which covers the audit/traceability need; OTel wiring is
       about operational tracing/metrics, a separate (lower-severity) gap.
-- [ ] Still open: structured logs everywhere with `correlation_id`, `user_id`,
-      `idempotency_key`; ship to retained storage.
+- [x] Structured HTTP access logs — `pkg/sloghttp` middleware on gateway and all
+      services; logs `correlation_id`, `user_id`, `idempotency_key`, status, duration.
+      `sloghttp.Logger(ctx)` helper for handler/worker logs. Retained log shipping
+      still open (needs infra).
 - [x] The outbox worker no longer swallows flush errors — `Worker.flush` errors are now
       logged via an injected `*slog.Logger` (`Worker.WithLogger`).
 
@@ -173,6 +178,6 @@ validation with no environment guard.
 5. Outbox retention/archival (#5) — open, needs an infra/compliance decision.
 6. KYC/AML evidence model (#4) — open, schema + provider integration both still needed.
 7. PII encryption (#7) — open, needs a KMS decision. Dev-auth hardening (#7b) — done.
-8. Light CQRS read model for `/v1/wallet/transactions` fed from outbox events — open; the
-   event stream is now trustworthy (correlation IDs, versions, no silent drops) so this
-   can proceed whenever prioritized.
+8. Light CQRS read model for `/v1/wallet/transactions` fed from outbox events — ✅ DONE
+   (`user.wallet_transactions`, `pkg/walletprojection`, User service ingest + list API,
+   gateway reads User service; payment/card outbox fan-out via `ProjectionURLs`).

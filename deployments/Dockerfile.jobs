@@ -1,0 +1,27 @@
+FROM golang:1.24-alpine AS build
+WORKDIR /src
+RUN apk add --no-cache git
+
+COPY pkg ./pkg
+COPY services/payment ./services/payment
+COPY services/card ./services/card
+COPY tools/saga-watchdog ./tools/saga-watchdog
+
+ENV GOWORK=off
+RUN cd services/payment && go build -o /out/payment-reconcile ./cmd/reconcile
+RUN cd services/card && go build -o /out/card-reconcile ./cmd/reconcile
+RUN cd tools/saga-watchdog && go build -o /out/saga-watchdog .
+
+FROM alpine:3.20
+RUN wget -qO /usr/local/bin/supercronic \
+    https://github.com/aptible/supercronic/releases/download/v0.2.33/supercronic-linux-amd64 \
+    && chmod +x /usr/local/bin/supercronic
+
+COPY --from=build /out/payment-reconcile /out/card-reconcile /out/saga-watchdog /usr/local/bin/
+COPY deployments/crontab /crontab
+
+ENV DATABASE_URL=postgres://neobank:neobank@postgres:5432/neobank?sslmode=disable
+ENV LEDGER_GRPC_ADDR=host.docker.internal:50051
+ENV USER_SERVICE_URL=http://host.docker.internal:8081
+
+CMD ["supercronic", "-passthrough-logs", "/crontab"]

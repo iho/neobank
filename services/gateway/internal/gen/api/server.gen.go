@@ -167,9 +167,11 @@ type RegisterResponse struct {
 
 // SubmitKYCRequest defines model for SubmitKYCRequest.
 type SubmitKYCRequest struct {
-	CountryCode string             `json:"country_code"`
-	DateOfBirth openapi_types.Date `json:"date_of_birth"`
-	FullName    string             `json:"full_name"`
+	CountryCode    string             `json:"country_code"`
+	DateOfBirth    openapi_types.Date `json:"date_of_birth"`
+	DocumentNumber *string            `json:"document_number,omitempty"`
+	DocumentType   *string            `json:"document_type,omitempty"`
+	FullName       string             `json:"full_name"`
 }
 
 // SubmitKYCResponse defines model for SubmitKYCResponse.

@@ -1,0 +1,160 @@
+//
+// Copyright (c) 2026 Sumicare
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package walletprojection
+
+import (
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/iho/neobank/pkg/events"
+)
+
+// Row is one persisted wallet transaction entry for a user.
+type Row struct {
+	CreatedAt     time.Time
+	UserID        string
+	ID            string
+	SourceEventID string
+	Type          string
+	Amount        string
+	Currency      string
+	Direction     string
+	Status        string
+	Counterparty  string
+	Memo          string
+}
+
+// Apply derives read-model rows or updates from a domain event envelope.
+// Returns nil when the event type is not part of the wallet history projection.
+func Apply(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {
+	switch envelope.EventType {
+	case events.TypeTransferCompleted:
+		return applyTransferCompleted(envelope)
+	case events.TypeCardAuthApproved:
+		return applyCardAuthApproved(envelope)
+	case events.TypeCardAuthCaptured:
+		update, err := applyCardAuthCaptured(envelope)
+		return nil, update, err
+
+	default:
+		return nil, nil, nil
+	}
+}
+
+// CaptureUpdate mutates an existing card authorization row to captured.
+type CaptureUpdate struct {
+	CreatedAt     time.Time
+	UserID        string
+	ID            string
+	SourceEventID string
+	Type          string
+	Amount        string
+	Currency      string
+	Status        string
+}
+
+func applyTransferCompleted(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {
+	var payload events.TransferCompleted
+	err := json.Unmarshal(envelope.Payload, &payload)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse transfer completed: %w", err)
+	}
+
+	createdAt := envelope.OccurredAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	rows := []Row{
+		{
+			UserID:        payload.SenderUserID,
+			ID:            payload.TransferID,
+			SourceEventID: envelope.EventID,
+			Type:          "p2p_out",
+			Amount:        payload.Amount,
+			Currency:      payload.Currency,
+			Direction:     "debit",
+			Status:        "completed",
+			Counterparty:  payload.RecipientUserID,
+			CreatedAt:     createdAt,
+		},
+		{
+			UserID:        payload.RecipientUserID,
+			ID:            payload.TransferID,
+			SourceEventID: envelope.EventID,
+			Type:          "p2p_in",
+			Amount:        payload.Amount,
+			Currency:      payload.Currency,
+			Direction:     "credit",
+			Status:        "completed",
+			Counterparty:  payload.SenderUserID,
+			CreatedAt:     createdAt,
+		},
+	}
+
+	return rows, nil, nil
+}
+
+func applyCardAuthApproved(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {
+	var payload events.CardAuthApproved
+	err := json.Unmarshal(envelope.Payload, &payload)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse card auth approved: %w", err)
+	}
+
+	createdAt := envelope.OccurredAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	return []Row{{
+		UserID:        payload.UserID,
+		ID:            payload.AuthorizationID,
+		SourceEventID: envelope.EventID,
+		Type:          "card_hold",
+		Amount:        payload.Amount,
+		Currency:      payload.Currency,
+		Direction:     "debit",
+		Status:        "authorized",
+		Counterparty:  payload.MerchantName,
+		CreatedAt:     createdAt,
+	}}, nil, nil
+}
+
+func applyCardAuthCaptured(envelope events.Envelope) (*CaptureUpdate, error) {
+	var payload events.CardAuthCaptured
+	err := json.Unmarshal(envelope.Payload, &payload)
+	if err != nil {
+		return nil, fmt.Errorf("parse card auth captured: %w", err)
+	}
+
+	createdAt := envelope.OccurredAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	return &CaptureUpdate{
+		UserID:        payload.UserID,
+		ID:            payload.AuthorizationID,
+		SourceEventID: envelope.EventID,
+		Type:          "card_purchase",
+		Amount:        payload.Amount,
+		Currency:      payload.Currency,
+		Status:        "captured",
+		CreatedAt:     createdAt,
+	}, nil
+}

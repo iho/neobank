@@ -83,12 +83,27 @@ func (r *KYCRepository) GetLatestByUser(ctx context.Context, userID string) (*do
 	}, nil
 }
 
-func (r *KYCRepository) ApproveCase(ctx context.Context, caseID string) error {
+func (r *KYCRepository) ApproveCase(ctx context.Context, caseID, decidedBy string) error {
 	id, err := pgutil.ParseUUID(caseID)
 	if err != nil {
 		return err
 	}
-	return r.q.ApproveKYCCase(ctx, id)
+	return r.q.ApproveKYCCase(ctx, sqlc.ApproveKYCCaseParams{
+		ID:        id,
+		DecidedBy: pgutil.Text(decidedBy),
+	})
+}
+
+func (r *KYCRepository) RejectCase(ctx context.Context, caseID, reason, decidedBy string) error {
+	id, err := pgutil.ParseUUID(caseID)
+	if err != nil {
+		return err
+	}
+	return r.q.RejectKYCCase(ctx, sqlc.RejectKYCCaseParams{
+		ID:              id,
+		RejectionReason: pgutil.Text(reason),
+		DecidedBy:       pgutil.Text(decidedBy),
+	})
 }
 
 func parseDate(value string) (pgtype.Date, error) {

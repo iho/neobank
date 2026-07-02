@@ -21,15 +21,19 @@ type Querier interface {
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	InsertFraudDecision(ctx context.Context, arg InsertFraudDecisionParams) error
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error
+	InsertScreeningCheck(ctx context.Context, arg InsertScreeningCheckParams) error
 	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
 	ListFraudDecisionsByEntity(ctx context.Context, arg ListFraudDecisionsByEntityParams) ([]ListFraudDecisionsByEntityRow, error)
+	ListOpenReconciliationBreaks(ctx context.Context, limit int32) ([]ListOpenReconciliationBreaksRow, error)
 	ListTransfersByUser(ctx context.Context, arg ListTransfersByUserParams) ([]ListTransfersByUserRow, error)
 	ListTransfersForReconciliation(ctx context.Context, limit int32) ([]ListTransfersForReconciliationRow, error)
 	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
 	MarkTransferCompleted(ctx context.Context, arg MarkTransferCompletedParams) error
 	MarkTransferFailed(ctx context.Context, arg MarkTransferFailedParams) error
+	ResolveReconciliationBreak(ctx context.Context, arg ResolveReconciliationBreakParams) (int64, error)
 	StartReconciliationRun(ctx context.Context, arg StartReconciliationRunParams) (uuid.UUID, error)
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
+	UpsertReconciliationBreak(ctx context.Context, arg UpsertReconciliationBreakParams) error
 }
 
 var _ Querier = (*Queries)(nil)

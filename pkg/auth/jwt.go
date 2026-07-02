@@ -1,6 +1,22 @@
+//
+// Copyright (c) 2026 Sumicare
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -38,10 +54,12 @@ func (j *JWT) Issue(userID string) (access, refresh string, err error) {
 	if err != nil {
 		return "", "", err
 	}
+
 	refresh, err = j.sign(userID, TokenTypeRefresh, j.refreshTTL)
 	if err != nil {
 		return "", "", err
 	}
+
 	return access, refresh, nil
 }
 
@@ -58,10 +76,12 @@ func (j *JWT) Refresh(refreshToken string) (access, newRefresh, userID string, e
 	if err != nil {
 		return "", "", "", err
 	}
+
 	access, newRefresh, err = j.Issue(userID)
 	if err != nil {
 		return "", "", "", err
 	}
+
 	return access, newRefresh, userID, nil
 }
 
@@ -78,28 +98,34 @@ func (j *JWT) sign(userID, tokenType string, ttl time.Duration) (string, error) 
 		},
 	}
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
 	return t.SignedString(j.secret)
 }
 
 func (j *JWT) validate(token, expectedType string) (string, error) {
 	parsed, err := jwt.ParseWithClaims(token, &Claims{}, func(t *jwt.Token) (any, error) {
 		if t.Method != jwt.SigningMethodHS256 {
-			return nil, fmt.Errorf("unexpected signing method")
+			return nil, errors.New("unexpected signing method")
 		}
+
 		return j.secret, nil
 	})
 	if err != nil {
 		return "", fmt.Errorf("invalid token: %w", err)
 	}
+
 	claims, ok := parsed.Claims.(*Claims)
 	if !ok || !parsed.Valid {
-		return "", fmt.Errorf("invalid token claims")
+		return "", errors.New("invalid token claims")
 	}
+
 	if claims.TokenType != expectedType {
-		return "", fmt.Errorf("invalid token type")
+		return "", errors.New("invalid token type")
 	}
+
 	if claims.UserID == "" {
-		return "", fmt.Errorf("missing user id")
+		return "", errors.New("missing user id")
 	}
+
 	return claims.UserID, nil
 }

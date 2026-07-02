@@ -851,6 +851,10 @@ components:
           type: string
           minLength: 2
           maxLength: 2
+        document_type:
+          type: string
+        document_number:
+          type: string
     SubmitKYCResponse:
       type: object
       required: [kyc_case_id, status, wallet_id]

@@ -47,9 +47,11 @@ type LoginResponse struct {
 }
 
 type SubmitKYCRequest struct {
-	FullName    string `json:"full_name"`
-	DateOfBirth string `json:"date_of_birth"`
-	CountryCode string `json:"country_code"`
+	FullName       string `json:"full_name"`
+	DateOfBirth    string `json:"date_of_birth"`
+	CountryCode    string `json:"country_code"`
+	DocumentType   string `json:"document_type,omitempty"`
+	DocumentNumber string `json:"document_number,omitempty"`
 }
 
 type SubmitKYCResponse struct {
@@ -75,6 +77,23 @@ type WalletBalance struct {
 type ProvisionWalletResponse struct {
 	WalletID        string `json:"wallet_id"`
 	LedgerAccountID string `json:"ledger_account_id"`
+}
+
+type WalletTransactionView struct {
+	ID           string `json:"id"`
+	Type         string `json:"type"`
+	Amount       string `json:"amount"`
+	Currency     string `json:"currency"`
+	Direction    string `json:"direction"`
+	Status       string `json:"status"`
+	Counterparty string `json:"counterparty,omitempty"`
+	Memo         string `json:"memo,omitempty"`
+	ReferenceID  string `json:"reference_id,omitempty"`
+	CreatedAt    string `json:"created_at"`
+}
+
+type WalletTransactionList struct {
+	Transactions []WalletTransactionView `json:"transactions"`
 }
 
 type ProfileView struct {
@@ -306,6 +325,35 @@ func (c *UserClient) GetWalletBalance(ctx context.Context, userID, currency stri
 	var out WalletBalance
 	if err := json.Unmarshal(respBody, &out); err != nil {
 		return WalletBalance{}, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
+}
+
+func (c *UserClient) ListWalletTransactions(ctx context.Context, userID string, limit int) (WalletTransactionList, int, error) {
+	url := fmt.Sprintf("%s/api/v1/wallet/transactions?limit=%d", c.baseURL, limit)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return WalletTransactionList{}, 0, err
+	}
+	httpReq.Header.Set("X-User-Id", userID)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return WalletTransactionList{}, 0, fmt.Errorf("user service request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return WalletTransactionList{}, 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return WalletTransactionList{}, resp.StatusCode, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var out WalletTransactionList
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return WalletTransactionList{}, resp.StatusCode, err
 	}
 	return out, resp.StatusCode, nil
 }

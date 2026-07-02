@@ -44,9 +44,17 @@ func (r *FraudDecisionRepository) Record(ctx context.Context, entityType, entity
 		Decision:        decisionLabel(result.Decision),
 		ReasonCode:      result.ReasonCode,
 		RiskScore:       int32(result.RiskScore),
+		RuleSetVersion:  ruleSetVersion(result),
 		CorrelationID:   textOrNil(reqctx.CorrelationID(ctx)),
 		CreatedAt:       pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
 	})
+}
+
+func ruleSetVersion(result fraud.Result) string {
+	if result.RuleSetVersion != "" {
+		return result.RuleSetVersion
+	}
+	return fraud.DefaultRuleSetVersion
 }
 
 func decisionLabel(d fraud.Decision) string {

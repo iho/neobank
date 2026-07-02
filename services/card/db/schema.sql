@@ -59,6 +59,30 @@ CREATE TABLE card.saga_instances (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE card.saga_alerts (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    saga_instance_id  UUID NOT NULL REFERENCES card.saga_instances(id),
+    saga_type         TEXT NOT NULL,
+    idempotency_key   TEXT NOT NULL,
+    instance_status   TEXT NOT NULL,
+    alert_status      TEXT NOT NULL DEFAULT 'open',
+    stuck_since       TIMESTAMPTZ NOT NULL,
+    last_seen_at      TIMESTAMPTZ NOT NULL,
+    completed_steps   JSONB NOT NULL DEFAULT '{}',
+    context           JSONB NOT NULL DEFAULT '{}',
+    resolved_by       TEXT,
+    notes             TEXT,
+    resolved_at       TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT card_saga_alerts_status_check
+        CHECK (alert_status IN ('open', 'investigating', 'resolved'))
+);
+
+CREATE UNIQUE INDEX idx_card_saga_alerts_active
+    ON card.saga_alerts (saga_instance_id)
+    WHERE alert_status IN ('open', 'investigating');
+
 -- Append-only lifecycle trail for cards and authorizations.
 CREATE TABLE card.audit_log (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -88,6 +112,7 @@ CREATE TABLE card.fraud_decisions (
     decision          TEXT NOT NULL,
     reason_code       TEXT NOT NULL,
     risk_score        INT NOT NULL,
+    rule_set_version  TEXT NOT NULL DEFAULT 'mvp-1.0.0',
     correlation_id    TEXT,
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -105,3 +130,28 @@ CREATE TABLE card.reconciliation_runs (
     breaks          JSONB NOT NULL DEFAULT '[]',
     status          TEXT NOT NULL DEFAULT 'running'
 );
+
+CREATE TABLE card.reconciliation_breaks (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_id          UUID NOT NULL REFERENCES card.reconciliation_runs(id),
+    entity_type     TEXT NOT NULL,
+    entity_id       TEXT NOT NULL,
+    reason          TEXT NOT NULL,
+    local_status    TEXT,
+    ledger_ref      TEXT,
+    status          TEXT NOT NULL DEFAULT 'open',
+    resolved_by     TEXT,
+    notes           TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resolved_at     TIMESTAMPTZ,
+    CONSTRAINT card_reconciliation_breaks_status_check
+        CHECK (status IN ('open', 'investigated', 'closed'))
+);
+
+CREATE UNIQUE INDEX idx_card_reconciliation_breaks_active
+    ON card.reconciliation_breaks (entity_type, entity_id, reason)
+    WHERE status IN ('open', 'investigated');
+
+CREATE INDEX idx_card_reconciliation_breaks_status
+    ON card.reconciliation_breaks (status, created_at DESC);

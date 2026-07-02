@@ -16,8 +16,10 @@ import (
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
 	"github.com/iho/neobank/pkg/reqctx"
+	"github.com/iho/neobank/pkg/sloghttp"
 	apiadapter "github.com/iho/neobank/services/gateway/internal/adapter/api"
 	"github.com/iho/neobank/services/gateway/internal/client"
+	gwmiddleware "github.com/iho/neobank/services/gateway/internal/middleware"
 	"github.com/iho/neobank/services/gateway/internal/config"
 	genapi "github.com/iho/neobank/services/gateway/internal/gen/api"
 )
@@ -52,7 +54,9 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
 	r.Use(reqctx.Middleware)
+	r.Use(gwmiddleware.Actor(jwtAuth, cfg.AllowDevAuth))
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
+	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("gateway")))
 	genapi.HandlerFromMux(strictHandler, r)
 
 	srv := &http.Server{

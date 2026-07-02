@@ -1,17 +1,35 @@
+//
+// Copyright (c) 2026 Sumicare
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package grpcutil
 
 import (
 	"context"
 	"time"
 
-	"github.com/iho/neobank/pkg/reqctx"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/iho/neobank/pkg/reqctx"
 )
 
-const IdempotencyKeyHeader = "x-idempotency-key"
-const CorrelationIDHeader = "x-correlation-id"
+const (
+	IdempotencyKeyHeader = "x-idempotency-key"
+	CorrelationIDHeader  = "x-correlation-id"
+)
 
 // Dial opens an insecure gRPC connection (mTLS in production).
 func Dial(ctx context.Context, addr string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
@@ -19,6 +37,7 @@ func Dial(ctx context.Context, addr string, opts ...grpc.DialOption) (*grpc.Clie
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithChainUnaryInterceptor(correlationInterceptor),
 	}
+
 	return grpc.NewClient(addr, append(base, opts...)...)
 }
 
@@ -29,6 +48,7 @@ func correlationInterceptor(ctx context.Context, method string, req, reply any, 
 	if id := reqctx.CorrelationID(ctx); id != "" {
 		ctx = metadata.AppendToOutgoingContext(ctx, CorrelationIDHeader, id)
 	}
+
 	return invoker(ctx, method, req, reply, cc, opts...)
 }
 

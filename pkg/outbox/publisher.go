@@ -1,3 +1,18 @@
+//
+// Copyright (c) 2026 Sumicare
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package outbox
 
 import (
@@ -8,6 +23,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/iho/neobank/pkg/events"
 	"github.com/iho/neobank/pkg/reqctx"
 )
@@ -23,10 +39,10 @@ type Store interface {
 type Worker struct {
 	store    Store
 	producer Producer
+	logger   *slog.Logger
 	topic    string
 	interval time.Duration
 	batch    int
-	logger   *slog.Logger
 }
 
 func NewWorker(store Store, producer Producer, topic string) *Worker {
@@ -55,7 +71,8 @@ func (w *Worker) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			if err := w.flush(ctx); err != nil {
+			err := w.flush(ctx)
+			if err != nil {
 				w.logger.Error("outbox flush failed", "error", err, "topic", w.topic)
 			}
 		}
@@ -67,11 +84,13 @@ func (w *Worker) flush(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	for _, rec := range records {
 		version := rec.EventVersion
 		if version == 0 {
 			version = 1
 		}
+
 		envelope := events.Envelope{
 			EventID:       rec.ID,
 			EventType:     rec.EventType,
@@ -83,6 +102,7 @@ func (w *Worker) flush(ctx context.Context) error {
 			AggregateID:   rec.AggregateID,
 			Payload:       rec.Payload,
 		}
+
 		data, err := json.Marshal(envelope)
 		if err != nil {
 			return err
@@ -91,14 +111,17 @@ func (w *Worker) flush(ctx context.Context) error {
 		// worker loop's ambient context) so producers using reqctx.Transport
 		// tag the delivery request with the ID that produced the event.
 		produceCtx := reqctx.WithCorrelationID(ctx, rec.CorrelationID)
+
 		produceCtx = reqctx.WithCausationID(produceCtx, rec.CausationID)
 		if err := w.producer.Produce(produceCtx, w.topic, rec.AggregateID, data); err != nil {
 			return err
 		}
+
 		if err := w.store.MarkPublished(ctx, rec.ID); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -110,6 +133,7 @@ func BuildRecord(ctx context.Context, evt events.Event) (Record, error) {
 	if err != nil {
 		return Record{}, fmt.Errorf("marshal event payload: %w", err)
 	}
+
 	return Record{
 		ID:            uuid.NewString(),
 		AggregateType: evt.AggregateType(),

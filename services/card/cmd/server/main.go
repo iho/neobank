@@ -18,6 +18,7 @@ import (
 	"github.com/iho/neobank/pkg/outbox"
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/reqctx"
+	"github.com/iho/neobank/pkg/sloghttp"
 	"github.com/iho/neobank/pkg/userclient"
 	apiadapter "github.com/iho/neobank/services/card/internal/adapter/api"
 	"github.com/iho/neobank/services/card/internal/adapter/processor"
@@ -80,6 +81,7 @@ func main() {
 	producer := outbox.NewProducer(outbox.ProducerConfig{
 		KafkaBrokers:    cfg.KafkaBrokers,
 		NotificationURL: cfg.NotificationURL,
+		ProjectionURLs:  []string{outbox.WalletProjectionURL(cfg.UserURL)},
 		Logger:          logger,
 	})
 	outboxWorker := outbox.NewWorker(outboxRepo, producer, "card.events")
@@ -93,6 +95,7 @@ func main() {
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
 	r.Use(reqctx.Middleware)
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
+	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("card")))
 	genapi.HandlerFromMux(strictHandler, r)
 
 	srv := &http.Server{

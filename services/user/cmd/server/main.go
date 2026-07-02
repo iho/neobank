@@ -15,10 +15,13 @@ import (
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
 	"github.com/iho/neobank/pkg/outbox"
+	"github.com/iho/neobank/pkg/screening"
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/reqctx"
+	"github.com/iho/neobank/pkg/sloghttp"
 	apiadapter "github.com/iho/neobank/services/user/internal/adapter/api"
 	"github.com/iho/neobank/services/user/internal/adapter/auth"
+	kafkaadapter "github.com/iho/neobank/services/user/internal/adapter/kafka"
 	ledgeradapter "github.com/iho/neobank/services/user/internal/adapter/ledger"
 	sqlcrepo "github.com/iho/neobank/services/user/internal/adapter/sqlc"
 	"github.com/iho/neobank/services/user/internal/config"
@@ -58,6 +61,7 @@ func main() {
 	outboxRepo := sqlcrepo.NewOutboxRepository(queries)
 	auditRepo := sqlcrepo.NewAuditRepository(queries)
 	sagaStore := sqlcrepo.NewSagaStore(queries)
+	walletTxRepo := sqlcrepo.NewWalletTransactionRepository(queries)
 
 	producer := outbox.NewProducer(outbox.ProducerConfig{
 		KafkaBrokers:    cfg.KafkaBrokers,
@@ -77,13 +81,26 @@ func main() {
 	refreshUC := usecase.NewRefreshTokenUseCase(tokenIssuer, userRepo)
 	txRunner := pgutil.NewTxRunner(pool)
 	provisionWalletUC := usecase.NewProvisionWalletUseCase(walletRepo, ledgerAdapter, outboxRepo, auditRepo, sagaStore, txRunner)
-	submitKYCUC := usecase.NewSubmitKYCUseCase(kycRepo, provisionWalletUC, outboxRepo, auditRepo, txRunner)
+	submitKYCUC := usecase.NewSubmitKYCUseCase(kycRepo, provisionWalletUC, screening.NewStubScreener(), outboxRepo, auditRepo, txRunner)
 	getKYCStatusUC := usecase.NewGetKYCStatusUseCase(kycRepo)
 	getProfileUC := usecase.NewGetProfileUseCase(userRepo)
 	walletBalanceUC := usecase.NewGetWalletBalanceUseCase(walletRepo, ledgerAdapter)
+	projectWalletEventUC := usecase.NewProjectWalletEventUseCase(walletTxRepo)
+	listWalletTxUC := usecase.NewListWalletTransactionsUseCase(walletTxRepo)
+
+	if cfg.KafkaBrokers != "" {
+		consumer := kafkaadapter.NewConsumer(cfg.KafkaBrokers, "user-wallet-projection", projectWalletEventUC, logger)
+		go func() {
+			if err := consumer.Run(ctx, "payment.events", "card.events"); err != nil && err != context.Canceled {
+				logger.Error("wallet projection consumer stopped", "error", err)
+			}
+		}()
+		logger.Info("wallet projection kafka consumer enabled", "brokers", cfg.KafkaBrokers)
+	}
 
 	strictServer := apiadapter.NewServer(
 		registerUC, loginUC, refreshUC, submitKYCUC, getKYCStatusUC, getProfileUC, walletBalanceUC,
+		listWalletTxUC, projectWalletEventUC,
 		provisionWalletUC, userRepo, walletRepo,
 	)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
@@ -92,6 +109,7 @@ func main() {
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
 	r.Use(reqctx.Middleware)
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
+	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("user")))
 	genapi.HandlerFromMux(strictHandler, r)
 
 	srv := &http.Server{

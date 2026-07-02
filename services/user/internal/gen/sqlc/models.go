@@ -29,6 +29,22 @@ type UserKycCase struct {
 	SubmittedAt     pgtype.Timestamptz
 	DecidedAt       pgtype.Timestamptz
 	RejectionReason pgtype.Text
+	DecidedBy       pgtype.Text
+}
+
+type UserKycSubmission struct {
+	ID                uuid.UUID
+	KycCaseID         uuid.UUID
+	UserID            uuid.UUID
+	DocumentType      pgtype.Text
+	DocumentNumber    pgtype.Text
+	Provider          string
+	ProviderReference pgtype.Text
+	ProviderResponse  []byte
+	ScreeningDecision string
+	ScreeningReason   pgtype.Text
+	CorrelationID     pgtype.Text
+	CreatedAt         pgtype.Timestamptz
 }
 
 type UserOutboxEvent struct {
@@ -51,6 +67,24 @@ type UserProfile struct {
 	CountryCode pgtype.Text
 }
 
+type UserSagaAlert struct {
+	ID             uuid.UUID
+	SagaInstanceID uuid.UUID
+	SagaType       string
+	IdempotencyKey string
+	InstanceStatus string
+	AlertStatus    string
+	StuckSince     pgtype.Timestamptz
+	LastSeenAt     pgtype.Timestamptz
+	CompletedSteps []byte
+	Context        []byte
+	ResolvedBy     pgtype.Text
+	Notes          pgtype.Text
+	ResolvedAt     pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
 type UserSagaInstance struct {
 	ID             uuid.UUID
 	SagaType       string
@@ -61,6 +95,21 @@ type UserSagaInstance struct {
 	CompletedSteps []byte
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
+}
+
+type UserScreeningCheck struct {
+	ID                uuid.UUID
+	CheckType         string
+	SubjectUserID     uuid.UUID
+	EntityType        string
+	EntityID          string
+	Decision          string
+	ReasonCode        string
+	Provider          string
+	ProviderReference pgtype.Text
+	RawResponse       []byte
+	CorrelationID     pgtype.Text
+	CreatedAt         pgtype.Timestamptz
 }
 
 type UserUser struct {
@@ -80,4 +129,19 @@ type UserWallet struct {
 	LedgerAccountID string
 	Status          string
 	CreatedAt       pgtype.Timestamptz
+}
+
+type UserWalletTransaction struct {
+	UserID        uuid.UUID
+	ID            string
+	SourceEventID uuid.UUID
+	TxType        string
+	Amount        string
+	Currency      string
+	Direction     string
+	Status        string
+	Counterparty  pgtype.Text
+	Memo          pgtype.Text
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
 }

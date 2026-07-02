@@ -20,5 +20,10 @@ LIMIT 1;
 
 -- name: ApproveKYCCase :exec
 UPDATE "user".kyc_cases
-SET status = 'approved', decided_at = now()
+SET status = 'approved', decided_at = now(), decided_by = @decided_by
+WHERE id = @id;
+
+-- name: RejectKYCCase :exec
+UPDATE "user".kyc_cases
+SET status = 'rejected', decided_at = now(), rejection_reason = @rejection_reason, decided_by = @decided_by
 WHERE id = @id;

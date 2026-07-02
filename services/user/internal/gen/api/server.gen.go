@@ -22,6 +22,17 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
+// EventEnvelope defines model for EventEnvelope.
+type EventEnvelope struct {
+	AggregateId   string                 `json:"aggregate_id"`
+	AggregateType string                 `json:"aggregate_type"`
+	EventId       string                 `json:"event_id"`
+	EventType     string                 `json:"event_type"`
+	EventVersion  *int                   `json:"event_version,omitempty"`
+	OccurredAt    *time.Time             `json:"occurred_at,omitempty"`
+	Payload       map[string]interface{} `json:"payload"`
+}
+
 // HealthResponse defines model for HealthResponse.
 type HealthResponse struct {
 	Status string `json:"status"`
@@ -92,9 +103,13 @@ type RegisterResponse struct {
 
 // SubmitKYCRequest defines model for SubmitKYCRequest.
 type SubmitKYCRequest struct {
-	CountryCode string             `json:"country_code"`
-	DateOfBirth openapi_types.Date `json:"date_of_birth"`
-	FullName    string             `json:"full_name"`
+	CountryCode    string             `json:"country_code"`
+	DateOfBirth    openapi_types.Date `json:"date_of_birth"`
+	DocumentNumber *string            `json:"document_number,omitempty"`
+
+	// DocumentType e.g. passport, national_id
+	DocumentType *string `json:"document_type,omitempty"`
+	FullName     string  `json:"full_name"`
 }
 
 // SubmitKYCResponse defines model for SubmitKYCResponse.
@@ -131,6 +146,25 @@ type WalletBalance struct {
 	WalletId          openapi_types.UUID `json:"wallet_id"`
 }
 
+// WalletTransaction defines model for WalletTransaction.
+type WalletTransaction struct {
+	Amount       string    `json:"amount"`
+	Counterparty *string   `json:"counterparty,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	Currency     string    `json:"currency"`
+	Direction    string    `json:"direction"`
+	Id           string    `json:"id"`
+	Memo         *string   `json:"memo,omitempty"`
+	ReferenceId  *string   `json:"reference_id,omitempty"`
+	Status       string    `json:"status"`
+	Type         string    `json:"type"`
+}
+
+// WalletTransactionList defines model for WalletTransactionList.
+type WalletTransactionList struct {
+	Transactions []WalletTransaction `json:"transactions"`
+}
+
 // IdempotencyKey defines model for IdempotencyKey.
 type IdempotencyKey = string
 
@@ -164,6 +198,12 @@ type GetProfileParams struct {
 	XUserId XUserId `json:"X-User-Id"`
 }
 
+// ListWalletTransactionsParams defines parameters for ListWalletTransactions.
+type ListWalletTransactionsParams struct {
+	Limit   *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	XUserId XUserId `json:"X-User-Id"`
+}
+
 // ProvisionWalletParams defines parameters for ProvisionWallet.
 type ProvisionWalletParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
@@ -185,6 +225,9 @@ type RefreshTokenJSONRequestBody = RefreshTokenRequest
 // RegisterJSONRequestBody defines body for Register for application/json ContentType.
 type RegisterJSONRequestBody = RegisterRequest
 
+// IngestEventJSONRequestBody defines body for IngestEvent for application/json ContentType.
+type IngestEventJSONRequestBody = EventEnvelope
+
 // SubmitKYCJSONRequestBody defines body for SubmitKYC for application/json ContentType.
 type SubmitKYCJSONRequestBody = SubmitKYCRequest
 
@@ -203,6 +246,9 @@ type ServerInterface interface {
 	// (POST /api/v1/auth/register)
 	Register(w http.ResponseWriter, r *http.Request, params RegisterParams)
 
+	// (POST /api/v1/internal/events)
+	IngestEvent(w http.ResponseWriter, r *http.Request)
+
 	// (GET /api/v1/internal/users/by-phone/{phone})
 	GetUserByPhone(w http.ResponseWriter, r *http.Request, phone string)
 
@@ -217,6 +263,9 @@ type ServerInterface interface {
 
 	// (GET /api/v1/me)
 	GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams)
+
+	// (GET /api/v1/wallet/transactions)
+	ListWalletTransactions(w http.ResponseWriter, r *http.Request, params ListWalletTransactionsParams)
 
 	// (POST /api/v1/wallets)
 	ProvisionWallet(w http.ResponseWriter, r *http.Request, params ProvisionWalletParams)
@@ -247,6 +296,11 @@ func (_ Unimplemented) Register(w http.ResponseWriter, r *http.Request, params R
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// (POST /api/v1/internal/events)
+func (_ Unimplemented) IngestEvent(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (GET /api/v1/internal/users/by-phone/{phone})
 func (_ Unimplemented) GetUserByPhone(w http.ResponseWriter, r *http.Request, phone string) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -269,6 +323,11 @@ func (_ Unimplemented) GetKYCStatus(w http.ResponseWriter, r *http.Request, para
 
 // (GET /api/v1/me)
 func (_ Unimplemented) GetProfile(w http.ResponseWriter, r *http.Request, params GetProfileParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /api/v1/wallet/transactions)
+func (_ Unimplemented) ListWalletTransactions(w http.ResponseWriter, r *http.Request, params ListWalletTransactionsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -360,6 +419,20 @@ func (siw *ServerInterfaceWrapper) Register(w http.ResponseWriter, r *http.Reque
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Register(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// IngestEvent operation middleware
+func (siw *ServerInterfaceWrapper) IngestEvent(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.IngestEvent(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -590,6 +663,64 @@ func (siw *ServerInterfaceWrapper) GetProfile(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProfile(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListWalletTransactions operation middleware
+func (siw *ServerInterfaceWrapper) ListWalletTransactions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListWalletTransactionsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId XUserId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-User-Id", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-User-Id", valueList[0], &XUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-User-Id", Err: err})
+			return
+		}
+
+		params.XUserId = XUserId
+
+	} else {
+		err := fmt.Errorf("Header parameter X-User-Id is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-User-Id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWalletTransactions(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -862,6 +993,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/api/v1/auth/register", wrapper.Register)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/internal/events", wrapper.IngestEvent)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/internal/users/by-phone/{phone}", wrapper.GetUserByPhone)
 	})
 	r.Group(func(r chi.Router) {
@@ -875,6 +1009,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/me", wrapper.GetProfile)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/wallet/transactions", wrapper.ListWalletTransactions)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/wallets", wrapper.ProvisionWallet)
@@ -987,6 +1124,36 @@ func (response Register201JSONResponse) VisitRegisterResponse(w http.ResponseWri
 type Register400JSONResponse ErrorResponse
 
 func (response Register400JSONResponse) VisitRegisterResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IngestEventRequestObject struct {
+	Body *IngestEventJSONRequestBody
+}
+
+type IngestEventResponseObject interface {
+	VisitIngestEventResponse(w http.ResponseWriter) error
+}
+
+type IngestEvent202Response struct {
+}
+
+func (response IngestEvent202Response) VisitIngestEventResponse(w http.ResponseWriter) error {
+	w.WriteHeader(202)
+	return nil
+}
+
+type IngestEvent400JSONResponse ErrorResponse
+
+func (response IngestEvent400JSONResponse) VisitIngestEventResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -1165,6 +1332,28 @@ func (response GetProfile404JSONResponse) VisitGetProfileResponse(w http.Respons
 	return err
 }
 
+type ListWalletTransactionsRequestObject struct {
+	Params ListWalletTransactionsParams
+}
+
+type ListWalletTransactionsResponseObject interface {
+	VisitListWalletTransactionsResponse(w http.ResponseWriter) error
+}
+
+type ListWalletTransactions200JSONResponse WalletTransactionList
+
+func (response ListWalletTransactions200JSONResponse) VisitListWalletTransactionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ProvisionWalletRequestObject struct {
 	Params ProvisionWalletParams
 	Body   *ProvisionWalletJSONRequestBody
@@ -1271,6 +1460,9 @@ type StrictServerInterface interface {
 	// (POST /api/v1/auth/register)
 	Register(ctx context.Context, request RegisterRequestObject) (RegisterResponseObject, error)
 
+	// (POST /api/v1/internal/events)
+	IngestEvent(ctx context.Context, request IngestEventRequestObject) (IngestEventResponseObject, error)
+
 	// (GET /api/v1/internal/users/by-phone/{phone})
 	GetUserByPhone(ctx context.Context, request GetUserByPhoneRequestObject) (GetUserByPhoneResponseObject, error)
 
@@ -1285,6 +1477,9 @@ type StrictServerInterface interface {
 
 	// (GET /api/v1/me)
 	GetProfile(ctx context.Context, request GetProfileRequestObject) (GetProfileResponseObject, error)
+
+	// (GET /api/v1/wallet/transactions)
+	ListWalletTransactions(ctx context.Context, request ListWalletTransactionsRequestObject) (ListWalletTransactionsResponseObject, error)
 
 	// (POST /api/v1/wallets)
 	ProvisionWallet(ctx context.Context, request ProvisionWalletRequestObject) (ProvisionWalletResponseObject, error)
@@ -1413,6 +1608,37 @@ func (sh *strictHandler) Register(w http.ResponseWriter, r *http.Request, params
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(RegisterResponseObject); ok {
 		if err := validResponse.VisitRegisterResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// IngestEvent operation middleware
+func (sh *strictHandler) IngestEvent(w http.ResponseWriter, r *http.Request) {
+	var request IngestEventRequestObject
+
+	var body IngestEventJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.IngestEvent(ctx, request.(IngestEventRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "IngestEvent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(IngestEventResponseObject); ok {
+		if err := validResponse.VisitIngestEventResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -1550,6 +1776,32 @@ func (sh *strictHandler) GetProfile(w http.ResponseWriter, r *http.Request, para
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetProfileResponseObject); ok {
 		if err := validResponse.VisitGetProfileResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListWalletTransactions operation middleware
+func (sh *strictHandler) ListWalletTransactions(w http.ResponseWriter, r *http.Request, params ListWalletTransactionsParams) {
+	var request ListWalletTransactionsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListWalletTransactions(ctx, request.(ListWalletTransactionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListWalletTransactions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListWalletTransactionsResponseObject); ok {
+		if err := validResponse.VisitListWalletTransactionsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -1,3 +1,18 @@
+//
+// Copyright (c) 2026 Sumicare
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package userclient
 
 import (
@@ -12,8 +27,8 @@ import (
 )
 
 type Client struct {
-	baseURL    string
 	httpClient *http.Client
+	baseURL    string
 }
 
 func New(baseURL string) *Client {
@@ -48,12 +63,14 @@ func (c *Client) GetWallet(ctx context.Context, userID, currency string) (Wallet
 	if err != nil {
 		return Wallet{}, err
 	}
+
 	q := u.Query()
 	q.Set("user_id", userID)
 	q.Set("currency", currency)
+
 	u.RawQuery = q.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), http.NoBody)
 	if err != nil {
 		return Wallet{}, err
 	}
@@ -68,6 +85,7 @@ func (c *Client) GetWallet(ctx context.Context, userID, currency string) (Wallet
 	if err != nil {
 		return Wallet{}, err
 	}
+
 	if resp.StatusCode != http.StatusOK {
 		return Wallet{}, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(body))
 	}
@@ -76,11 +94,12 @@ func (c *Client) GetWallet(ctx context.Context, userID, currency string) (Wallet
 	if err := json.Unmarshal(body, &wallet); err != nil {
 		return Wallet{}, err
 	}
+
 	return wallet, nil
 }
 
 func (c *Client) getUser(ctx context.Context, path string) (User, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, path, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, path, http.NoBody)
 	if err != nil {
 		return User{}, err
 	}
@@ -95,6 +114,7 @@ func (c *Client) getUser(ctx context.Context, path string) (User, error) {
 	if err != nil {
 		return User{}, err
 	}
+
 	if resp.StatusCode != http.StatusOK {
 		return User{}, fmt.Errorf("user service status %d: %s", resp.StatusCode, string(body))
 	}
@@ -103,5 +123,6 @@ func (c *Client) getUser(ctx context.Context, path string) (User, error) {
 	if err := json.Unmarshal(body, &user); err != nil {
 		return User{}, err
 	}
+
 	return user, nil
 }

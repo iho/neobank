@@ -1,3 +1,18 @@
+//
+// Copyright (c) 2026 Sumicare
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package ledgerclient
 
 import (
@@ -23,7 +38,8 @@ func (c *Client) HoldFunds(ctx context.Context, in HoldFundsInput) (*goledgerv1.
 	if err != nil {
 		return nil, err
 	}
-	return resp.Hold, nil
+
+	return resp.GetHold(), nil
 }
 
 func (c *Client) VoidHold(ctx context.Context, holdID string) error {
@@ -31,6 +47,7 @@ func (c *Client) VoidHold(ctx context.Context, holdID string) error {
 	defer cancel()
 
 	_, err := c.holds.VoidHold(ctx, &goledgerv1.VoidHoldRequest{HoldId: holdID})
+
 	return err
 }
 
@@ -47,7 +64,8 @@ func (c *Client) ListHoldsByAccount(ctx context.Context, accountID string, limit
 	if err != nil {
 		return nil, err
 	}
-	return resp.Holds, nil
+
+	return resp.GetHolds(), nil
 }
 
 type CaptureHoldInput struct {
@@ -66,5 +84,6 @@ func (c *Client) CaptureHold(ctx context.Context, in CaptureHoldInput) (*goledge
 	if err != nil {
 		return nil, err
 	}
-	return resp.Transfer, nil
+
+	return resp.GetTransfer(), nil
 }

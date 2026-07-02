@@ -1,3 +1,18 @@
+//
+// Copyright (c) 2026 Sumicare
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package money
 
 import (
@@ -12,9 +27,11 @@ func Parse(amount string) (decimal.Decimal, error) {
 	if err != nil {
 		return decimal.Zero, fmt.Errorf("invalid amount %q: %w", amount, err)
 	}
+
 	if d.IsNegative() {
 		return decimal.Zero, fmt.Errorf("amount must be positive: %s", amount)
 	}
+
 	return d, nil
 }
 
@@ -24,5 +41,6 @@ func MustParse(amount string) decimal.Decimal {
 	if err != nil {
 		panic(err)
 	}
+
 	return d
 }

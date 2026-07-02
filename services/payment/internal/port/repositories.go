@@ -24,3 +24,22 @@ type TransferRepository interface {
 type FraudDecisionRepository interface {
 	Record(ctx context.Context, entityType, entityID, userID, transactionType, amount, currency string, result fraud.Result) error
 }
+
+type ScreeningCheck struct {
+	ID                string
+	CheckType         string
+	SubjectUserID     string
+	RelatedUserID     string
+	EntityType        string
+	EntityID          string
+	Decision          string
+	ReasonCode        string
+	Provider          string
+	ProviderReference string
+	RawResponse       []byte
+	CorrelationID     string
+}
+
+type ScreeningRepository interface {
+	Record(ctx context.Context, check ScreeningCheck) error
+}

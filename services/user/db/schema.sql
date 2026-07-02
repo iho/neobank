@@ -23,7 +23,38 @@ CREATE TABLE "user".kyc_cases (
     status           TEXT NOT NULL DEFAULT 'pending',
     submitted_at     TIMESTAMPTZ,
     decided_at       TIMESTAMPTZ,
-    rejection_reason TEXT
+    rejection_reason TEXT,
+    decided_by       TEXT
+);
+
+CREATE TABLE "user".kyc_submissions (
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    kyc_case_id        UUID NOT NULL REFERENCES "user".kyc_cases(id),
+    user_id            UUID NOT NULL REFERENCES "user".users(id),
+    document_type      TEXT,
+    document_number    TEXT,
+    provider           TEXT NOT NULL,
+    provider_reference TEXT,
+    provider_response  JSONB NOT NULL DEFAULT '{}',
+    screening_decision TEXT NOT NULL,
+    screening_reason   TEXT,
+    correlation_id     TEXT,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE "user".screening_checks (
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    check_type         TEXT NOT NULL,
+    subject_user_id    UUID NOT NULL,
+    entity_type        TEXT NOT NULL,
+    entity_id          TEXT NOT NULL,
+    decision           TEXT NOT NULL,
+    reason_code        TEXT NOT NULL,
+    provider           TEXT NOT NULL,
+    provider_reference TEXT,
+    raw_response       JSONB NOT NULL DEFAULT '{}',
+    correlation_id     TEXT,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE "user".wallets (
@@ -61,6 +92,30 @@ CREATE TABLE "user".saga_instances (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE "user".saga_alerts (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    saga_instance_id  UUID NOT NULL REFERENCES "user".saga_instances(id),
+    saga_type         TEXT NOT NULL,
+    idempotency_key   TEXT NOT NULL,
+    instance_status   TEXT NOT NULL,
+    alert_status      TEXT NOT NULL DEFAULT 'open',
+    stuck_since       TIMESTAMPTZ NOT NULL,
+    last_seen_at      TIMESTAMPTZ NOT NULL,
+    completed_steps   JSONB NOT NULL DEFAULT '{}',
+    context           JSONB NOT NULL DEFAULT '{}',
+    resolved_by       TEXT,
+    notes             TEXT,
+    resolved_at       TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT user_saga_alerts_status_check
+        CHECK (alert_status IN ('open', 'investigating', 'resolved'))
+);
+
+CREATE UNIQUE INDEX idx_user_saga_alerts_active
+    ON "user".saga_alerts (saga_instance_id)
+    WHERE alert_status IN ('open', 'investigating');
+
 -- Append-only lifecycle trail for KYC decisions and wallet provisioning.
 CREATE TABLE "user".audit_log (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -77,3 +132,29 @@ CREATE TABLE "user".audit_log (
 
 CREATE INDEX idx_user_audit_log_entity
     ON "user".audit_log (entity_type, entity_id, created_at);
+
+CREATE TABLE "user".wallet_transactions (
+    user_id         UUID NOT NULL REFERENCES "user".users(id),
+    id              TEXT NOT NULL,
+    source_event_id UUID NOT NULL,
+    tx_type         TEXT NOT NULL,
+    amount          TEXT NOT NULL,
+    currency        TEXT NOT NULL,
+    direction       TEXT NOT NULL,
+    status          TEXT NOT NULL,
+    counterparty    TEXT,
+    memo            TEXT,
+    created_at      TIMESTAMPTZ NOT NULL,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, id),
+    CONSTRAINT user_wallet_tx_type_check
+        CHECK (tx_type IN ('p2p_out', 'p2p_in', 'card_hold', 'card_purchase')),
+    CONSTRAINT user_wallet_tx_direction_check
+        CHECK (direction IN ('debit', 'credit'))
+);
+
+CREATE UNIQUE INDEX idx_user_wallet_tx_event_dedup
+    ON "user".wallet_transactions (user_id, source_event_id);
+
+CREATE INDEX idx_user_wallet_tx_user_created
+    ON "user".wallet_transactions (user_id, created_at DESC);

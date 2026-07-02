@@ -12,7 +12,7 @@ import (
 )
 
 type Querier interface {
-	ApproveKYCCase(ctx context.Context, id uuid.UUID) error
+	ApproveKYCCase(ctx context.Context, arg ApproveKYCCaseParams) error
 	CreateKYCCase(ctx context.Context, arg CreateKYCCaseParams) (CreateKYCCaseRow, error)
 	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
@@ -27,11 +27,17 @@ type Querier interface {
 	GetUserProfile(ctx context.Context, id uuid.UUID) (GetUserProfileRow, error)
 	GetWalletByUserAndCurrency(ctx context.Context, arg GetWalletByUserAndCurrencyParams) (GetWalletByUserAndCurrencyRow, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
+	InsertKYCSubmission(ctx context.Context, arg InsertKYCSubmissionParams) error
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error
+	InsertScreeningCheck(ctx context.Context, arg InsertScreeningCheckParams) error
+	InsertWalletTransaction(ctx context.Context, arg InsertWalletTransactionParams) error
 	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
+	ListWalletTransactionsByUser(ctx context.Context, arg ListWalletTransactionsByUserParams) ([]ListWalletTransactionsByUserRow, error)
 	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
+	RejectKYCCase(ctx context.Context, arg RejectKYCCaseParams) error
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
 	UpsertProfile(ctx context.Context, arg UpsertProfileParams) error
+	UpsertWalletTransactionCapture(ctx context.Context, arg UpsertWalletTransactionCaptureParams) error
 }
 
 var _ Querier = (*Queries)(nil)

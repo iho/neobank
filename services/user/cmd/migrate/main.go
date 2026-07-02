@@ -14,6 +14,9 @@ func main() {
 	migrations := []string{
 		"migrations/001_init.sql",
 		"migrations/002_traceability.sql",
+		"migrations/003_saga_alerts.sql",
+		"migrations/004_wallet_transactions.sql",
+		"migrations/005_kyc_evidence.sql",
 	}
 
 	ctx := context.Background()

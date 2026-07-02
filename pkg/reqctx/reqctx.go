@@ -1,7 +1,18 @@
-// Package reqctx carries request-scoped tracing identifiers (correlation ID,
-// causation ID, actor) through context.Context so that every audit record,
-// outbox event, and log line written while handling a request can be tied
-// back to the request that caused it.
+//
+// Copyright (c) 2026 Sumicare
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package reqctx
 
 import "context"
@@ -19,6 +30,7 @@ func WithCorrelationID(ctx context.Context, id string) context.Context {
 	if id == "" {
 		return ctx
 	}
+
 	return context.WithValue(ctx, correlationIDKey, id)
 }
 
@@ -35,6 +47,7 @@ func WithCausationID(ctx context.Context, id string) context.Context {
 	if id == "" {
 		return ctx
 	}
+
 	return context.WithValue(ctx, causationIDKey, id)
 }
 
@@ -50,6 +63,7 @@ func WithActor(ctx context.Context, actor string) context.Context {
 	if actor == "" {
 		return ctx
 	}
+
 	return context.WithValue(ctx, actorKey, actor)
 }
 
@@ -59,5 +73,6 @@ func Actor(ctx context.Context) string {
 	if v == "" {
 		return "system"
 	}
+
 	return v
 }

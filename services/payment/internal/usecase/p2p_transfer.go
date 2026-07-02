@@ -14,7 +14,9 @@ import (
 	"github.com/iho/neobank/pkg/money"
 	"github.com/iho/neobank/pkg/outbox"
 	"github.com/iho/neobank/pkg/pgutil"
+	"github.com/iho/neobank/pkg/reqctx"
 	"github.com/iho/neobank/pkg/saga"
+	"github.com/iho/neobank/pkg/screening"
 	"github.com/iho/neobank/pkg/userclient"
 	"github.com/iho/neobank/services/payment/internal/domain"
 	"github.com/iho/neobank/services/payment/internal/port"
@@ -37,8 +39,10 @@ type P2PTransferUseCase struct {
 	users     *userclient.Client
 	ledger    *ledgerclient.Client
 	fraud     *fraud.Checker
-	fraudRepo port.FraudDecisionRepository
-	outbox    outbox.TxPublisher
+	fraudRepo   port.FraudDecisionRepository
+	screening   port.ScreeningRepository
+	screener    screening.Screener
+	outbox      outbox.TxPublisher
 	audit     audit.Recorder
 	sagaStore saga.InstanceStore
 	tx        *pgutil.TxRunner
@@ -50,6 +54,8 @@ func NewP2PTransferUseCase(
 	ledger *ledgerclient.Client,
 	fraudChecker *fraud.Checker,
 	fraudRepo port.FraudDecisionRepository,
+	screeningRepo port.ScreeningRepository,
+	screener screening.Screener,
 	outboxPublisher outbox.TxPublisher,
 	auditRecorder audit.Recorder,
 	sagaStore saga.InstanceStore,
@@ -60,8 +66,10 @@ func NewP2PTransferUseCase(
 		users:     users,
 		ledger:    ledger,
 		fraud:     fraudChecker,
-		fraudRepo: fraudRepo,
-		outbox:    outboxPublisher,
+		fraudRepo:   fraudRepo,
+		screening:   screeningRepo,
+		screener:    screener,
+		outbox:      outboxPublisher,
 		audit:     auditRecorder,
 		sagaStore: sagaStore,
 		tx:        tx,
@@ -105,6 +113,39 @@ func (uc *P2PTransferUseCase) Execute(ctx context.Context, in P2PTransferInput) 
 	}
 
 	transferID := uuid.NewString()
+	screenCtx := screening.Context{
+		CheckType:     screening.CheckTransferCounterparty,
+		EntityType:    "transfer",
+		EntityID:      transferID,
+		CorrelationID: reqctx.CorrelationID(ctx),
+	}
+	screenResult, err := uc.screener.ScreenCounterparty(screening.Counterparty{
+		UserID: recipient.ID,
+		Phone:  in.RecipientPhone,
+	}, screenCtx)
+	if err != nil {
+		return nil, fmt.Errorf("counterparty screening: %w", err)
+	}
+	if uc.screening != nil {
+		if recErr := uc.screening.Record(ctx, port.ScreeningCheck{
+			CheckType:         screenCtx.CheckType,
+			SubjectUserID:     recipient.ID,
+			RelatedUserID:     in.SenderUserID,
+			EntityType:        screenCtx.EntityType,
+			EntityID:          screenCtx.EntityID,
+			Decision:          screenResult.Decision,
+			ReasonCode:        screenResult.ReasonCode,
+			Provider:          screenResult.Provider,
+			ProviderReference: screenResult.ProviderRef,
+			RawResponse:       screenResult.RawResponse,
+			CorrelationID:     screenCtx.CorrelationID,
+		}); recErr != nil {
+			return nil, fmt.Errorf("record screening check: %w", recErr)
+		}
+	}
+	if screenResult.Decision == screening.DecisionBlock {
+		return nil, saga.NewBusinessError("screening_blocked", screenResult.ReasonCode)
+	}
 	transfer := domain.Transfer{
 		ID:              transferID,
 		IdempotencyKey:  in.IdempotencyKey,

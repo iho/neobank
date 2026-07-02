@@ -1,0 +1,343 @@
+package integration
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/iho/neobank/tests/integration/mockledger"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/modules/redis"
+	"github.com/testcontainers/testcontainers-go/wait"
+)
+
+const (
+	jwtSecret       = "integration-test-secret"
+	defaultPassword = "secret123"
+)
+
+// Harness boots Postgres, Redis, a mock ledger, and the service binaries over HTTP.
+type Harness struct {
+	t *testing.T
+
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	DatabaseURL string
+	RedisURL    string
+	Ledger      *mockledger.Server
+	LedgerAddr  string
+
+	UserURL         string
+	PaymentURL      string
+	CardURL         string
+	NotificationURL string
+
+	SettlementAccountID string
+
+	pgContainer    testcontainers.Container
+	redisContainer testcontainers.Container
+	pool           *pgxpool.Pool
+	procs          []*exec.Cmd
+	binDir         string
+}
+
+func NewHarness(t *testing.T) *Harness {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Harness{t: t, ctx: ctx, cancel: cancel}
+}
+
+func (h *Harness) Start() {
+	h.t.Helper()
+
+	h.startPostgres()
+	h.startRedis()
+	h.runMigrations()
+	h.startLedger()
+	h.buildServiceBinaries()
+	h.startServiceProcesses()
+}
+
+// Pool returns the shared Postgres pool (available after Start).
+func (h *Harness) Pool() *pgxpool.Pool {
+	return h.pool
+}
+
+func (h *Harness) Cleanup() {
+	for _, proc := range h.procs {
+		if proc.Process != nil {
+			_ = proc.Process.Kill()
+			_ = proc.Wait()
+		}
+	}
+	if h.binDir != "" {
+		_ = os.RemoveAll(h.binDir)
+	}
+	if h.pool != nil {
+		h.pool.Close()
+	}
+	if h.Ledger != nil {
+		h.Ledger.Stop()
+	}
+	if h.redisContainer != nil {
+		_ = h.redisContainer.Terminate(h.ctx)
+	}
+	if h.pgContainer != nil {
+		_ = h.pgContainer.Terminate(h.ctx)
+	}
+	h.cancel()
+}
+
+func (h *Harness) startPostgres() {
+	pg, err := postgres.Run(h.ctx,
+		"postgres:16-alpine",
+		postgres.WithDatabase("neobank"),
+		postgres.WithUsername("neobank"),
+		postgres.WithPassword("neobank"),
+		testcontainers.WithWaitStrategy(wait.ForListeningPort("5432/tcp").WithStartupTimeout(60*time.Second)),
+	)
+	if err != nil {
+		h.t.Fatalf("start postgres: %v", err)
+	}
+	h.pgContainer = pg
+	url, err := pg.ConnectionString(h.ctx, "sslmode=disable")
+	if err != nil {
+		h.t.Fatalf("postgres connection string: %v", err)
+	}
+	h.DatabaseURL = url
+
+	pool, err := pgxpool.New(h.ctx, url)
+	if err != nil {
+		h.t.Fatalf("pg pool: %v", err)
+	}
+	h.pool = pool
+}
+
+func (h *Harness) startRedis() {
+	rc, err := redis.Run(h.ctx, "redis:7-alpine",
+		testcontainers.WithWaitStrategy(wait.ForListeningPort("6379/tcp").WithStartupTimeout(30*time.Second)),
+	)
+	if err != nil {
+		h.t.Fatalf("start redis: %v", err)
+	}
+	h.redisContainer = rc
+	url, err := rc.ConnectionString(h.ctx)
+	if err != nil {
+		h.t.Fatalf("redis connection string: %v", err)
+	}
+	h.RedisURL = url
+}
+
+func (h *Harness) runMigrations() {
+	root := repoRoot(h.t)
+	files := []string{
+		filepath.Join(root, "deployments/init-db.sql"),
+		filepath.Join(root, "services/user/migrations/001_init.sql"),
+		filepath.Join(root, "services/user/migrations/002_traceability.sql"),
+		filepath.Join(root, "services/user/migrations/003_saga_alerts.sql"),
+		filepath.Join(root, "services/user/migrations/004_wallet_transactions.sql"),
+		filepath.Join(root, "services/user/migrations/005_kyc_evidence.sql"),
+		filepath.Join(root, "services/payment/migrations/001_init.sql"),
+		filepath.Join(root, "services/payment/migrations/002_traceability.sql"),
+		filepath.Join(root, "services/payment/migrations/003_fraud_rule_version.sql"),
+		filepath.Join(root, "services/payment/migrations/004_reconciliation_breaks.sql"),
+		filepath.Join(root, "services/payment/migrations/005_saga_alerts.sql"),
+		filepath.Join(root, "services/payment/migrations/006_screening_checks.sql"),
+		filepath.Join(root, "services/card/migrations/001_init.sql"),
+		filepath.Join(root, "services/card/migrations/002_authorizations.sql"),
+		filepath.Join(root, "services/card/migrations/003_traceability.sql"),
+		filepath.Join(root, "services/card/migrations/004_fraud_rule_version.sql"),
+		filepath.Join(root, "services/card/migrations/005_reconciliation_breaks.sql"),
+		filepath.Join(root, "services/card/migrations/006_saga_alerts.sql"),
+		filepath.Join(root, "services/notification/migrations/001_init.sql"),
+	}
+	for _, path := range files {
+		sql, err := os.ReadFile(path)
+		if err != nil {
+			h.t.Fatalf("read migration %s: %v", path, err)
+		}
+		if _, err := h.pool.Exec(h.ctx, string(sql)); err != nil {
+			h.t.Fatalf("apply migration %s: %v", path, err)
+		}
+	}
+}
+
+func (h *Harness) startLedger() {
+	h.Ledger = mockledger.New()
+	addr, err := h.Ledger.Start()
+	if err != nil {
+		h.t.Fatalf("start mock ledger: %v", err)
+	}
+	h.LedgerAddr = addr
+
+	settlement, err := h.Ledger.CreateSettlementAccount()
+	if err != nil {
+		h.t.Fatalf("settlement account: %v", err)
+	}
+	h.SettlementAccountID = settlement.Id
+}
+
+func (h *Harness) buildServiceBinaries() {
+	root := repoRoot(h.t)
+	dir, err := os.MkdirTemp("", "neobank-integration-bins-*")
+	if err != nil {
+		h.t.Fatalf("temp bin dir: %v", err)
+	}
+	h.binDir = dir
+
+	services := map[string]string{
+		"notification": "./services/notification/cmd/server",
+		"user":         "./services/user/cmd/server",
+		"payment":      "./services/payment/cmd/server",
+		"card":         "./services/card/cmd/server",
+	}
+	for name, pkg := range services {
+		out := filepath.Join(dir, name)
+		cmd := exec.Command("go", "build", "-o", out, pkg)
+		cmd.Dir = root
+		if outBytes, err := cmd.CombinedOutput(); err != nil {
+			h.t.Fatalf("build %s: %v\n%s", name, err, string(outBytes))
+		}
+	}
+}
+
+func (h *Harness) startServiceProcesses() {
+	notifPort := mustFreePort(h.t)
+	userPort := mustFreePort(h.t)
+	paymentPort := mustFreePort(h.t)
+	cardPort := mustFreePort(h.t)
+
+	h.NotificationURL = fmt.Sprintf("http://127.0.0.1:%s", notifPort)
+	h.UserURL = fmt.Sprintf("http://127.0.0.1:%s", userPort)
+	h.PaymentURL = fmt.Sprintf("http://127.0.0.1:%s", paymentPort)
+	h.CardURL = fmt.Sprintf("http://127.0.0.1:%s", cardPort)
+
+	notificationIngest := h.NotificationURL + "/api/v1/internal/events"
+
+	h.startProcess("notification", map[string]string{
+		"DATABASE_URL": h.DatabaseURL,
+		"HTTP_PORT":    notifPort,
+	})
+	h.startProcess("user", map[string]string{
+		"DATABASE_URL":            h.DatabaseURL,
+		"REDIS_URL":               h.RedisURL,
+		"LEDGER_GRPC_ADDR":        h.LedgerAddr,
+		"HTTP_PORT":               userPort,
+		"JWT_SECRET":              jwtSecret,
+		"NOTIFICATION_SERVICE_URL": notificationIngest,
+	})
+	h.startProcess("payment", map[string]string{
+		"DATABASE_URL":            h.DatabaseURL,
+		"REDIS_URL":               h.RedisURL,
+		"LEDGER_GRPC_ADDR":        h.LedgerAddr,
+		"HTTP_PORT":               paymentPort,
+		"USER_SERVICE_URL":        h.UserURL,
+		"NOTIFICATION_SERVICE_URL": notificationIngest,
+	})
+	h.startProcess("card", map[string]string{
+		"DATABASE_URL":                 h.DatabaseURL,
+		"REDIS_URL":                    h.RedisURL,
+		"LEDGER_GRPC_ADDR":             h.LedgerAddr,
+		"HTTP_PORT":                    cardPort,
+		"USER_SERVICE_URL":             h.UserURL,
+		"NOTIFICATION_SERVICE_URL":     notificationIngest,
+		"SETTLEMENT_LEDGER_ACCOUNT_ID": h.SettlementAccountID,
+	})
+
+	waitForHTTP200(h.t, h.NotificationURL+"/health")
+	waitForHTTP200(h.t, h.UserURL+"/health")
+	waitForHTTP200(h.t, h.PaymentURL+"/health")
+	waitForHTTP200(h.t, h.CardURL+"/health")
+}
+
+func (h *Harness) startProcess(name string, env map[string]string) {
+	bin := filepath.Join(h.binDir, name)
+	cmd := exec.Command(bin)
+	cmd.Env = append(os.Environ(), flattenEnv(env)...)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		h.t.Fatalf("start %s: %v", name, err)
+	}
+	h.procs = append(h.procs, cmd)
+}
+
+func flattenEnv(env map[string]string) []string {
+	out := make([]string, 0, len(env))
+	for k, v := range env {
+		out = append(out, k+"="+v)
+	}
+	return out
+}
+
+func mustFreePort(t *testing.T) string {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("free port: %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+	return fmt.Sprintf("%d", port)
+}
+
+func waitForHTTP200(t *testing.T, url string) {
+	t.Helper()
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		resp, err := http.Get(url)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			resp.Body.Close()
+			return
+		}
+		if resp != nil {
+			resp.Body.Close()
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("service not healthy: %s", url)
+}
+
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.work")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatal("could not find repo root (go.work)")
+		}
+		dir = parent
+	}
+}
+
+func waitUntil(t *testing.T, timeout time.Duration, fn func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if fn() {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatal("condition not met before timeout")
+}

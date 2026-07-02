@@ -2,11 +2,11 @@ package api
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/iho/neobank/pkg/auth"
 	"github.com/iho/neobank/services/gateway/internal/client"
+	gwmiddleware "github.com/iho/neobank/services/gateway/internal/middleware"
 	"github.com/iho/neobank/services/gateway/internal/gen/api"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -114,11 +114,18 @@ func (s *Server) SubmitKYC(ctx context.Context, req api.SubmitKYCRequestObject) 
 		return api.SubmitKYC400JSONResponse{Error: "invalid_json"}, nil
 	}
 
-	resp, err := s.users.SubmitKYC(ctx, userID, req.Params.IdempotencyKey, client.SubmitKYCRequest{
+	kycReq := client.SubmitKYCRequest{
 		FullName:    req.Body.FullName,
 		DateOfBirth: req.Body.DateOfBirth.String(),
 		CountryCode: req.Body.CountryCode,
-	})
+	}
+	if req.Body.DocumentType != nil {
+		kycReq.DocumentType = *req.Body.DocumentType
+	}
+	if req.Body.DocumentNumber != nil {
+		kycReq.DocumentNumber = *req.Body.DocumentNumber
+	}
+	resp, err := s.users.SubmitKYC(ctx, userID, req.Params.IdempotencyKey, kycReq)
 	if err != nil {
 		return api.SubmitKYC502JSONResponse{Error: err.Error()}, nil
 	}
@@ -231,16 +238,38 @@ func (s *Server) ListWalletTransactions(ctx context.Context, req api.ListWalletT
 		limit = *req.Params.Limit
 	}
 
-	transfers, _, err := s.payments.ListTransfers(ctx, userID, limit)
+	list, statusCode, err := s.users.ListWalletTransactions(ctx, userID, limit)
 	if err != nil {
-		return api.ListWalletTransactions502JSONResponse{Error: err.Error()}, nil
-	}
-	auths, err := s.cards.ListAuthorizations(ctx, userID, limit)
-	if err != nil {
+		if statusCode >= 400 && statusCode < 500 {
+			return api.ListWalletTransactions401JSONResponse{Error: err.Error()}, nil
+		}
 		return api.ListWalletTransactions502JSONResponse{Error: err.Error()}, nil
 	}
 
-	transactions := buildWalletTransactions(userID, transfers, auths, limit)
+	transactions := make([]api.WalletTransaction, 0, len(list.Transactions))
+	for _, t := range list.Transactions {
+		tx := api.WalletTransaction{
+			Id:        t.ID,
+			Type:      t.Type,
+			Amount:    t.Amount,
+			Currency:  t.Currency,
+			Direction: t.Direction,
+			Status:    t.Status,
+			CreatedAt: parseTimeOrNow(t.CreatedAt),
+		}
+		if t.Counterparty != "" {
+			tx.Counterparty = &t.Counterparty
+		}
+		if t.Memo != "" {
+			tx.Memo = &t.Memo
+		}
+		ref := t.ReferenceID
+		if ref == "" {
+			ref = t.ID
+		}
+		tx.ReferenceId = &ref
+		transactions = append(transactions, tx)
+	}
 	return api.ListWalletTransactions200JSONResponse{Transactions: transactions}, nil
 }
 
@@ -646,39 +675,14 @@ func toCardView(c client.CardView) api.Card {
 }
 
 func (s *Server) resolveUserID(authHeader, xUserID *string) string {
-	// The X-User-Id bypass and legacy access.<user-id> token both skip real
-	// JWT validation and must never be reachable outside local development.
-	if s.allowDevAuth {
-		if xUserID != nil && *xUserID != "" {
-			return *xUserID
-		}
+	var authVal, xUserVal string
+	if authHeader != nil {
+		authVal = *authHeader
 	}
-	if authHeader == nil {
-		return ""
+	if xUserID != nil {
+		xUserVal = *xUserID
 	}
-	raw := strings.TrimSpace(*authHeader)
-	if !strings.HasPrefix(raw, "Bearer ") {
-		return ""
-	}
-	token := strings.TrimSpace(strings.TrimPrefix(raw, "Bearer "))
-	if token == "" {
-		return ""
-	}
-
-	if s.allowDevAuth && strings.HasPrefix(token, "access.") {
-		parts := strings.Split(token, ".")
-		if len(parts) >= 2 {
-			return parts[1]
-		}
-	}
-
-	if s.jwt != nil {
-		userID, err := s.jwt.ValidateAccessToken(token)
-		if err == nil {
-			return userID
-		}
-	}
-	return ""
+	return gwmiddleware.ResolveUserID(authVal, xUserVal, s.jwt, s.allowDevAuth)
 }
 
 func ptr[T any](v T) *T {

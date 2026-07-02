@@ -29,14 +29,17 @@ type Querier interface {
 	ListAuthorizationsForReconciliation(ctx context.Context, limit int32) ([]ListAuthorizationsForReconciliationRow, error)
 	ListCardsByUser(ctx context.Context, userID uuid.UUID) ([]ListCardsByUserRow, error)
 	ListFraudDecisionsByEntity(ctx context.Context, arg ListFraudDecisionsByEntityParams) ([]ListFraudDecisionsByEntityRow, error)
+	ListOpenReconciliationBreaks(ctx context.Context, limit int32) ([]ListOpenReconciliationBreaksRow, error)
 	MarkAuthorizationCaptured(ctx context.Context, arg MarkAuthorizationCapturedParams) error
 	MarkAuthorizationFailed(ctx context.Context, arg MarkAuthorizationFailedParams) error
 	MarkAuthorizationHold(ctx context.Context, arg MarkAuthorizationHoldParams) error
 	MarkCardCancelled(ctx context.Context, id uuid.UUID) error
 	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
+	ResolveReconciliationBreak(ctx context.Context, arg ResolveReconciliationBreakParams) (int64, error)
 	StartReconciliationRun(ctx context.Context, arg StartReconciliationRunParams) (uuid.UUID, error)
 	UpdateCardStatus(ctx context.Context, arg UpdateCardStatusParams) error
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
+	UpsertReconciliationBreak(ctx context.Context, arg UpsertReconciliationBreakParams) error
 }
 
 var _ Querier = (*Queries)(nil)

@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/iho/neobank/pkg/reqctx"
+	"github.com/iho/neobank/pkg/sloghttp"
 	apiadapter "github.com/iho/neobank/services/notification/internal/adapter/api"
 	kafkaadapter "github.com/iho/neobank/services/notification/internal/adapter/kafka"
 	sqlcrepo "github.com/iho/neobank/services/notification/internal/adapter/sqlc"
@@ -57,6 +58,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
 	r.Use(reqctx.Middleware)
+	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("notification")))
 	genapi.HandlerFromMux(strictHandler, r)
 
 	srv := &http.Server{

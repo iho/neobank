@@ -41,6 +41,30 @@ CREATE TABLE payment.saga_instances (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE payment.saga_alerts (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    saga_instance_id  UUID NOT NULL REFERENCES payment.saga_instances(id),
+    saga_type         TEXT NOT NULL,
+    idempotency_key   TEXT NOT NULL,
+    instance_status   TEXT NOT NULL,
+    alert_status      TEXT NOT NULL DEFAULT 'open',
+    stuck_since       TIMESTAMPTZ NOT NULL,
+    last_seen_at      TIMESTAMPTZ NOT NULL,
+    completed_steps   JSONB NOT NULL DEFAULT '{}',
+    context           JSONB NOT NULL DEFAULT '{}',
+    resolved_by       TEXT,
+    notes             TEXT,
+    resolved_at       TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT payment_saga_alerts_status_check
+        CHECK (alert_status IN ('open', 'investigating', 'resolved'))
+);
+
+CREATE UNIQUE INDEX idx_payment_saga_alerts_active
+    ON payment.saga_alerts (saga_instance_id)
+    WHERE alert_status IN ('open', 'investigating');
+
 -- Append-only lifecycle trail: every state transition on a payment entity is
 -- inserted here in the same transaction as the mutation itself, so the
 -- destructive UPDATEs on payment.transfers never lose history.
@@ -73,12 +97,32 @@ CREATE TABLE payment.fraud_decisions (
     decision          TEXT NOT NULL,
     reason_code       TEXT NOT NULL,
     risk_score        INT NOT NULL,
+    rule_set_version  TEXT NOT NULL DEFAULT 'mvp-1.0.0',
     correlation_id    TEXT,
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_payment_fraud_decisions_user
     ON payment.fraud_decisions (user_id, created_at DESC);
+
+CREATE TABLE payment.screening_checks (
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    check_type         TEXT NOT NULL,
+    subject_user_id    UUID NOT NULL,
+    related_user_id    UUID,
+    entity_type        TEXT NOT NULL,
+    entity_id          TEXT NOT NULL,
+    decision           TEXT NOT NULL,
+    reason_code        TEXT NOT NULL,
+    provider           TEXT NOT NULL,
+    provider_reference TEXT,
+    raw_response       JSONB NOT NULL DEFAULT '{}',
+    correlation_id     TEXT,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_payment_screening_checks_subject
+    ON payment.screening_checks (subject_user_id, created_at DESC);
 
 -- Records of reconciliation sweeps between payment.transfers and goledger,
 -- so "did we check for drift and what did we find" has an auditable answer.
@@ -91,3 +135,29 @@ CREATE TABLE payment.reconciliation_runs (
     breaks          JSONB NOT NULL DEFAULT '[]',
     status          TEXT NOT NULL DEFAULT 'running'
 );
+
+-- Individual breaks detected during reconciliation runs, tracked to resolution.
+CREATE TABLE payment.reconciliation_breaks (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_id          UUID NOT NULL REFERENCES payment.reconciliation_runs(id),
+    entity_type     TEXT NOT NULL,
+    entity_id       TEXT NOT NULL,
+    reason          TEXT NOT NULL,
+    local_status    TEXT,
+    ledger_ref      TEXT,
+    status          TEXT NOT NULL DEFAULT 'open',
+    resolved_by     TEXT,
+    notes           TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resolved_at     TIMESTAMPTZ,
+    CONSTRAINT payment_reconciliation_breaks_status_check
+        CHECK (status IN ('open', 'investigated', 'closed'))
+);
+
+CREATE UNIQUE INDEX idx_payment_reconciliation_breaks_active
+    ON payment.reconciliation_breaks (entity_type, entity_id, reason)
+    WHERE status IN ('open', 'investigated');
+
+CREATE INDEX idx_payment_reconciliation_breaks_status
+    ON payment.reconciliation_breaks (status, created_at DESC);

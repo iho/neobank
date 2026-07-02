@@ -18,6 +18,8 @@ import (
 	"github.com/iho/neobank/pkg/outbox"
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/reqctx"
+	"github.com/iho/neobank/pkg/sloghttp"
+	"github.com/iho/neobank/pkg/screening"
 	"github.com/iho/neobank/pkg/userclient"
 	apiadapter "github.com/iho/neobank/services/payment/internal/adapter/api"
 	sqlcrepo "github.com/iho/neobank/services/payment/internal/adapter/sqlc"
@@ -60,7 +62,8 @@ func main() {
 	users := userclient.New(cfg.UserURL)
 	fraudChecker := fraud.NewChecker()
 	txRunner := pgutil.NewTxRunner(pool)
-	p2pUC := usecase.NewP2PTransferUseCase(transferRepo, users, ledger, fraudChecker, fraudRepo, outboxRepo, auditRepo, sagaStore, txRunner)
+	screeningRepo := sqlcrepo.NewScreeningRepository(queries)
+	p2pUC := usecase.NewP2PTransferUseCase(transferRepo, users, ledger, fraudChecker, fraudRepo, screeningRepo, screening.NewStubScreener(), outboxRepo, auditRepo, sagaStore, txRunner)
 
 	strictServer := apiadapter.NewServer(p2pUC)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
@@ -68,6 +71,7 @@ func main() {
 	producer := outbox.NewProducer(outbox.ProducerConfig{
 		KafkaBrokers:    cfg.KafkaBrokers,
 		NotificationURL: cfg.NotificationURL,
+		ProjectionURLs:  []string{outbox.WalletProjectionURL(cfg.UserURL)},
 		Logger:          logger,
 	})
 	outboxWorker := outbox.NewWorker(outboxRepo, producer, "payment.events")
@@ -81,6 +85,7 @@ func main() {
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
 	r.Use(reqctx.Middleware)
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
+	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("payment")))
 	genapi.HandlerFromMux(strictHandler, r)
 
 	srv := &http.Server{

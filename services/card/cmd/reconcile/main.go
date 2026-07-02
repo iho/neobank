@@ -143,6 +143,24 @@ func main() {
 		}
 	}
 
+	now := time.Now().UTC()
+	for _, b := range breaks {
+		ledgerRef := b.LedgerHoldID
+		if err := queries.UpsertReconciliationBreak(ctx, sqlc.UpsertReconciliationBreakParams{
+			ID:          uuid.New(),
+			RunID:       runID,
+			EntityType:  "authorization",
+			EntityID:    b.AuthorizationID,
+			Reason:      b.Reason,
+			CreatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
+			LocalStatus: pgtype.Text{String: b.LocalStatus, Valid: b.LocalStatus != ""},
+			LedgerRef:   pgtype.Text{String: ledgerRef, Valid: ledgerRef != ""},
+		}); err != nil {
+			logger.Error("persist reconciliation break failed", "authorization_id", b.AuthorizationID, "error", err)
+			os.Exit(1)
+		}
+	}
+
 	breaksJSON, err := json.Marshal(breaks)
 	if err != nil {
 		logger.Error("marshal breaks failed", "error", err)
@@ -170,7 +188,7 @@ func main() {
 		for _, b := range breaks {
 			logger.Warn("reconciliation break", "authorization_id", b.AuthorizationID, "reason", b.Reason)
 		}
-		fmt.Fprintf(os.Stderr, "reconciliation found %d break(s), see card.reconciliation_runs (id=%s)\n", len(breaks), runID)
+		fmt.Fprintf(os.Stderr, "reconciliation found %d break(s), see card.reconciliation_runs (id=%s) and card.reconciliation_breaks\n", len(breaks), runID)
 		os.Exit(1)
 	}
 }

@@ -33,6 +33,7 @@ type PaymentFraudDecision struct {
 	Decision        string
 	ReasonCode      string
 	RiskScore       int32
+	RuleSetVersion  string
 	CorrelationID   pgtype.Text
 	CreatedAt       pgtype.Timestamptz
 }
@@ -50,6 +51,22 @@ type PaymentOutboxEvent struct {
 	PublishedAt   pgtype.Timestamptz
 }
 
+type PaymentReconciliationBreak struct {
+	ID          uuid.UUID
+	RunID       uuid.UUID
+	EntityType  string
+	EntityID    string
+	Reason      string
+	LocalStatus pgtype.Text
+	LedgerRef   pgtype.Text
+	Status      string
+	ResolvedBy  pgtype.Text
+	Notes       pgtype.Text
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+	ResolvedAt  pgtype.Timestamptz
+}
+
 type PaymentReconciliationRun struct {
 	ID           uuid.UUID
 	StartedAt    pgtype.Timestamptz
@@ -58,6 +75,24 @@ type PaymentReconciliationRun struct {
 	BreakCount   int32
 	Breaks       []byte
 	Status       string
+}
+
+type PaymentSagaAlert struct {
+	ID             uuid.UUID
+	SagaInstanceID uuid.UUID
+	SagaType       string
+	IdempotencyKey string
+	InstanceStatus string
+	AlertStatus    string
+	StuckSince     pgtype.Timestamptz
+	LastSeenAt     pgtype.Timestamptz
+	CompletedSteps []byte
+	Context        []byte
+	ResolvedBy     pgtype.Text
+	Notes          pgtype.Text
+	ResolvedAt     pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
 }
 
 type PaymentSagaInstance struct {
@@ -69,6 +104,22 @@ type PaymentSagaInstance struct {
 	Context        []byte
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
+}
+
+type PaymentScreeningCheck struct {
+	ID                uuid.UUID
+	CheckType         string
+	SubjectUserID     uuid.UUID
+	RelatedUserID     pgtype.UUID
+	EntityType        string
+	EntityID          string
+	Decision          string
+	ReasonCode        string
+	Provider          string
+	ProviderReference pgtype.Text
+	RawResponse       []byte
+	CorrelationID     pgtype.Text
+	CreatedAt         pgtype.Timestamptz
 }
 
 type PaymentTransfer struct {

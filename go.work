@@ -7,4 +7,6 @@ use (
 	./services/notification
 	./services/payment
 	./services/user
+	./tests/integration
+	./tools/saga-watchdog
 )

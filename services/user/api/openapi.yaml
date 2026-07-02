@@ -138,6 +138,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/KYCStatusResponse"
+  /api/v1/wallet/transactions:
+    get:
+      operationId: listWalletTransactions
+      parameters:
+        - $ref: "#/components/parameters/XUserId"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletTransactionList"
   /api/v1/wallets/balance:
     get:
       operationId: getWalletBalance
@@ -180,6 +197,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProvisionWalletResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/internal/events:
+    post:
+      operationId: ingestEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventEnvelope"
+      responses:
+        "202":
+          description: Accepted
         "400":
           description: Bad Request
           content:
@@ -315,6 +350,11 @@ components:
           type: string
           minLength: 2
           maxLength: 2
+        document_type:
+          type: string
+          description: e.g. passport, national_id
+        document_number:
+          type: string
     SubmitKYCResponse:
       type: object
       required: [kyc_case_id, status, wallet_id]
@@ -435,3 +475,55 @@ components:
           type: string
         status:
           type: string
+    WalletTransaction:
+      type: object
+      required: [id, type, amount, currency, direction, status, created_at]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        amount:
+          type: string
+        currency:
+          type: string
+        direction:
+          type: string
+        status:
+          type: string
+        counterparty:
+          type: string
+        memo:
+          type: string
+        reference_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    WalletTransactionList:
+      type: object
+      required: [transactions]
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WalletTransaction"
+    EventEnvelope:
+      type: object
+      required: [event_id, event_type, aggregate_type, aggregate_id, payload]
+      properties:
+        event_id:
+          type: string
+        event_type:
+          type: string
+        event_version:
+          type: integer
+        occurred_at:
+          type: string
+          format: date-time
+        aggregate_type:
+          type: string
+        aggregate_id:
+          type: string
+        payload:
+          type: object

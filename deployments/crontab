@@ -1,0 +1,8 @@
+# Payment reconciliation — top of every hour (UTC).
+0 * * * * /usr/local/bin/payment-reconcile
+
+# Card reconciliation — 15 minutes past each hour (UTC).
+15 * * * * /usr/local/bin/card-reconcile
+
+# Saga watchdog — every 15 minutes (UTC).
+*/15 * * * * /usr/local/bin/saga-watchdog

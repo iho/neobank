@@ -14,12 +14,17 @@ import (
 
 const approveKYCCase = `-- name: ApproveKYCCase :exec
 UPDATE "user".kyc_cases
-SET status = 'approved', decided_at = now()
-WHERE id = $1
+SET status = 'approved', decided_at = now(), decided_by = $1
+WHERE id = $2
 `
 
-func (q *Queries) ApproveKYCCase(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, approveKYCCase, id)
+type ApproveKYCCaseParams struct {
+	DecidedBy pgtype.Text
+	ID        uuid.UUID
+}
+
+func (q *Queries) ApproveKYCCase(ctx context.Context, arg ApproveKYCCaseParams) error {
+	_, err := q.db.Exec(ctx, approveKYCCase, arg.DecidedBy, arg.ID)
 	return err
 }
 
@@ -79,6 +84,23 @@ func (q *Queries) GetLatestKYCCaseByUser(ctx context.Context, userID uuid.UUID) 
 		&i.RejectionReason,
 	)
 	return i, err
+}
+
+const rejectKYCCase = `-- name: RejectKYCCase :exec
+UPDATE "user".kyc_cases
+SET status = 'rejected', decided_at = now(), rejection_reason = $1, decided_by = $2
+WHERE id = $3
+`
+
+type RejectKYCCaseParams struct {
+	RejectionReason pgtype.Text
+	DecidedBy       pgtype.Text
+	ID              uuid.UUID
+}
+
+func (q *Queries) RejectKYCCase(ctx context.Context, arg RejectKYCCaseParams) error {
+	_, err := q.db.Exec(ctx, rejectKYCCase, arg.RejectionReason, arg.DecidedBy, arg.ID)
+	return err
 }
 
 const upsertProfile = `-- name: UpsertProfile :exec

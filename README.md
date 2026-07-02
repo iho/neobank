@@ -210,8 +210,88 @@ doesn't send one) that propagates through HTTP calls, gRPC calls to goledger, an
 so a support ticket or regulator request can be traced end-to-end. Status-changing mutations
 (transfers, cards, authorizations, KYC, wallets) write an append-only row to that service's
 `audit_log` table in the same transaction as the change, and every fraud evaluation — allow or
-deny — is recorded in `fraud_decisions`. `make reconcile-payment` / `make reconcile-card` compare
-local state against goledger and persist results to `reconciliation_runs`.
+deny — is recorded in `fraud_decisions`. Reconciliation jobs compare local state against goledger
+and persist run summaries to `reconciliation_runs` plus trackable rows in `reconciliation_breaks`.
+
+### Reconciliation runbook
+
+Reconciliation verifies that Payment transfers and Card authorizations still match goledger
+(transfers and holds). Runs are intended on a schedule, not as long-lived services.
+
+**Manual run (local dev)**
+
+```bash
+make reconcile-payment   # exits 1 if breaks found
+make reconcile-card
+```
+
+**Scheduled runs (docker)**
+
+Requires Postgres (`make up`), goledger on `:50051`, and the user service on `:8081` (card job only):
+
+```bash
+make up-jobs    # hourly cron: payment :00, card :15 (UTC)
+make down-jobs
+```
+
+**When a run reports breaks**
+
+1. Inspect the latest run: `SELECT * FROM payment.reconciliation_runs ORDER BY started_at DESC LIMIT 1;`
+2. List open breaks: `make list-payment-breaks` or `make list-card-breaks`
+3. Investigate the entity (transfer/authorization), ledger record, and saga state
+4. Mark progress:
+   ```bash
+   cd services/payment && go run ./cmd/resolve-break -id <uuid> -status investigated -by ops@example.com -notes "checking ledger"
+   cd services/payment && go run ./cmd/resolve-break -id <uuid> -status closed -by ops@example.com -notes "manual ledger adjustment"
+   ```
+   (Same flags for `services/card/cmd/resolve-break`.)
+
+Break statuses: `open` → `investigated` → `closed`. A break that reappears after closure
+creates a new row; active duplicates on the same entity+reason update the latest run reference.
+
+### Saga watchdog runbook
+
+The saga watchdog scans `saga_instances` in the `user`, `payment`, and `card` schemas for
+workflows stuck in `running` or `compensating` without progress (default: 15 minutes). It
+upserts rows in `saga_alerts` so operators can investigate without polling raw saga tables.
+
+**Manual run (local dev)**
+
+```bash
+make saga-watchdog        # exits 1 if open alerts remain
+make list-saga-alerts     # list open/investigating alerts across all schemas
+```
+
+**Scheduled runs (docker)**
+
+The jobs container runs the watchdog every 15 minutes alongside reconciliation:
+
+```bash
+make up-jobs    # cron: reconcile hourly, saga-watchdog every 15m (UTC)
+make down-jobs
+```
+
+**When alerts are open**
+
+1. List alerts: `make list-saga-alerts` or query `SELECT * FROM payment.saga_alerts WHERE alert_status IN ('open','investigating');`
+2. Inspect the saga instance (`saga_instances`), related domain rows (transfer, authorization, wallet), and outbox events
+3. Mark progress:
+   ```bash
+   cd tools/saga-watchdog && go run . -schema payment -resolve-id <uuid> -resolve-status investigating -by ops@example.com -notes "checking ledger"
+   cd tools/saga-watchdog && go run . -schema payment -resolve-id <uuid> -resolve-status resolved -by ops@example.com -notes "manual compensation completed"
+   ```
+4. Alerts auto-resolve when the saga reaches `completed` or `failed` on a later scan
+
+Alert statuses: `open` → `investigating` → `resolved`. Stuck sagas that remain non-terminal
+keep refreshing `last_seen_at` on each scan.
+
+### Wallet transaction history (CQRS read model)
+
+`GET /v1/wallet/transactions` reads from `user.wallet_transactions`, a projection maintained
+by the User service from payment/card outbox events (`payment.transfer.completed`,
+`card.auth.approved`, `card.auth.captured`). Payment and Card outbox workers fan out to both
+Notification ingest and User ingest (HTTP in dev, Kafka consumer in production). The gateway
+no longer merges Payment + Card responses in memory.
 
 ## Environment variables
 
@@ -243,6 +323,9 @@ make up / make down   # docker-compose infra
 make migrate-*      # run DB migrations per service
 make reconcile-payment   # compare payment.transfers against goledger
 make reconcile-card      # compare card.authorizations against goledger holds
+make up-jobs / down-jobs # scheduled reconciliation (docker cron)
+make list-payment-breaks / list-card-breaks
+make saga-watchdog / list-saga-alerts   # stuck saga detection
 ```
 
 ## Shared packages (`pkg/`)
@@ -261,6 +344,10 @@ make reconcile-card      # compare card.authorizations against goledger holds
 | `otel` | OpenTelemetry bootstrap |
 | `reqctx` | Correlation/causation ID propagation (HTTP + gRPC) |
 | `audit` | Shared `audit_log` entry shape, written in-tx alongside domain mutations |
+| `sagawatchdog` | Stuck-saga scanner; upserts `saga_alerts` and auto-resolves on terminal state |
+| `walletprojection` | Maps payment/card outbox events into unified `wallet_transactions` read model |
+| `screening` | Sanctions/PEP screening stub with auditable `screening_checks` persistence |
+| `sloghttp` | Structured HTTP access logs (`correlation_id`, `user_id`, `idempotency_key`) |
 
 ## Patterns
 
@@ -276,7 +363,12 @@ make reconcile-card      # compare card.authorizations against goledger holds
 make test
 ```
 
-Unit tests cover JWT, idempotency middleware, fraud rules, and gateway auth resolution. Integration tests against live Postgres/Kafka are planned.
+Unit tests cover JWT, idempotency middleware, fraud rules, and gateway auth resolution. Integration tests
+(testcontainers Postgres + Redis, in-memory mock ledger) live under `tests/integration/`:
+
+```bash
+make test-integration   # requires Docker
+```
 
 ## Documentation
 
@@ -289,7 +381,7 @@ Unit tests cover JWT, idempotency middleware, fraud rules, and gateway auth reso
 - Standalone Fraud service (currently embedded in `pkg/fraud`)
 - Real KYC provider (AML/sanctions screening), card processor, SMS/email/push providers
 - gRPC between Gateway and services (currently HTTP)
-- CQRS read model for transaction history, fed from outbox events (currently the gateway fans out to Payment + Card and merges in memory)
+- ~~CQRS read model for transaction history~~ — done: `user.wallet_transactions` projected from payment/card outbox events; gateway reads via User service
 - Kubernetes manifests, OpenTelemetry collector wiring (trace propagation is stubbed via `pkg/reqctx`; not yet wired to a collector)
 - Contract and integration test suites
 - Outbox retention/archival policy (WORM/object-lock) and PII field-level encryption — see `todo.md`

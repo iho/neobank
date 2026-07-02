@@ -85,6 +85,98 @@ func (q *Queries) ListAuthorizationsForReconciliation(ctx context.Context, limit
 	return items, nil
 }
 
+const listOpenReconciliationBreaks = `-- name: ListOpenReconciliationBreaks :many
+SELECT id, run_id, entity_type, entity_id, reason, local_status, ledger_ref, status,
+       COALESCE(resolved_by, '') AS resolved_by, COALESCE(notes, '') AS notes,
+       created_at, updated_at, resolved_at
+FROM card.reconciliation_breaks
+WHERE status IN ('open', 'investigated')
+ORDER BY created_at DESC
+LIMIT $1
+`
+
+type ListOpenReconciliationBreaksRow struct {
+	ID          uuid.UUID
+	RunID       uuid.UUID
+	EntityType  string
+	EntityID    string
+	Reason      string
+	LocalStatus pgtype.Text
+	LedgerRef   pgtype.Text
+	Status      string
+	ResolvedBy  string
+	Notes       string
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+	ResolvedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) ListOpenReconciliationBreaks(ctx context.Context, limit int32) ([]ListOpenReconciliationBreaksRow, error) {
+	rows, err := q.db.Query(ctx, listOpenReconciliationBreaks, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListOpenReconciliationBreaksRow{}
+	for rows.Next() {
+		var i ListOpenReconciliationBreaksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RunID,
+			&i.EntityType,
+			&i.EntityID,
+			&i.Reason,
+			&i.LocalStatus,
+			&i.LedgerRef,
+			&i.Status,
+			&i.ResolvedBy,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ResolvedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const resolveReconciliationBreak = `-- name: ResolveReconciliationBreak :execrows
+UPDATE card.reconciliation_breaks
+SET status = $2,
+    resolved_by = $3,
+    notes = $5,
+    resolved_at = CASE WHEN $2 = 'closed' THEN $4 ELSE resolved_at END,
+    updated_at = $4
+WHERE id = $1 AND status != 'closed'
+`
+
+type ResolveReconciliationBreakParams struct {
+	ID         uuid.UUID
+	Status     string
+	ResolvedBy pgtype.Text
+	UpdatedAt  pgtype.Timestamptz
+	Notes      pgtype.Text
+}
+
+func (q *Queries) ResolveReconciliationBreak(ctx context.Context, arg ResolveReconciliationBreakParams) (int64, error) {
+	result, err := q.db.Exec(ctx, resolveReconciliationBreak,
+		arg.ID,
+		arg.Status,
+		arg.ResolvedBy,
+		arg.UpdatedAt,
+		arg.Notes,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const startReconciliationRun = `-- name: StartReconciliationRun :one
 INSERT INTO card.reconciliation_runs (id, started_at, status)
 VALUES ($1, $2, 'running')
@@ -101,4 +193,41 @@ func (q *Queries) StartReconciliationRun(ctx context.Context, arg StartReconcili
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const upsertReconciliationBreak = `-- name: UpsertReconciliationBreak :exec
+INSERT INTO card.reconciliation_breaks (
+    id, run_id, entity_type, entity_id, reason, local_status, ledger_ref, status, created_at, updated_at
+) VALUES ($1, $2, $3, $4, $5, $7, $8, 'open', $6, $6)
+ON CONFLICT (entity_type, entity_id, reason) WHERE (status IN ('open', 'investigated'))
+DO UPDATE SET
+    run_id = EXCLUDED.run_id,
+    local_status = EXCLUDED.local_status,
+    ledger_ref = EXCLUDED.ledger_ref,
+    updated_at = EXCLUDED.updated_at
+`
+
+type UpsertReconciliationBreakParams struct {
+	ID          uuid.UUID
+	RunID       uuid.UUID
+	EntityType  string
+	EntityID    string
+	Reason      string
+	CreatedAt   pgtype.Timestamptz
+	LocalStatus pgtype.Text
+	LedgerRef   pgtype.Text
+}
+
+func (q *Queries) UpsertReconciliationBreak(ctx context.Context, arg UpsertReconciliationBreakParams) error {
+	_, err := q.db.Exec(ctx, upsertReconciliationBreak,
+		arg.ID,
+		arg.RunID,
+		arg.EntityType,
+		arg.EntityID,
+		arg.Reason,
+		arg.CreatedAt,
+		arg.LocalStatus,
+		arg.LedgerRef,
+	)
+	return err
 }

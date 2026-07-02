@@ -13,14 +13,15 @@ import (
 )
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO "user".users (id, email, phone, password_hash, status)
-VALUES ($1, $2, NULLIF($3, ''), $4, $5)
+INSERT INTO "user".users (id, email, phone, phone_lookup, password_hash, status)
+VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6)
 `
 
 type CreateUserParams struct {
 	ID           uuid.UUID
 	Email        string
 	Phone        interface{}
+	PhoneLookup  pgtype.Text
 	PasswordHash string
 	Status       string
 }
@@ -30,6 +31,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 		arg.ID,
 		arg.Email,
 		arg.Phone,
+		arg.PhoneLookup,
 		arg.PasswordHash,
 		arg.Status,
 	)
@@ -93,7 +95,8 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 const getUserByPhone = `-- name: GetUserByPhone :one
 SELECT id, email, COALESCE(phone, '') AS phone, password_hash, status
 FROM "user".users
-WHERE phone = $1
+WHERE phone_lookup = $1
+   OR (phone_lookup IS NULL AND phone = $1)
 `
 
 type GetUserByPhoneRow struct {
@@ -104,8 +107,8 @@ type GetUserByPhoneRow struct {
 	Status       string
 }
 
-func (q *Queries) GetUserByPhone(ctx context.Context, phone pgtype.Text) (GetUserByPhoneRow, error) {
-	row := q.db.QueryRow(ctx, getUserByPhone, phone)
+func (q *Queries) GetUserByPhone(ctx context.Context, phoneLookup pgtype.Text) (GetUserByPhoneRow, error) {
+	row := q.db.QueryRow(ctx, getUserByPhone, phoneLookup)
 	var i GetUserByPhoneRow
 	err := row.Scan(
 		&i.ID,
@@ -126,6 +129,7 @@ SELECT
     u.created_at,
     COALESCE(p.full_name, '') AS full_name,
     p.date_of_birth,
+    COALESCE(p.date_of_birth_encrypted, '') AS date_of_birth_encrypted,
     COALESCE(p.country_code, '') AS country_code,
     COALESCE(k.status, 'pending') AS kyc_status
 FROM "user".users u
@@ -141,15 +145,16 @@ WHERE u.id = $1
 `
 
 type GetUserProfileRow struct {
-	ID          uuid.UUID
-	Email       string
-	Phone       string
-	Status      string
-	CreatedAt   pgtype.Timestamptz
-	FullName    string
-	DateOfBirth pgtype.Date
-	CountryCode string
-	KycStatus   string
+	ID                   uuid.UUID
+	Email                string
+	Phone                string
+	Status               string
+	CreatedAt            pgtype.Timestamptz
+	FullName             string
+	DateOfBirth          pgtype.Date
+	DateOfBirthEncrypted string
+	CountryCode          string
+	KycStatus            string
 }
 
 func (q *Queries) GetUserProfile(ctx context.Context, id uuid.UUID) (GetUserProfileRow, error) {
@@ -163,6 +168,7 @@ func (q *Queries) GetUserProfile(ctx context.Context, id uuid.UUID) (GetUserProf
 		&i.CreatedAt,
 		&i.FullName,
 		&i.DateOfBirth,
+		&i.DateOfBirthEncrypted,
 		&i.CountryCode,
 		&i.KycStatus,
 	)

@@ -126,8 +126,10 @@ Service tables and goledger can drift (saga compensation failures, crashes betwe
       and the error is propagated instead of discarded.
 
 ### 7. PII and data protection — MEDIUM — partially done
-- [ ] Field-level encryption (or pgcrypto/KMS envelope) for `document_number`, DOB, phone —
-      still open; needs a KMS/key-management decision, not just an app-code change.
+- [x] Field-level encryption for `document_number`, DOB, phone — HashiCorp Vault Transit
+      (`pkg/vault`, `pkg/piicrypto`); encrypts at rest when `VAULT_ADDR` is set, noop otherwise.
+      Phone lookup uses Transit HMAC blind index (`phone_lookup` column). Local bootstrap:
+      `deployments/vault-init.sh` after `make up`.
 - [x] Audit access to PII (who read which customer record) — `user.pii_access_log` records
       successful reads of profile, KYC status, wallet balance/transactions, internal user-by-phone,
       and internal wallet lookups; actor/correlation from `reqctx`.
@@ -180,7 +182,7 @@ validation with no environment guard.
 5. Outbox retention/archival (#5) — open, needs an infra/compliance decision.
 6. KYC/AML evidence model (#4) — KYC evidence + screening done; AML txn-monitoring stub done;
    real vendor integration still needed.
-7. PII encryption (#7) — open, needs a KMS decision. Dev-auth hardening (#7b) — done.
+7. PII encryption (#7) — Vault Transit done; production auth/HA still ops. Dev-auth (#7b) — done.
 8. Light CQRS read model for `/v1/wallet/transactions` fed from outbox events — ✅ DONE
    (`user.wallet_transactions`, `pkg/walletprojection`, User service ingest + list API,
    gateway reads User service; payment/card outbox fan-out via `ProjectionURLs`).

@@ -90,10 +90,11 @@ type UserPiiAccessLog struct {
 }
 
 type UserProfile struct {
-	UserID      uuid.UUID
-	FullName    pgtype.Text
-	DateOfBirth pgtype.Date
-	CountryCode pgtype.Text
+	UserID               uuid.UUID
+	FullName             pgtype.Text
+	DateOfBirth          pgtype.Date
+	DateOfBirthEncrypted pgtype.Text
+	CountryCode          pgtype.Text
 }
 
 type UserSagaAlert struct {
@@ -145,6 +146,7 @@ type UserUser struct {
 	ID           uuid.UUID
 	Email        string
 	Phone        pgtype.Text
+	PhoneLookup  pgtype.Text
 	PasswordHash string
 	Status       string
 	CreatedAt    pgtype.Timestamptz

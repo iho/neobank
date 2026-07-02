@@ -1,6 +1,6 @@
 -- name: CreateUser :exec
-INSERT INTO "user".users (id, email, phone, password_hash, status)
-VALUES (@id, @email, NULLIF(@phone, ''), @password_hash, @status);
+INSERT INTO "user".users (id, email, phone, phone_lookup, password_hash, status)
+VALUES (@id, @email, NULLIF(@phone, ''), sqlc.narg(phone_lookup), @password_hash, @status);
 
 -- name: GetUserByEmail :one
 SELECT id, email, COALESCE(phone, '') AS phone, password_hash, status
@@ -10,7 +10,8 @@ WHERE email = $1;
 -- name: GetUserByPhone :one
 SELECT id, email, COALESCE(phone, '') AS phone, password_hash, status
 FROM "user".users
-WHERE phone = @phone;
+WHERE phone_lookup = @phone_lookup
+   OR (phone_lookup IS NULL AND phone = @phone_lookup);
 
 -- name: GetUserByID :one
 SELECT id, email, COALESCE(phone, '') AS phone, password_hash, status
@@ -26,6 +27,7 @@ SELECT
     u.created_at,
     COALESCE(p.full_name, '') AS full_name,
     p.date_of_birth,
+    COALESCE(p.date_of_birth_encrypted, '') AS date_of_birth_encrypted,
     COALESCE(p.country_code, '') AS country_code,
     COALESCE(k.status, 'pending') AS kyc_status
 FROM "user".users u

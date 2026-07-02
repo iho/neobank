@@ -25,7 +25,7 @@ type Querier interface {
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
-	GetUserByPhone(ctx context.Context, phone pgtype.Text) (GetUserByPhoneRow, error)
+	GetUserByPhone(ctx context.Context, phoneLookup pgtype.Text) (GetUserByPhoneRow, error)
 	GetUserProfile(ctx context.Context, id uuid.UUID) (GetUserProfileRow, error)
 	GetWalletByUserAndCurrency(ctx context.Context, arg GetWalletByUserAndCurrencyParams) (GetWalletByUserAndCurrencyRow, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error

@@ -1,4 +1,4 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog
+.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog
 
 OAPI_CODEGEN ?= oapi-codegen
 SQLC ?= sqlc
@@ -93,6 +93,9 @@ migrate-notification:
 
 migrate-card:
 	cd services/card && go run ./cmd/migrate
+
+vault-init:
+	./deployments/vault-init.sh
 
 reconcile-payment:
 	cd services/payment && go run ./cmd/reconcile

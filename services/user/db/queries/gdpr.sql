@@ -20,12 +20,12 @@ WHERE user_id = $1;
 
 -- name: MaskUserAccount :exec
 UPDATE "user".users
-SET email = $2, phone = NULL, password_hash = $3, status = 'masked', updated_at = now()
+SET email = $2, phone = NULL, phone_lookup = NULL, password_hash = $3, status = 'masked', updated_at = now()
 WHERE id = $1;
 
 -- name: MaskUserProfile :exec
 UPDATE "user".profiles
-SET full_name = 'REDACTED', date_of_birth = NULL, country_code = NULL
+SET full_name = 'REDACTED', date_of_birth = NULL, date_of_birth_encrypted = NULL, country_code = NULL
 WHERE user_id = $1;
 
 -- name: MaskKYCSubmissionsByUser :exec

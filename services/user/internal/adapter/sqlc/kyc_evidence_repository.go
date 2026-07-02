@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/iho/neobank/pkg/pgutil"
+	"github.com/iho/neobank/pkg/piicrypto"
 	"github.com/iho/neobank/services/user/internal/gen/sqlc"
 	"github.com/iho/neobank/services/user/internal/port"
 )
@@ -22,12 +23,16 @@ func (r *KYCRepository) CreateSubmission(ctx context.Context, sub port.KYCSubmis
 	if err != nil {
 		return err
 	}
+	docNumber, err := piicrypto.Store(ctx, r.pii, sub.DocumentNumber)
+	if err != nil {
+		return err
+	}
 	return r.q.InsertKYCSubmission(ctx, sqlc.InsertKYCSubmissionParams{
 		ID:                id,
 		KycCaseID:         caseID,
 		UserID:            userID,
 		DocumentType:      pgutil.Text(sub.DocumentType),
-		DocumentNumber:    pgutil.Text(sub.DocumentNumber),
+		DocumentNumber:    pgutil.Text(docNumber),
 		Provider:          sub.Provider,
 		ProviderReference: pgutil.Text(sub.ProviderReference),
 		ProviderResponse:  sub.ProviderResponse,

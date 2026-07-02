@@ -1,9 +1,10 @@
 -- name: UpsertProfile :exec
-INSERT INTO "user".profiles (user_id, full_name, date_of_birth, country_code)
-VALUES (@user_id, @full_name, @date_of_birth, @country_code)
+INSERT INTO "user".profiles (user_id, full_name, date_of_birth, date_of_birth_encrypted, country_code)
+VALUES (@user_id, @full_name, sqlc.narg(date_of_birth), sqlc.narg(date_of_birth_encrypted), @country_code)
 ON CONFLICT (user_id) DO UPDATE
 SET full_name = EXCLUDED.full_name,
     date_of_birth = EXCLUDED.date_of_birth,
+    date_of_birth_encrypted = EXCLUDED.date_of_birth_encrypted,
     country_code = EXCLUDED.country_code;
 
 -- name: CreateKYCCase :one

@@ -20,6 +20,7 @@ import (
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/reqctx"
 	"github.com/iho/neobank/pkg/sloghttp"
+	"github.com/iho/neobank/pkg/vault"
 	apiadapter "github.com/iho/neobank/services/user/internal/adapter/api"
 	"github.com/iho/neobank/services/user/internal/adapter/auth"
 	kafkaadapter "github.com/iho/neobank/services/user/internal/adapter/kafka"
@@ -62,14 +63,23 @@ func main() {
 	}
 	ledgerAdapter := ledgeradapter.New(ledgerConn)
 
+	piiProtector, err := vault.NewProtectorFromEnv()
+	if err != nil {
+		logger.Error("vault pii protector init failed", "error", err)
+		os.Exit(1)
+	}
+	if piiProtector.Enabled() {
+		logger.Info("vault transit pii encryption enabled")
+	}
+
 	queries := sqlc.New(pool)
-	userRepo := sqlcrepo.NewUserRepository(queries)
+	userRepo := sqlcrepo.NewUserRepository(queries, piiProtector)
 	walletRepo := sqlcrepo.NewWalletRepository(queries)
-	kycRepo := sqlcrepo.NewKYCRepository(queries)
+	kycRepo := sqlcrepo.NewKYCRepository(queries, piiProtector)
 	outboxRepo := sqlcrepo.NewOutboxRepository(queries)
 	auditRepo := sqlcrepo.NewAuditRepository(queries)
 	piiAccessRepo := sqlcrepo.NewPIIAccessRepository(queries)
-	gdprRepo := sqlcrepo.NewGDPRRepository(queries)
+	gdprRepo := sqlcrepo.NewGDPRRepository(queries, piiProtector)
 	sagaStore := sqlcrepo.NewSagaStore(queries)
 	walletTxRepo := sqlcrepo.NewWalletTransactionRepository(queries)
 	inboxRepo := sqlcrepo.NewConsumerInboxRepository(queries)

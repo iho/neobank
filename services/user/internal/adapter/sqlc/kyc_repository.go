@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/iho/neobank/pkg/pgutil"
+	"github.com/iho/neobank/pkg/piicrypto"
 	"github.com/iho/neobank/services/user/internal/domain"
 	"github.com/iho/neobank/services/user/internal/gen/sqlc"
 	"github.com/iho/neobank/services/user/internal/port"
@@ -14,11 +15,15 @@ import (
 )
 
 type KYCRepository struct {
-	q sqlc.Querier
+	q   sqlc.Querier
+	pii piicrypto.Protector
 }
 
-func NewKYCRepository(q sqlc.Querier) *KYCRepository {
-	return &KYCRepository{q: q}
+func NewKYCRepository(q sqlc.Querier, pii piicrypto.Protector) *KYCRepository {
+	if pii == nil {
+		pii = piicrypto.NewNoop()
+	}
+	return &KYCRepository{q: q, pii: pii}
 }
 
 func (r *KYCRepository) WithTx(tx pgx.Tx) port.KYCRepository {
@@ -30,16 +35,25 @@ func (r *KYCRepository) UpsertProfile(ctx context.Context, userID, fullName, dob
 	if err != nil {
 		return err
 	}
-	date, err := parseDate(dob)
-	if err != nil {
-		return err
-	}
-	return r.q.UpsertProfile(ctx, sqlc.UpsertProfileParams{
+	params := sqlc.UpsertProfileParams{
 		UserID:      uid,
 		FullName:    pgutil.Text(fullName),
-		DateOfBirth: date,
 		CountryCode: pgutil.Text(country),
-	})
+	}
+	if r.pii.Enabled() {
+		encDOB, err := piicrypto.Store(ctx, r.pii, dob)
+		if err != nil {
+			return err
+		}
+		params.DateOfBirthEncrypted = textOrNil(encDOB)
+	} else {
+		plainDOB, err := parseDate(dob)
+		if err != nil {
+			return err
+		}
+		params.DateOfBirth = plainDOB
+	}
+	return r.q.UpsertProfile(ctx, params)
 }
 
 func (r *KYCRepository) CreateCase(ctx context.Context, id, userID, status string) (domain.KYCCase, error) {

@@ -3,18 +3,24 @@ CREATE SCHEMA "user";
 CREATE TABLE "user".users (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email         TEXT NOT NULL UNIQUE,
-    phone         TEXT UNIQUE,
+    phone         TEXT,
+    phone_lookup  TEXT,
     password_hash TEXT NOT NULL,
     status        TEXT NOT NULL DEFAULT 'active',
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE UNIQUE INDEX idx_user_phone_lookup
+    ON "user".users (phone_lookup)
+    WHERE phone_lookup IS NOT NULL;
+
 CREATE TABLE "user".profiles (
-    user_id       UUID PRIMARY KEY REFERENCES "user".users(id),
-    full_name     TEXT,
-    date_of_birth DATE,
-    country_code  CHAR(2)
+    user_id                 UUID PRIMARY KEY REFERENCES "user".users(id),
+    full_name               TEXT,
+    date_of_birth           DATE,
+    date_of_birth_encrypted TEXT,
+    country_code            CHAR(2)
 );
 
 CREATE TABLE "user".kyc_cases (

@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/iho/neobank/pkg/audit"
+	"github.com/iho/neobank/pkg/piicrypto"
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/services/user/internal/domain"
 	"github.com/iho/neobank/services/user/internal/gen/sqlc"
@@ -13,11 +14,15 @@ import (
 )
 
 type GDPRRepository struct {
-	q sqlc.Querier
+	q   sqlc.Querier
+	pii piicrypto.Protector
 }
 
-func NewGDPRRepository(q sqlc.Querier) *GDPRRepository {
-	return &GDPRRepository{q: q}
+func NewGDPRRepository(q sqlc.Querier, pii piicrypto.Protector) *GDPRRepository {
+	if pii == nil {
+		pii = piicrypto.NewNoop()
+	}
+	return &GDPRRepository{q: q, pii: pii}
 }
 
 func (r *GDPRRepository) WithTx(tx pgx.Tx) port.GDPRRepository {
@@ -39,12 +44,16 @@ func (r *GDPRRepository) ListKYCSubmissionsByUser(ctx context.Context, userID st
 		if row.DocumentType.Valid {
 			docType = row.DocumentType.String
 		}
+		docNumber, err := piicrypto.Read(ctx, r.pii, row.DocumentNumber)
+		if err != nil {
+			return nil, err
+		}
 		out = append(out, port.KYCSubmission{
 			ID:                row.ID.String(),
 			KYCCaseID:         row.KycCaseID.String(),
 			UserID:            row.UserID.String(),
 			DocumentType:      docType,
-			DocumentNumber:    row.DocumentNumber,
+			DocumentNumber:    docNumber,
 			Provider:          row.Provider,
 			ProviderReference: row.ProviderReference,
 			ProviderResponse:  row.ProviderResponse,

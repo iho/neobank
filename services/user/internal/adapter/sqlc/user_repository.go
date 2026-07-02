@@ -6,18 +6,24 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/iho/neobank/pkg/pgutil"
+	"github.com/iho/neobank/pkg/piicrypto"
 	"github.com/iho/neobank/services/user/internal/domain"
 	"github.com/iho/neobank/services/user/internal/gen/sqlc"
 	"github.com/iho/neobank/services/user/internal/port"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type UserRepository struct {
-	q sqlc.Querier
+	q   sqlc.Querier
+	pii piicrypto.Protector
 }
 
-func NewUserRepository(q sqlc.Querier) *UserRepository {
-	return &UserRepository{q: q}
+func NewUserRepository(q sqlc.Querier, pii piicrypto.Protector) *UserRepository {
+	if pii == nil {
+		pii = piicrypto.NewNoop()
+	}
+	return &UserRepository{q: q, pii: pii}
 }
 
 func (r *UserRepository) Create(ctx context.Context, user domain.User) error {
@@ -25,10 +31,19 @@ func (r *UserRepository) Create(ctx context.Context, user domain.User) error {
 	if err != nil {
 		return err
 	}
+	phoneStored, err := piicrypto.Store(ctx, r.pii, user.Phone)
+	if err != nil {
+		return err
+	}
+	phoneLookup, err := r.pii.PhoneLookup(ctx, user.Phone)
+	if err != nil {
+		return err
+	}
 	return r.q.CreateUser(ctx, sqlc.CreateUserParams{
 		ID:           id,
 		Email:        user.Email,
-		Phone:        user.Phone,
+		Phone:        phoneStored,
+		PhoneLookup:  textOrNil(phoneLookup),
 		PasswordHash: user.PasswordHash,
 		Status:       string(user.Status),
 	})
@@ -39,15 +54,19 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	if err != nil {
 		return nil, err
 	}
-	return rowToUser(row.ID, row.Email, row.Phone, row.PasswordHash, row.Status), nil
+	return r.rowToUser(ctx, row.ID, row.Email, row.Phone, row.PasswordHash, row.Status)
 }
 
 func (r *UserRepository) GetByPhone(ctx context.Context, phone string) (*domain.User, error) {
-	row, err := r.q.GetUserByPhone(ctx, pgutil.Text(phone))
+	lookup, err := r.pii.PhoneLookup(ctx, phone)
 	if err != nil {
 		return nil, err
 	}
-	return rowToUser(row.ID, row.Email, row.Phone, row.PasswordHash, row.Status), nil
+	row, err := r.q.GetUserByPhone(ctx, pgutil.Text(lookup))
+	if err != nil {
+		return nil, err
+	}
+	return r.rowToUser(ctx, row.ID, row.Email, row.Phone, row.PasswordHash, row.Status)
 }
 
 func (r *UserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
@@ -59,7 +78,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*domain.User, 
 	if err != nil {
 		return nil, err
 	}
-	return rowToUser(row.ID, row.Email, row.Phone, row.PasswordHash, row.Status), nil
+	return r.rowToUser(ctx, row.ID, row.Email, row.Phone, row.PasswordHash, row.Status)
 }
 
 func (r *UserRepository) GetProfile(ctx context.Context, userID string) (*domain.Profile, error) {
@@ -71,10 +90,14 @@ func (r *UserRepository) GetProfile(ctx context.Context, userID string) (*domain
 	if err != nil {
 		return nil, err
 	}
+	phone, err := piicrypto.Read(ctx, r.pii, row.Phone)
+	if err != nil {
+		return nil, err
+	}
 	out := &domain.Profile{
 		UserID:      row.ID.String(),
 		Email:       row.Email,
-		Phone:       row.Phone,
+		Phone:       phone,
 		Status:      row.Status,
 		FullName:    row.FullName,
 		CountryCode: row.CountryCode,
@@ -83,20 +106,36 @@ func (r *UserRepository) GetProfile(ctx context.Context, userID string) (*domain
 	if row.CreatedAt.Valid {
 		out.CreatedAt = row.CreatedAt.Time
 	}
-	if row.DateOfBirth.Valid {
-		out.DateOfBirth = row.DateOfBirth.Time.Format(time.DateOnly)
+	dob, err := r.readDOB(ctx, row.DateOfBirth, row.DateOfBirthEncrypted)
+	if err != nil {
+		return nil, err
 	}
+	out.DateOfBirth = dob
 	return out, nil
 }
 
-func rowToUser(id uuid.UUID, email, phone, passwordHash, status string) *domain.User {
+func (r *UserRepository) readDOB(ctx context.Context, plain pgtype.Date, encrypted string) (string, error) {
+	if encrypted != "" {
+		return piicrypto.Read(ctx, r.pii, encrypted)
+	}
+	if plain.Valid {
+		return plain.Time.Format(time.DateOnly), nil
+	}
+	return "", nil
+}
+
+func (r *UserRepository) rowToUser(ctx context.Context, id uuid.UUID, email, phone, passwordHash, status string) (*domain.User, error) {
+	plainPhone, err := piicrypto.Read(ctx, r.pii, phone)
+	if err != nil {
+		return nil, err
+	}
 	return &domain.User{
 		ID:           id.String(),
 		Email:        email,
-		Phone:        phone,
+		Phone:        plainPhone,
 		PasswordHash: passwordHash,
 		Status:       domain.UserStatus(status),
-	}
+	}, nil
 }
 
 type WalletRepository struct {

@@ -104,19 +104,21 @@ func (q *Queries) RejectKYCCase(ctx context.Context, arg RejectKYCCaseParams) er
 }
 
 const upsertProfile = `-- name: UpsertProfile :exec
-INSERT INTO "user".profiles (user_id, full_name, date_of_birth, country_code)
-VALUES ($1, $2, $3, $4)
+INSERT INTO "user".profiles (user_id, full_name, date_of_birth, date_of_birth_encrypted, country_code)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (user_id) DO UPDATE
 SET full_name = EXCLUDED.full_name,
     date_of_birth = EXCLUDED.date_of_birth,
+    date_of_birth_encrypted = EXCLUDED.date_of_birth_encrypted,
     country_code = EXCLUDED.country_code
 `
 
 type UpsertProfileParams struct {
-	UserID      uuid.UUID
-	FullName    pgtype.Text
-	DateOfBirth pgtype.Date
-	CountryCode pgtype.Text
+	UserID               uuid.UUID
+	FullName             pgtype.Text
+	DateOfBirth          pgtype.Date
+	DateOfBirthEncrypted pgtype.Text
+	CountryCode          pgtype.Text
 }
 
 func (q *Queries) UpsertProfile(ctx context.Context, arg UpsertProfileParams) error {
@@ -124,6 +126,7 @@ func (q *Queries) UpsertProfile(ctx context.Context, arg UpsertProfileParams) er
 		arg.UserID,
 		arg.FullName,
 		arg.DateOfBirth,
+		arg.DateOfBirthEncrypted,
 		arg.CountryCode,
 	)
 	return err

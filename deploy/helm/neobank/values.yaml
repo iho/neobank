@@ -1,0 +1,205 @@
+# Default Helm values for neobank.
+# Override per environment: values-staging.yaml, values-production.yaml
+
+nameOverride: ""
+fullnameOverride: ""
+
+global:
+  imageRegistry: ghcr.io/iho/neobank
+  imageTag: latest
+  imagePullSecrets: []
+
+serviceAccount:
+  create: true
+  name: ""
+  automountServiceAccountToken: false
+
+podSecurity:
+  enabled: true
+
+networkPolicy:
+  enabled: false
+  ingressControllerNamespace: ingress-nginx
+  dnsNamespace: kube-system
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: api.neobank.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    enabled: false
+    secretName: neobank-gateway-tls
+  certManager:
+    enabled: false
+    issuer: letsencrypt-prod
+  rateLimit:
+    enabled: true
+    rps: "50"
+    connections: "20"
+
+secrets:
+  # Dev only — production must use existingSecret or externalSecrets.
+  create: false
+  existingSecret: neobank-app
+  externalSecrets:
+    enabled: false
+    secretStoreRef: vault
+    secretName: neobank-app
+    refreshInterval: 1h
+
+config:
+  appEnv: production
+  databaseURL: ""
+  redisURL: ""
+  kafkaBrokers: ""
+  ledgerGrpcAddr: ""
+  otelEndpoint: ""
+  jwtSecret: ""
+  vaultAddr: ""
+  vaultToken: ""
+  settlementLedgerAccountID: ""
+
+migration:
+  enabled: true
+  image:
+    repository: ""
+    tag: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+cronJobs:
+  image:
+    repository: ""
+    tag: ""
+  reconcilePayment:
+    enabled: true
+    schedule: "0 * * * *"
+  reconcileCard:
+    enabled: true
+    schedule: "15 * * * *"
+  sagaWatchdog:
+    enabled: true
+    schedule: "*/15 * * * *"
+  amlExport:
+    enabled: true
+    schedule: "0 6 * * *"
+
+workloads:
+  gateway:
+    enabled: true
+    image: gateway
+    httpPort: 8080
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    autoscaling:
+      enabled: false
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+
+  user:
+    enabled: true
+    image: user
+    httpPort: 8081
+    grpcPort: 50052
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    autoscaling:
+      enabled: false
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+
+  payment:
+    enabled: true
+    image: payment
+    httpPort: 8082
+    grpcPort: 50053
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    autoscaling:
+      enabled: false
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+
+  card:
+    enabled: true
+    image: card
+    httpPort: 8084
+    grpcPort: 50054
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    autoscaling:
+      enabled: false
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+
+  notification:
+    enabled: true
+    image: notification
+    httpPort: 8083
+    grpcPort: 50055
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 300m
+        memory: 128Mi
+    autoscaling:
+      enabled: false
+      minReplicas: 2
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1

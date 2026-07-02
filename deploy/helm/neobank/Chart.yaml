@@ -1,0 +1,12 @@
+apiVersion: v2
+name: neobank
+description: Neobank backend — gateway BFF and domain services
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - neobank
+  - fintech
+  - redpanda
+maintainers:
+  - name: neobank

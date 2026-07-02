@@ -1,0 +1,167 @@
+{{- $jobsImage := include "neobank.image" (dict "Values" .Values "image" "jobs" "repository" .Values.cronJobs.image.repository "tag" .Values.cronJobs.image.tag) -}}
+{{- $fullname := include "neobank.fullname" . -}}
+{{- $secretName := include "neobank.secretName" . -}}
+
+{{- if .Values.cronJobs.reconcilePayment.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $fullname }}-reconcile-payment
+  labels:
+    {{- include "neobank.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cron-reconcile-payment
+spec:
+  schedule: {{ .Values.cronJobs.reconcilePayment.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ include "neobank.serviceAccountName" . }}
+          containers:
+            - name: reconcile-payment
+              image: {{ $jobsImage }}
+              command: ["/usr/local/bin/payment-reconcile"]
+              {{- with (include "neobank.containerSecurityContext" .) }}
+              securityContext:
+                {{- . | nindent 16 }}
+              {{- end }}
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $secretName }}
+                      key: database-url
+                - name: LEDGER_GRPC_ADDR
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $secretName }}
+                      key: ledger-grpc-addr
+                      optional: true
+                - name: USER_GRPC_ADDR
+                  value: {{ include "neobank.serviceHost" (dict "root" . "name" "user") }}:50052
+{{- end }}
+
+{{- if .Values.cronJobs.reconcileCard.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $fullname }}-reconcile-card
+  labels:
+    {{- include "neobank.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cron-reconcile-card
+spec:
+  schedule: {{ .Values.cronJobs.reconcileCard.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ include "neobank.serviceAccountName" . }}
+          containers:
+            - name: reconcile-card
+              image: {{ $jobsImage }}
+              command: ["/usr/local/bin/card-reconcile"]
+              {{- with (include "neobank.containerSecurityContext" .) }}
+              securityContext:
+                {{- . | nindent 16 }}
+              {{- end }}
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $secretName }}
+                      key: database-url
+                - name: LEDGER_GRPC_ADDR
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $secretName }}
+                      key: ledger-grpc-addr
+                      optional: true
+                - name: USER_GRPC_ADDR
+                  value: {{ include "neobank.serviceHost" (dict "root" . "name" "user") }}:50052
+{{- end }}
+
+{{- if .Values.cronJobs.sagaWatchdog.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $fullname }}-saga-watchdog
+  labels:
+    {{- include "neobank.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cron-saga-watchdog
+spec:
+  schedule: {{ .Values.cronJobs.sagaWatchdog.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ include "neobank.serviceAccountName" . }}
+          containers:
+            - name: saga-watchdog
+              image: {{ $jobsImage }}
+              command: ["/usr/local/bin/saga-watchdog"]
+              {{- with (include "neobank.containerSecurityContext" .) }}
+              securityContext:
+                {{- . | nindent 16 }}
+              {{- end }}
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $secretName }}
+                      key: database-url
+{{- end }}
+
+{{- if .Values.cronJobs.amlExport.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $fullname }}-aml-export
+  labels:
+    {{- include "neobank.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cron-aml-export
+spec:
+  schedule: {{ .Values.cronJobs.amlExport.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ include "neobank.serviceAccountName" . }}
+          containers:
+            - name: aml-export
+              image: {{ $jobsImage }}
+              command: ["/usr/local/bin/payment-aml-export"]
+              {{- with (include "neobank.containerSecurityContext" .) }}
+              securityContext:
+                {{- . | nindent 16 }}
+              {{- end }}
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $secretName }}
+                      key: database-url
+{{- end }}

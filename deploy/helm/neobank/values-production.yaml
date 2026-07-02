@@ -1,0 +1,59 @@
+# Production overlay — HA, ingress TLS, network policies, external secrets.
+
+secrets:
+  create: false
+  externalSecrets:
+    enabled: true
+
+config:
+  appEnv: production
+
+ingress:
+  enabled: true
+  hosts:
+    - host: api.neobank.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    enabled: true
+  certManager:
+    enabled: true
+    issuer: letsencrypt-prod
+  rateLimit:
+    enabled: true
+    rps: "30"
+    connections: "15"
+
+networkPolicy:
+  enabled: true
+
+workloads:
+  gateway:
+    replicaCount: 3
+    autoscaling:
+      enabled: true
+      minReplicas: 3
+      maxReplicas: 20
+  user:
+    replicaCount: 3
+    autoscaling:
+      enabled: true
+  payment:
+    replicaCount: 3
+    autoscaling:
+      enabled: true
+  card:
+    replicaCount: 2
+    autoscaling:
+      enabled: true
+  notification:
+    replicaCount: 2
+    autoscaling:
+      enabled: true
+
+# Managed data plane (configure via External Secrets — not deployed by this chart):
+#   Postgres: CloudNativePG / RDS — secret key database-url
+#   Redis: managed or in-cluster — secret key redis-url
+#   Redpanda: operator cluster — config.kafkaBrokers e.g. redpanda:9092
+#   Vault: HA raft — config.vaultAddr + vault token via ESO

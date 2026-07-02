@@ -75,6 +75,9 @@ jobs:
           - service: migrate
             dockerfile: deployments/Dockerfile.migrate
             build_args: ""
+          - service: jobs
+            dockerfile: deployments/Dockerfile.jobs
+            build_args: ""
     steps:
       - uses: actions/checkout@v4
 
@@ -123,7 +126,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [gateway, user, payment, card, notification, migrate]
+        service: [gateway, user, payment, card, notification, migrate, jobs]
     steps:
       - uses: docker/login-action@v3
         with:

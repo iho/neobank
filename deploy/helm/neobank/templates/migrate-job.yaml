@@ -1,0 +1,47 @@
+{{- if .Values.migration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "neobank.fullname" . }}-migrate
+  labels:
+    {{- include "neobank.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "neobank.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "neobank.serviceAccountName" . }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: {{ include "neobank.image" (dict "Values" .Values "image" "migrate" "repository" .Values.migration.image.repository "tag" .Values.migration.image.tag) }}
+          {{- with (include "neobank.containerSecurityContext" .) }}
+          securityContext:
+            {{- . | nindent 12 }}
+          {{- end }}
+          env:
+            {{- if .Values.secrets.create }}
+            - name: DATABASE_URL
+              value: {{ required "config.databaseURL required for migration" .Values.config.databaseURL | quote }}
+            {{- else }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "neobank.secretName" . }}
+                  key: database-url
+            {{- end }}
+          resources:
+            {{- toYaml .Values.migration.resources | nindent 12 }}
+{{- end }}

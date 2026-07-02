@@ -22,6 +22,7 @@ import (
 	"github.com/iho/neobank/pkg/screening"
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/reqctx"
+	"github.com/iho/neobank/pkg/runtime"
 	"github.com/iho/neobank/pkg/sloghttp"
 	"github.com/iho/neobank/pkg/vault"
 	apiadapter "github.com/iho/neobank/services/user/internal/adapter/api"
@@ -40,6 +41,10 @@ import (
 func main() {
 	cfg := config.Load()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	if err := runtime.RequireProductionSecrets(os.Getenv("APP_ENV"), cfg.JWTSecret); err != nil {
+		logger.Error("production config invalid", "error", err)
+		os.Exit(1)
+	}
 	ctx := context.Background()
 
 	shutdownOtel, err := otel.InitIfEnabled(ctx, "user")

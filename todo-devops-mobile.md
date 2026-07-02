@@ -58,24 +58,24 @@ deployable beyond a laptop, and building the mobile client the BFF was designed 
 
 ### Phase 3: Kubernetes (README roadmap item)
 
-- [ ] Helm chart or Kustomize base + overlays (staging/prod) for the 5 services:
+- [x] Helm chart or Kustomize base + overlays (staging/prod) for the 5 services:
       Deployment, Service, HPA, PDB, resource requests/limits, liveness=`/health`,
       readiness probe, securityContext (non-root, read-only FS).
-- [ ] Ingress (nginx/traefik) + cert-manager TLS in front of gateway only; internal
+- [x] Ingress (nginx/traefik) + cert-manager TLS in front of gateway only; internal
       services ClusterIP-only. Rate limiting at ingress (gateway has none).
-- [ ] Migration Jobs (pre-upgrade hook) per service.
-- [ ] CronJobs replacing `deployments/crontab`: reconcile-payment, reconcile-card,
+- [x] Migration Jobs (pre-upgrade hook) per service.
+- [x] CronJobs replacing `deployments/crontab`: reconcile-payment, reconcile-card,
       saga-watchdog (hourly UTC), aml-export.
 - [ ] Managed/prod-grade stateful deps: Postgres (CloudNativePG or RDS-equivalent) with
       PITR backups + tested restore runbook; Redis (HA or managed); Redpanda (operator or
       managed) — flip services from HTTP fan-out to `KAFKA_BROKERS` in prod.
 - [ ] Production Vault: HA raft, auto-unseal, AppRole/k8s auth for the user service,
       Transit key rotation policy (closes todo.md #7 ops half).
-- [ ] Secrets: External Secrets Operator or sealed-secrets; kill `JWT_SECRET` default
+- [x] Secrets: External Secrets Operator or sealed-secrets; kill `JWT_SECRET` default
       (`dev-secret-change-me`) — fail startup in prod if unset. `APP_ENV=production`
       enforced (disables dev-auth per todo.md #7b).
-- [ ] NetworkPolicies: only gateway reachable from ingress; internal `/api/v1/internal/*`
-      endpoints (GDPR, events ingest, user-by-phone) unreachable from outside the mesh.
+- [x] NetworkPolicies: gateway ingress from controller namespace; internal mesh ingress
+      limited to same release pods (internal HTTP/gRPC not exposed via Ingress).
 
 ### Phase 4: Observability & operations
 
@@ -97,60 +97,7 @@ deployable beyond a laptop, and building the mobile client the BFF was designed 
 
 ## Part 2 — Flutter mobile client
 
-New top-level `mobile/` directory (own toolchain; keep out of Go workspace).
-
-### Phase 1: Foundation
-
-- [ ] Scaffold Flutter app (`mobile/`): flavors dev/staging/prod (`--dart-define` for
-      `API_BASE_URL`), lint rules (`very_good_analysis` or `flutter_lints`).
-- [ ] Architecture: feature-first folders + Riverpod (state) + go_router (navigation) +
-      freezed/json_serializable models. Decision recorded in `mobile/README.md`.
-- [ ] API client generated from `services/gateway/api/openapi.yaml`
-      (openapi-generator dart-dio or swagger_parser) — wire into `make generate` so the
-      contract stays the single source of truth.
-- [ ] Dio interceptors:
-      - JWT bearer injection + transparent refresh on 401 (single-flight refresh,
-        logout on refresh failure) — tokens in `flutter_secure_storage`.
-      - `Idempotency-Key: uuid` on every POST (gateway 400s without it).
-      - `X-Correlation-Id` generation for supportability.
-- [ ] Error model: map gateway error envelope → typed failures → user-facing messages;
-      global retry/backoff policy for idempotent GETs.
-
-### Phase 2: Core flows (mirrors backend MVP table)
-
-- [ ] Auth: register, login, session restore, logout, token refresh edge cases.
-- [ ] Onboarding/KYC: submit KYC form (`POST /v1/kyc`), poll `GET /v1/kyc/status`,
-      gate wallet features on `approved`.
-- [ ] Wallet home: balance (`GET /v1/wallet`), unified transaction history
-      (`GET /v1/wallet/transactions`) with pagination + pull-to-refresh.
-- [ ] P2P transfer: recipient by phone, amount entry (minor-units/decimal handling
-      consistent with `pkg/money`), confirm screen, result states incl. fraud-declined;
-      retry with the **same** Idempotency-Key on timeout (matches saga retry semantics).
-- [ ] Cards: list, issue virtual card, card detail (masked PAN), freeze/unfreeze;
-      authorizations list + detail.
-- [ ] Notifications inbox: `GET /v1/notifications`, unread badge, polling first
-      (push is Phase 4 — requires backend FCM work).
-
-### Phase 3: Quality & mobile CI
-
-- [ ] Unit tests (usecases/notifiers), widget tests for auth + transfer flows,
-      one integration test (patrol/integration_test) against local compose stack.
-- [ ] Contract safety: CI check that regenerating the Dart client from openapi.yaml is
-      clean (same pattern as backend codegen check).
-- [ ] `mobile.yml` GitHub workflow: analyze, test, build APK + iOS (no codesign) on PRs
-      touching `mobile/`; path-filter so Go CI doesn't run for mobile-only changes.
-- [ ] Security pass: certificate pinning (staging/prod), no secrets in code, screenshot
-      obscuring on app switcher for balance screens, jailbreak/root detection decision.
-
-### Phase 4: Release & beyond
-
-- [ ] Fastlane lanes + CI: TestFlight / Play internal track from tags; build number from CI.
-- [ ] Crash/analytics: Sentry (or Firebase Crashlytics) with correlation-id breadcrumbs.
-- [ ] Push notifications: **requires backend work** — FCM/APNs sender in notification
-      service (device token registry + send on event ingest); then deep links from push
-      to transaction/card screens.
-- [ ] Biometric unlock (local_auth) gating app open + transfer confirmation.
-- [ ] Localization scaffold (intl), dark mode, accessibility audit.
+Moved to [mobile/TODO.md](mobile/TODO.md) now that the app is scaffolded under `mobile/`.
 
 ---
 

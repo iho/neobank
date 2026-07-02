@@ -1,4 +1,6 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-all down-all up-ghcr down-ghcr up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs
+.PHONY: deps build test test-integration lint proto sqlc oapi generate up down up-all down-all up-ghcr down-ghcr up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs helm-lint helm-template
+
+HELM_CHART := deploy/helm/neobank
 
 COMPOSE_INFRA := docker compose -f deployments/docker-compose.yml
 COMPOSE_ALL   := docker compose -f deployments/docker-compose.yml -f deployments/docker-compose.services.yml
@@ -143,3 +145,14 @@ aml-export:
 
 event-catalog:
 	cd tools/event-catalog && go run .
+
+helm-lint:
+	helm lint $(HELM_CHART) -f $(HELM_CHART)/values-staging.yaml
+
+helm-template:
+	helm template neobank $(HELM_CHART) -f $(HELM_CHART)/values-staging.yaml \
+		--set secrets.create=true \
+		--set config.databaseURL=postgres://neobank:neobank@postgres:5432/neobank?sslmode=disable \
+		--set config.redisURL=redis://redis:6379/0 \
+		--set config.jwtSecret=local-dev-secret \
+		--set config.kafkaBrokers=redpanda:9092

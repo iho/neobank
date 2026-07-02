@@ -485,6 +485,9 @@ make aml-export
 make event-catalog
 
 make up-jobs / down-jobs   # cron: reconcile + saga-watchdog
+
+make helm-lint / helm-template   # Kubernetes chart (deploy/helm/neobank)
+helm upgrade --install neobank deploy/helm/neobank -f deploy/helm/neobank/values-production.yaml -n neobank --create-namespace
 ```
 
 ## Shared packages (`pkg/`)

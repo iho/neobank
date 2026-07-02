@@ -1,26 +1,38 @@
 package client
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
-	"github.com/iho/neobank/pkg/otel"
+	neobankv1 "github.com/iho/neobank/pkg/gen/neobank/v1"
+	"github.com/iho/neobank/pkg/grpcutil"
+	"google.golang.org/grpc"
 )
 
 type CardClient struct {
-	baseURL    string
-	httpClient *http.Client
+	conn *grpc.ClientConn
+	rpc  neobankv1.CardServiceClient
 }
 
-func NewCardClient(baseURL string) *CardClient {
-	return &CardClient{
-		baseURL:    baseURL,
-		httpClient: &http.Client{Transport: otel.OutboundTransport(nil)},
+func NewCardClient(ctx context.Context, cfg Config) (*CardClient, error) {
+	if cfg.Addr == "" {
+		cfg.Addr = "localhost:50054"
 	}
+	conn, err := grpcutil.Dial(ctx, cfg.Addr)
+	if err != nil {
+		return nil, fmt.Errorf("dial card service: %w", err)
+	}
+	return &CardClient{
+		conn: conn,
+		rpc:  neobankv1.NewCardServiceClient(conn),
+	}, nil
+}
+
+func (c *CardClient) Close() error {
+	if c.conn == nil {
+		return nil
+	}
+	return c.conn.Close()
 }
 
 type IssueCardRequest struct {
@@ -52,134 +64,88 @@ type CardList struct {
 }
 
 func (c *CardClient) IssueCard(ctx context.Context, userID, idempotencyKey string, req IssueCardRequest) (CardView, int, error) {
-	body, err := json.Marshal(req)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	ctx = grpcutil.WithIdempotencyKey(ctx, idempotencyKey)
+	resp, err := c.rpc.IssueCard(ctx, &neobankv1.IssueCardRequest{
+		UserId:         userID,
+		WalletId:       req.WalletID,
+		CardholderName: req.CardholderName,
+		DailyLimit:     req.DailyLimit,
+		OnlineOnly:     req.OnlineOnly,
+		IdempotencyKey: idempotencyKey,
+	})
 	if err != nil {
-		return CardView{}, 0, err
+		return CardView{}, 0, dialError("card", err)
 	}
-
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/cards", bytes.NewReader(body))
-	if err != nil {
-		return CardView{}, 0, err
+	status := int(resp.GetHttpStatus())
+	if status >= 400 {
+		return CardView{}, status, statusError("card", status, resp.GetError())
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Idempotency-Key", idempotencyKey)
-	httpReq.Header.Set("X-User-Id", userID)
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return CardView{}, 0, fmt.Errorf("card service request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return CardView{}, 0, err
-	}
-	if resp.StatusCode >= 400 {
-		return CardView{}, resp.StatusCode, fmt.Errorf("card service status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var out CardView
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return CardView{}, resp.StatusCode, err
-	}
-	return out, resp.StatusCode, nil
+	return toCardView(resp.GetCard()), status, nil
 }
 
 func (c *CardClient) ListCards(ctx context.Context, userID string) (CardList, error) {
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/cards", nil)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := c.rpc.ListCards(ctx, &neobankv1.ListCardsRequest{UserId: userID})
 	if err != nil {
-		return CardList{}, err
+		return CardList{}, dialError("card", err)
 	}
-	httpReq.Header.Set("X-User-Id", userID)
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return CardList{}, fmt.Errorf("card service request: %w", err)
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return CardList{}, statusError("card", status, resp.GetError())
 	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return CardList{}, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return CardList{}, fmt.Errorf("card service status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var out CardList
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return CardList{}, err
+	out := CardList{}
+	for _, card := range resp.GetCards() {
+		out.Cards = append(out.Cards, toCardView(card))
 	}
 	return out, nil
 }
 
 func (c *CardClient) GetCard(ctx context.Context, userID, cardID string) (CardView, int, error) {
-	url := fmt.Sprintf("%s/api/v1/cards/%s", c.baseURL, cardID)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := c.rpc.GetCard(ctx, &neobankv1.GetCardRequest{
+		UserId: userID,
+		CardId: cardID,
+	})
 	if err != nil {
-		return CardView{}, 0, err
+		return CardView{}, 0, dialError("card", err)
 	}
-	httpReq.Header.Set("X-User-Id", userID)
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return CardView{}, 0, fmt.Errorf("card service request: %w", err)
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return CardView{}, status, statusError("card", status, resp.GetError())
 	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return CardView{}, 0, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return CardView{}, resp.StatusCode, fmt.Errorf("card service status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var out CardView
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return CardView{}, resp.StatusCode, err
-	}
-	return out, resp.StatusCode, nil
+	return toCardView(resp.GetCard()), status, nil
 }
 
 func (c *CardClient) FreezeCard(ctx context.Context, userID, cardID string) (CardView, int, error) {
-	return c.cardAction(ctx, userID, cardID, "freeze")
+	return c.cardAction(ctx, userID, cardID, c.rpc.FreezeCard)
 }
 
 func (c *CardClient) UnfreezeCard(ctx context.Context, userID, cardID string) (CardView, int, error) {
-	return c.cardAction(ctx, userID, cardID, "unfreeze")
+	return c.cardAction(ctx, userID, cardID, c.rpc.UnfreezeCard)
 }
 
 func (c *CardClient) UpdateCardControls(ctx context.Context, userID, cardID string, req UpdateCardControlsRequest) (CardView, int, error) {
-	body, err := json.Marshal(req)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	protoReq := &neobankv1.UpdateCardControlsRequest{
+		UserId: userID,
+		CardId: cardID,
+	}
+	if req.DailyLimit != nil {
+		protoReq.DailyLimit = req.DailyLimit
+	}
+	if req.OnlineOnly != nil {
+		protoReq.OnlineOnly = req.OnlineOnly
+	}
+	resp, err := c.rpc.UpdateCardControls(ctx, protoReq)
 	if err != nil {
-		return CardView{}, 0, err
+		return CardView{}, 0, dialError("card", err)
 	}
-	reqURL := fmt.Sprintf("%s/api/v1/cards/%s/controls", c.baseURL, cardID)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPatch, reqURL, bytes.NewReader(body))
-	if err != nil {
-		return CardView{}, 0, err
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return CardView{}, status, statusError("card", status, resp.GetError())
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("X-User-Id", userID)
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return CardView{}, 0, fmt.Errorf("card service request: %w", err)
-	}
-	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return CardView{}, 0, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return CardView{}, resp.StatusCode, fmt.Errorf("card service status %d: %s", resp.StatusCode, string(respBody))
-	}
-	var out CardView
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return CardView{}, resp.StatusCode, err
-	}
-	return out, resp.StatusCode, nil
+	return toCardView(resp.GetCard()), status, nil
 }
 
 type AuthorizeRequest struct {
@@ -197,13 +163,13 @@ type AuthorizationView struct {
 	MerchantName         string `json:"merchant_name,omitempty"`
 	MerchantCategoryCode string `json:"merchant_category_code,omitempty"`
 	Amount               string `json:"amount"`
-	Currency         string `json:"currency"`
-	Status           string `json:"status"`
-	LedgerHoldID     string `json:"ledger_hold_id,omitempty"`
-	LedgerTransferID string `json:"ledger_transfer_id,omitempty"`
-	FailureReason    string `json:"failure_reason,omitempty"`
-	CreatedAt        string `json:"created_at,omitempty"`
-	CapturedAt       string `json:"captured_at,omitempty"`
+	Currency             string `json:"currency"`
+	Status               string `json:"status"`
+	LedgerHoldID         string `json:"ledger_hold_id,omitempty"`
+	LedgerTransferID     string `json:"ledger_transfer_id,omitempty"`
+	FailureReason        string `json:"failure_reason,omitempty"`
+	CreatedAt            string `json:"created_at,omitempty"`
+	CapturedAt           string `json:"captured_at,omitempty"`
 }
 
 type AuthorizationList struct {
@@ -211,153 +177,133 @@ type AuthorizationList struct {
 }
 
 func (c *CardClient) AuthorizeTransaction(ctx context.Context, userID, cardID, idempotencyKey string, req AuthorizeRequest) (AuthorizationView, int, error) {
-	body, err := json.Marshal(req)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	ctx = grpcutil.WithIdempotencyKey(ctx, idempotencyKey)
+	resp, err := c.rpc.AuthorizeTransaction(ctx, &neobankv1.AuthorizeTransactionRequest{
+		UserId:               userID,
+		CardId:               cardID,
+		Amount:               req.Amount,
+		Currency:             req.Currency,
+		MerchantName:         req.MerchantName,
+		MerchantCategoryCode: req.MerchantCategoryCode,
+		Channel:              req.Channel,
+		IdempotencyKey:       idempotencyKey,
+	})
 	if err != nil {
-		return AuthorizationView{}, 0, err
+		return AuthorizationView{}, 0, dialError("card", err)
 	}
-
-	url := fmt.Sprintf("%s/api/v1/cards/%s/authorize", c.baseURL, cardID)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return AuthorizationView{}, 0, err
+	status := int(resp.GetHttpStatus())
+	out := toAuthorizationView(resp.GetAuthorization())
+	if status >= 400 {
+		return out, status, statusError("card", status, "")
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Idempotency-Key", idempotencyKey)
-	httpReq.Header.Set("X-User-Id", userID)
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return AuthorizationView{}, 0, fmt.Errorf("card service request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return AuthorizationView{}, 0, err
-	}
-
-	var out AuthorizationView
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return AuthorizationView{}, resp.StatusCode, fmt.Errorf("card service status %d: %s", resp.StatusCode, string(respBody))
-	}
-	if resp.StatusCode >= 400 {
-		return out, resp.StatusCode, fmt.Errorf("card service status %d", resp.StatusCode)
-	}
-	return out, resp.StatusCode, nil
+	return out, status, nil
 }
 
 func (c *CardClient) ListAuthorizations(ctx context.Context, userID string, limit int) (AuthorizationList, error) {
-	url := fmt.Sprintf("%s/api/v1/authorizations?limit=%d", c.baseURL, limit)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := c.rpc.ListAuthorizations(ctx, &neobankv1.ListAuthorizationsRequest{
+		UserId: userID,
+		Limit:  int32(limit),
+	})
 	if err != nil {
-		return AuthorizationList{}, err
+		return AuthorizationList{}, dialError("card", err)
 	}
-	httpReq.Header.Set("X-User-Id", userID)
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return AuthorizationList{}, fmt.Errorf("card service request: %w", err)
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return AuthorizationList{}, statusError("card", status, resp.GetError())
 	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return AuthorizationList{}, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return AuthorizationList{}, fmt.Errorf("card service status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var out AuthorizationList
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return AuthorizationList{}, err
+	out := AuthorizationList{}
+	for _, auth := range resp.GetAuthorizations() {
+		out.Authorizations = append(out.Authorizations, toAuthorizationView(auth))
 	}
 	return out, nil
 }
 
 func (c *CardClient) GetAuthorization(ctx context.Context, userID, authID string) (AuthorizationView, int, error) {
-	url := fmt.Sprintf("%s/api/v1/authorizations/%s", c.baseURL, authID)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := c.rpc.GetAuthorization(ctx, &neobankv1.GetAuthorizationRequest{
+		UserId:          userID,
+		AuthorizationId: authID,
+	})
 	if err != nil {
-		return AuthorizationView{}, 0, err
+		return AuthorizationView{}, 0, dialError("card", err)
 	}
-	httpReq.Header.Set("X-User-Id", userID)
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return AuthorizationView{}, 0, fmt.Errorf("card service request: %w", err)
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return AuthorizationView{}, status, statusError("card", status, resp.GetError())
 	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return AuthorizationView{}, 0, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return AuthorizationView{}, resp.StatusCode, fmt.Errorf("card service status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var out AuthorizationView
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return AuthorizationView{}, resp.StatusCode, err
-	}
-	return out, resp.StatusCode, nil
+	return toAuthorizationView(resp.GetAuthorization()), status, nil
 }
 
 func (c *CardClient) CaptureAuthorization(ctx context.Context, userID, authID string) (AuthorizationView, int, error) {
-	url := fmt.Sprintf("%s/api/v1/authorizations/%s/capture", c.baseURL, authID)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := c.rpc.CaptureAuthorization(ctx, &neobankv1.CaptureAuthorizationRequest{
+		UserId:          userID,
+		AuthorizationId: authID,
+	})
 	if err != nil {
-		return AuthorizationView{}, 0, err
+		return AuthorizationView{}, 0, dialError("card", err)
 	}
-	httpReq.Header.Set("X-User-Id", userID)
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return AuthorizationView{}, 0, fmt.Errorf("card service request: %w", err)
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return AuthorizationView{}, status, statusError("card", status, resp.GetError())
 	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return AuthorizationView{}, 0, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return AuthorizationView{}, resp.StatusCode, fmt.Errorf("card service status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var out AuthorizationView
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return AuthorizationView{}, resp.StatusCode, err
-	}
-	return out, resp.StatusCode, nil
+	return toAuthorizationView(resp.GetAuthorization()), status, nil
 }
 
-func (c *CardClient) cardAction(ctx context.Context, userID, cardID, action string) (CardView, int, error) {
-	url := fmt.Sprintf("%s/api/v1/cards/%s/%s", c.baseURL, cardID, action)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
-	if err != nil {
-		return CardView{}, 0, err
-	}
-	httpReq.Header.Set("X-User-Id", userID)
+type cardActionFunc func(context.Context, *neobankv1.CardActionRequest, ...grpc.CallOption) (*neobankv1.CardResponse, error)
 
-	resp, err := c.httpClient.Do(httpReq)
+func (c *CardClient) cardAction(ctx context.Context, userID, cardID string, fn cardActionFunc) (CardView, int, error) {
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := fn(ctx, &neobankv1.CardActionRequest{
+		UserId: userID,
+		CardId: cardID,
+	})
 	if err != nil {
-		return CardView{}, 0, fmt.Errorf("card service request: %w", err)
+		return CardView{}, 0, dialError("card", err)
 	}
-	defer resp.Body.Close()
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return CardView{}, status, statusError("card", status, resp.GetError())
+	}
+	return toCardView(resp.GetCard()), status, nil
+}
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return CardView{}, 0, err
+func toCardView(card *neobankv1.Card) CardView {
+	if card == nil {
+		return CardView{}
 	}
-	if resp.StatusCode != http.StatusOK {
-		return CardView{}, resp.StatusCode, fmt.Errorf("card service status %d: %s", resp.StatusCode, string(respBody))
+	return CardView{
+		ID:          card.GetId(),
+		UserID:      card.GetUserId(),
+		WalletID:    card.GetWalletId(),
+		LastFour:    card.GetLastFour(),
+		Status:      card.GetStatus(),
+		ExpiryMonth: int(card.GetExpiryMonth()),
+		ExpiryYear:  int(card.GetExpiryYear()),
+		DailyLimit:  card.GetDailyLimit(),
+		OnlineOnly:  card.GetOnlineOnly(),
 	}
+}
 
-	var out CardView
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return CardView{}, resp.StatusCode, err
+func toAuthorizationView(auth *neobankv1.Authorization) AuthorizationView {
+	if auth == nil {
+		return AuthorizationView{}
 	}
-	return out, resp.StatusCode, nil
+	return AuthorizationView{
+		ID:                   auth.GetId(),
+		CardID:               auth.GetCardId(),
+		UserID:               auth.GetUserId(),
+		MerchantName:         auth.GetMerchantName(),
+		MerchantCategoryCode: auth.GetMerchantCategoryCode(),
+		Amount:               auth.GetAmount(),
+		Currency:             auth.GetCurrency(),
+		Status:               auth.GetStatus(),
+		LedgerHoldID:         auth.GetLedgerHoldId(),
+		LedgerTransferID:     auth.GetLedgerTransferId(),
+		FailureReason:        auth.GetFailureReason(),
+		CreatedAt:            auth.GetCreatedAt(),
+		CapturedAt:           auth.GetCapturedAt(),
+	}
 }

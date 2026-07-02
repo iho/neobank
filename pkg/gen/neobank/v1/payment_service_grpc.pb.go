@@ -22,15 +22,17 @@ const (
 	PaymentService_CreateP2PTransfer_FullMethodName = "/neobank.v1.PaymentService/CreateP2PTransfer"
 	PaymentService_GetTransfer_FullMethodName       = "/neobank.v1.PaymentService/GetTransfer"
 	PaymentService_ListTransfers_FullMethodName     = "/neobank.v1.PaymentService/ListTransfers"
+	PaymentService_GetLimits_FullMethodName         = "/neobank.v1.PaymentService/GetLimits"
 )
 
 // PaymentServiceClient is the client API for PaymentService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PaymentServiceClient interface {
-	CreateP2PTransfer(ctx context.Context, in *CreateP2PTransferRequest, opts ...grpc.CallOption) (*CreateP2PTransferResponse, error)
-	GetTransfer(ctx context.Context, in *GetTransferRequest, opts ...grpc.CallOption) (*GetTransferResponse, error)
+	CreateP2PTransfer(ctx context.Context, in *CreateP2PTransferRequest, opts ...grpc.CallOption) (*TransferResponse, error)
+	GetTransfer(ctx context.Context, in *GetTransferRequest, opts ...grpc.CallOption) (*TransferResponse, error)
 	ListTransfers(ctx context.Context, in *ListTransfersRequest, opts ...grpc.CallOption) (*ListTransfersResponse, error)
+	GetLimits(ctx context.Context, in *GetLimitsRequest, opts ...grpc.CallOption) (*LimitsResponse, error)
 }
 
 type paymentServiceClient struct {
@@ -41,9 +43,9 @@ func NewPaymentServiceClient(cc grpc.ClientConnInterface) PaymentServiceClient {
 	return &paymentServiceClient{cc}
 }
 
-func (c *paymentServiceClient) CreateP2PTransfer(ctx context.Context, in *CreateP2PTransferRequest, opts ...grpc.CallOption) (*CreateP2PTransferResponse, error) {
+func (c *paymentServiceClient) CreateP2PTransfer(ctx context.Context, in *CreateP2PTransferRequest, opts ...grpc.CallOption) (*TransferResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateP2PTransferResponse)
+	out := new(TransferResponse)
 	err := c.cc.Invoke(ctx, PaymentService_CreateP2PTransfer_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -51,9 +53,9 @@ func (c *paymentServiceClient) CreateP2PTransfer(ctx context.Context, in *Create
 	return out, nil
 }
 
-func (c *paymentServiceClient) GetTransfer(ctx context.Context, in *GetTransferRequest, opts ...grpc.CallOption) (*GetTransferResponse, error) {
+func (c *paymentServiceClient) GetTransfer(ctx context.Context, in *GetTransferRequest, opts ...grpc.CallOption) (*TransferResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetTransferResponse)
+	out := new(TransferResponse)
 	err := c.cc.Invoke(ctx, PaymentService_GetTransfer_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -71,13 +73,24 @@ func (c *paymentServiceClient) ListTransfers(ctx context.Context, in *ListTransf
 	return out, nil
 }
 
+func (c *paymentServiceClient) GetLimits(ctx context.Context, in *GetLimitsRequest, opts ...grpc.CallOption) (*LimitsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LimitsResponse)
+	err := c.cc.Invoke(ctx, PaymentService_GetLimits_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PaymentServiceServer is the server API for PaymentService service.
 // All implementations must embed UnimplementedPaymentServiceServer
 // for forward compatibility.
 type PaymentServiceServer interface {
-	CreateP2PTransfer(context.Context, *CreateP2PTransferRequest) (*CreateP2PTransferResponse, error)
-	GetTransfer(context.Context, *GetTransferRequest) (*GetTransferResponse, error)
+	CreateP2PTransfer(context.Context, *CreateP2PTransferRequest) (*TransferResponse, error)
+	GetTransfer(context.Context, *GetTransferRequest) (*TransferResponse, error)
 	ListTransfers(context.Context, *ListTransfersRequest) (*ListTransfersResponse, error)
+	GetLimits(context.Context, *GetLimitsRequest) (*LimitsResponse, error)
 	mustEmbedUnimplementedPaymentServiceServer()
 }
 
@@ -88,14 +101,17 @@ type PaymentServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedPaymentServiceServer struct{}
 
-func (UnimplementedPaymentServiceServer) CreateP2PTransfer(context.Context, *CreateP2PTransferRequest) (*CreateP2PTransferResponse, error) {
+func (UnimplementedPaymentServiceServer) CreateP2PTransfer(context.Context, *CreateP2PTransferRequest) (*TransferResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateP2PTransfer not implemented")
 }
-func (UnimplementedPaymentServiceServer) GetTransfer(context.Context, *GetTransferRequest) (*GetTransferResponse, error) {
+func (UnimplementedPaymentServiceServer) GetTransfer(context.Context, *GetTransferRequest) (*TransferResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTransfer not implemented")
 }
 func (UnimplementedPaymentServiceServer) ListTransfers(context.Context, *ListTransfersRequest) (*ListTransfersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListTransfers not implemented")
+}
+func (UnimplementedPaymentServiceServer) GetLimits(context.Context, *GetLimitsRequest) (*LimitsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetLimits not implemented")
 }
 func (UnimplementedPaymentServiceServer) mustEmbedUnimplementedPaymentServiceServer() {}
 func (UnimplementedPaymentServiceServer) testEmbeddedByValue()                        {}
@@ -172,6 +188,24 @@ func _PaymentService_ListTransfers_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PaymentService_GetLimits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLimitsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PaymentServiceServer).GetLimits(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PaymentService_GetLimits_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PaymentServiceServer).GetLimits(ctx, req.(*GetLimitsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PaymentService_ServiceDesc is the grpc.ServiceDesc for PaymentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +224,10 @@ var PaymentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTransfers",
 			Handler:    _PaymentService_ListTransfers_Handler,
+		},
+		{
+			MethodName: "GetLimits",
+			Handler:    _PaymentService_GetLimits_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -2,27 +2,58 @@ syntax = "proto3";
 
 package neobank.v1;
 
+import "neobank/v1/types.proto";
+
 option go_package = "github.com/iho/neobank/pkg/gen/neobank/v1;neobankv1";
 
 service UserService {
-  rpc Register(RegisterRequest) returns (RegisterResponse);
-  rpc Login(LoginRequest) returns (LoginResponse);
-  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+  rpc Register(RegisterRequest) returns (AuthResponse);
+  rpc Login(LoginRequest) returns (AuthResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (AuthResponse);
+  rpc ChangePassword(ChangePasswordRequest) returns (EmptyResponse);
+
+  rpc GetProfile(GetProfileRequest) returns (ProfileResponse);
   rpc SubmitKYC(SubmitKYCRequest) returns (SubmitKYCResponse);
-  rpc GetKYCStatus(GetKYCStatusRequest) returns (GetKYCStatusResponse);
+  rpc GetKYCStatus(GetKYCStatusRequest) returns (KYCStatusResponse);
+
+  rpc GetWalletBalance(GetWalletBalanceRequest) returns (WalletBalanceResponse);
+  rpc ListWallets(ListWalletsRequest) returns (ListWalletsResponse);
+  rpc ProvisionWallet(ProvisionWalletRequest) returns (ProvisionWalletResponse);
+  rpc DepositWallet(DepositWalletRequest) returns (DepositWalletResponse);
+  rpc ListWalletTransactions(ListWalletTransactionsRequest) returns (ListWalletTransactionsResponse);
+  rpc ExportWalletTransactions(ExportWalletTransactionsRequest) returns (ExportWalletTransactionsResponse);
+
+  rpc ListPayees(ListPayeesRequest) returns (ListPayeesResponse);
+  rpc CreatePayee(CreatePayeeRequest) returns (PayeeResponse);
+  rpc DeletePayee(DeletePayeeRequest) returns (EmptyResponse);
+
+  rpc RegisterDeviceToken(RegisterDeviceTokenRequest) returns (DeviceTokenResponse);
+  rpc DeleteDeviceToken(DeleteDeviceTokenRequest) returns (EmptyResponse);
+  rpc CloseAccount(CloseAccountRequest) returns (EmptyResponse);
+
+  rpc CreateReferralInvite(CreateReferralInviteRequest) returns (ReferralInviteResponse);
+  rpc ListReferralInvites(ListReferralInvitesRequest) returns (ListReferralInvitesResponse);
+}
+
+message AuthResponse {
+  string user_id = 1;
+  string access_token = 2;
+  string refresh_token = 3;
+  int32 http_status = 4;
+  string error = 5;
+}
+
+message EmptyResponse {
+  int32 http_status = 1;
+  string error = 2;
 }
 
 message RegisterRequest {
   string email = 1;
   string phone = 2;
   string password = 3;
-  string idempotency_key = 4;
-}
-
-message RegisterResponse {
-  string user_id = 1;
-  string access_token = 2;
-  string refresh_token = 3;
+  string invite_code = 4;
+  string idempotency_key = 5;
 }
 
 message LoginRequest {
@@ -30,22 +61,24 @@ message LoginRequest {
   string password = 2;
 }
 
-message LoginResponse {
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message ChangePasswordRequest {
   string user_id = 1;
-  string access_token = 2;
-  string refresh_token = 3;
+  string current_password = 2;
+  string new_password = 3;
 }
 
 message GetProfileRequest {
   string user_id = 1;
 }
 
-message GetProfileResponse {
-  string user_id = 1;
-  string email = 2;
-  string phone = 3;
-  string full_name = 4;
-  KYCStatus kyc_status = 5;
+message ProfileResponse {
+  Profile profile = 1;
+  int32 http_status = 2;
+  string error = 3;
 }
 
 message SubmitKYCRequest {
@@ -53,27 +86,174 @@ message SubmitKYCRequest {
   string full_name = 2;
   string date_of_birth = 3;
   string country_code = 4;
-  string idempotency_key = 5;
+  string document_type = 5;
+  string document_number = 6;
+  string idempotency_key = 7;
 }
 
 message SubmitKYCResponse {
   string kyc_case_id = 1;
-  KYCStatus status = 2;
+  string status = 2;
+  string wallet_id = 3;
+  string rejection_reason = 4;
+  int32 http_status = 5;
+  string error = 6;
 }
 
 message GetKYCStatusRequest {
   string user_id = 1;
 }
 
-message GetKYCStatusResponse {
-  KYCStatus status = 1;
+message KYCStatusResponse {
+  string status = 1;
   string rejection_reason = 2;
+  int32 http_status = 3;
+  string error = 4;
 }
 
-enum KYCStatus {
-  KYC_STATUS_UNSPECIFIED = 0;
-  KYC_STATUS_PENDING = 1;
-  KYC_STATUS_APPROVED = 2;
-  KYC_STATUS_REJECTED = 3;
-  KYC_STATUS_MANUAL_REVIEW = 4;
+message GetWalletBalanceRequest {
+  string user_id = 1;
+  string currency = 2;
+}
+
+message WalletBalanceResponse {
+  WalletBalance balance = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message ListWalletsRequest {
+  string user_id = 1;
+}
+
+message ListWalletsResponse {
+  repeated WalletBalance wallets = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message ProvisionWalletRequest {
+  string user_id = 1;
+  string currency = 2;
+  string idempotency_key = 3;
+}
+
+message ProvisionWalletResponse {
+  string wallet_id = 1;
+  string ledger_account_id = 2;
+  int32 http_status = 3;
+  string error = 4;
+}
+
+message DepositWalletRequest {
+  string user_id = 1;
+  string amount = 2;
+  string currency = 3;
+  string idempotency_key = 4;
+}
+
+message DepositWalletResponse {
+  Deposit deposit = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message ListWalletTransactionsRequest {
+  string user_id = 1;
+  int32 limit = 2;
+  string cursor = 3;
+}
+
+message ListWalletTransactionsResponse {
+  repeated WalletTransaction transactions = 1;
+  string next_cursor = 2;
+  int32 http_status = 3;
+  string error = 4;
+}
+
+message ExportWalletTransactionsRequest {
+  string user_id = 1;
+  string format = 2;
+  string from = 3;
+  string to = 4;
+}
+
+message ExportWalletTransactionsResponse {
+  bytes csv_data = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message ListPayeesRequest {
+  string user_id = 1;
+  int32 limit = 2;
+}
+
+message ListPayeesResponse {
+  repeated Payee payees = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message CreatePayeeRequest {
+  string user_id = 1;
+  string payee_user_id = 2;
+  string nickname = 3;
+}
+
+message PayeeResponse {
+  Payee payee = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message DeletePayeeRequest {
+  string user_id = 1;
+  string payee_id = 2;
+}
+
+message RegisterDeviceTokenRequest {
+  string user_id = 1;
+  string platform = 2;
+  string token = 3;
+  string idempotency_key = 4;
+}
+
+message DeviceTokenResponse {
+  DeviceToken device_token = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message DeleteDeviceTokenRequest {
+  string user_id = 1;
+  string token_id = 2;
+  string idempotency_key = 3;
+}
+
+message CloseAccountRequest {
+  string user_id = 1;
+  string idempotency_key = 2;
+}
+
+message CreateReferralInviteRequest {
+  string user_id = 1;
+  string idempotency_key = 2;
+}
+
+message ReferralInviteResponse {
+  ReferralInvite invite = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message ListReferralInvitesRequest {
+  string user_id = 1;
+  int32 limit = 2;
+}
+
+message ListReferralInvitesResponse {
+  repeated ReferralInvite invites = 1;
+  int32 http_status = 2;
+  string error = 3;
 }

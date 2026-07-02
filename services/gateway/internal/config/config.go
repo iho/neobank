@@ -3,12 +3,12 @@ package config
 import "os"
 
 type Config struct {
-	HTTPPort        string
-	UserURL         string
-	PaymentURL      string
-	CardURL         string
-	NotificationURL string
-	LedgerAddr      string
+	HTTPPort             string
+	UserGRPCAddr         string
+	PaymentGRPCAddr      string
+	CardGRPCAddr         string
+	NotificationGRPCAddr string
+	LedgerAddr           string
 	RedisURL        string
 	JWTSecret       string
 	AppEnv          string
@@ -21,12 +21,12 @@ type Config struct {
 func Load() Config {
 	appEnv := env("APP_ENV", "development")
 	return Config{
-		HTTPPort:        env("HTTP_PORT", "8080"),
-		UserURL:         env("USER_SERVICE_URL", "http://localhost:8081"),
-		PaymentURL:      env("PAYMENT_SERVICE_URL", "http://localhost:8082"),
-		CardURL:         env("CARD_SERVICE_URL", "http://localhost:8084"),
-		NotificationURL: env("NOTIFICATION_SERVICE_URL", "http://localhost:8083"),
-		LedgerAddr:      env("LEDGER_GRPC_ADDR", "localhost:50051"),
+		HTTPPort:             env("HTTP_PORT", "8080"),
+		UserGRPCAddr:         env("USER_GRPC_ADDR", "localhost:50052"),
+		PaymentGRPCAddr:      env("PAYMENT_GRPC_ADDR", "localhost:50053"),
+		CardGRPCAddr:         env("CARD_GRPC_ADDR", "localhost:50054"),
+		NotificationGRPCAddr: env("NOTIFICATION_GRPC_ADDR", "localhost:50055"),
+		LedgerAddr:           env("LEDGER_GRPC_ADDR", "localhost:50051"),
 		RedisURL:        env("REDIS_URL", "redis://localhost:6379/0"),
 		JWTSecret:       env("JWT_SECRET", "dev-secret-change-me"),
 		AppEnv:          appEnv,

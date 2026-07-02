@@ -52,10 +52,34 @@ func main() {
 	}
 
 	jwtAuth := auth.NewJWT(cfg.JWTSecret)
-	users := client.NewUserClient(cfg.UserURL)
-	payments := client.NewPaymentClient(cfg.PaymentURL)
-	cards := client.NewCardClient(cfg.CardURL)
-	notifications := client.NewNotificationClient(cfg.NotificationURL)
+
+	users, err := client.NewUserClient(ctx, client.Config{Addr: cfg.UserGRPCAddr})
+	if err != nil {
+		logger.Error("user service dial failed", "error", err)
+		os.Exit(1)
+	}
+	defer users.Close()
+
+	payments, err := client.NewPaymentClient(ctx, client.Config{Addr: cfg.PaymentGRPCAddr})
+	if err != nil {
+		logger.Error("payment service dial failed", "error", err)
+		os.Exit(1)
+	}
+	defer payments.Close()
+
+	cards, err := client.NewCardClient(ctx, client.Config{Addr: cfg.CardGRPCAddr})
+	if err != nil {
+		logger.Error("card service dial failed", "error", err)
+		os.Exit(1)
+	}
+	defer cards.Close()
+
+	notifications, err := client.NewNotificationClient(ctx, client.Config{Addr: cfg.NotificationGRPCAddr})
+	if err != nil {
+		logger.Error("notification service dial failed", "error", err)
+		os.Exit(1)
+	}
+	defer notifications.Close()
 	strictServer := apiadapter.NewServer(jwtAuth, users, payments, cards, notifications, cfg.AllowDevAuth)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
 

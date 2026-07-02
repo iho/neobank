@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +17,8 @@ import (
 	"github.com/iho/neobank/pkg/fraud"
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
+	neobankv1 "github.com/iho/neobank/pkg/gen/neobank/v1"
+	"github.com/iho/neobank/pkg/grpcutil"
 	"github.com/iho/neobank/pkg/otel"
 	"github.com/iho/neobank/pkg/outbox"
 	"github.com/iho/neobank/pkg/pgutil"
@@ -24,6 +27,7 @@ import (
 	"github.com/iho/neobank/pkg/screening"
 	"github.com/iho/neobank/pkg/userclient"
 	apiadapter "github.com/iho/neobank/services/payment/internal/adapter/api"
+	grpcadapter "github.com/iho/neobank/services/payment/internal/adapter/grpc"
 	sqlcrepo "github.com/iho/neobank/services/payment/internal/adapter/sqlc"
 	"github.com/iho/neobank/services/payment/internal/config"
 	genapi "github.com/iho/neobank/services/payment/internal/gen/api"
@@ -107,6 +111,21 @@ func main() {
 	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("payment")))
 	genapi.HandlerFromMux(strictHandler, r)
 
+	grpcServer := grpcutil.NewServer()
+	neobankv1.RegisterPaymentServiceServer(grpcServer, grpcadapter.NewServer(strictServer))
+	grpcLis, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.GRPCPort))
+	if err != nil {
+		logger.Error("grpc listen failed", "error", err)
+		os.Exit(1)
+	}
+	go func() {
+		logger.Info("payment service gRPC listening", "port", cfg.GRPCPort)
+		if err := grpcServer.Serve(grpcLis); err != nil {
+			logger.Error("grpc server failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%s", cfg.HTTPPort),
 		Handler:           r,
@@ -128,5 +147,6 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = shutdownOtel(shutdownCtx)
+	grpcServer.GracefulStop()
 	_ = srv.Shutdown(shutdownCtx)
 }

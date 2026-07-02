@@ -1,27 +1,38 @@
 package client
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 
-	"github.com/iho/neobank/pkg/otel"
+	neobankv1 "github.com/iho/neobank/pkg/gen/neobank/v1"
+	"github.com/iho/neobank/pkg/grpcutil"
+	"google.golang.org/grpc"
 )
 
 type NotificationClient struct {
-	baseURL    string
-	httpClient *http.Client
+	conn *grpc.ClientConn
+	rpc  neobankv1.NotificationServiceClient
 }
 
-func NewNotificationClient(baseURL string) *NotificationClient {
-	return &NotificationClient{
-		baseURL:    baseURL,
-		httpClient: &http.Client{Transport: otel.OutboundTransport(nil)},
+func NewNotificationClient(ctx context.Context, cfg Config) (*NotificationClient, error) {
+	if cfg.Addr == "" {
+		cfg.Addr = "localhost:50055"
 	}
+	conn, err := grpcutil.Dial(ctx, cfg.Addr)
+	if err != nil {
+		return nil, fmt.Errorf("dial notification service: %w", err)
+	}
+	return &NotificationClient{
+		conn: conn,
+		rpc:  neobankv1.NewNotificationServiceClient(conn),
+	}, nil
+}
+
+func (c *NotificationClient) Close() error {
+	if c.conn == nil {
+		return nil
+	}
+	return c.conn.Close()
 }
 
 type NotificationView struct {
@@ -41,95 +52,56 @@ type NotificationList struct {
 }
 
 func (c *NotificationClient) ListNotifications(ctx context.Context, userID string, limit int, cursor string) (NotificationList, error) {
-	reqURL := fmt.Sprintf("%s/api/v1/notifications?limit=%d", c.baseURL, limit)
-	if cursor != "" {
-		reqURL += "&cursor=" + url.QueryEscape(cursor)
-	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := c.rpc.ListNotifications(ctx, &neobankv1.ListNotificationsRequest{
+		UserId: userID,
+		Limit:  int32(limit),
+		Cursor: cursor,
+	})
 	if err != nil {
-		return NotificationList{}, err
+		return NotificationList{}, dialError("notification", err)
 	}
-	httpReq.Header.Set("X-User-Id", userID)
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return NotificationList{}, fmt.Errorf("notification service request: %w", err)
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return NotificationList{}, statusError("notification", status, resp.GetError())
 	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return NotificationList{}, err
+	out := NotificationList{
+		UnreadCount: resp.GetUnreadCount(),
+		NextCursor:  resp.GetNextCursor(),
 	}
-	if resp.StatusCode != http.StatusOK {
-		return NotificationList{}, fmt.Errorf("notification service status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var out NotificationList
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return NotificationList{}, err
+	for _, n := range resp.GetNotifications() {
+		out.Notifications = append(out.Notifications, toNotificationView(n))
 	}
 	return out, nil
 }
 
 func (c *NotificationClient) MarkNotificationRead(ctx context.Context, userID, notificationID string) (NotificationView, int, error) {
-	url := fmt.Sprintf("%s/api/v1/notifications/%s/read", c.baseURL, notificationID)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := c.rpc.MarkNotificationRead(ctx, &neobankv1.MarkNotificationReadRequest{
+		UserId:         userID,
+		NotificationId: notificationID,
+	})
 	if err != nil {
-		return NotificationView{}, 0, err
+		return NotificationView{}, 0, dialError("notification", err)
 	}
-	httpReq.Header.Set("X-User-Id", userID)
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return NotificationView{}, 0, fmt.Errorf("notification service request: %w", err)
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return NotificationView{}, status, statusError("notification", status, resp.GetError())
 	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return NotificationView{}, 0, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return NotificationView{}, resp.StatusCode, fmt.Errorf("notification service status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var out NotificationView
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return NotificationView{}, resp.StatusCode, err
-	}
-	return out, resp.StatusCode, nil
+	return toNotificationView(resp.GetNotification()), status, nil
 }
 
 func (c *NotificationClient) MarkAllNotificationsRead(ctx context.Context, userID string) (int64, error) {
-	url := c.baseURL + "/api/v1/notifications/read-all"
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := c.rpc.MarkAllNotificationsRead(ctx, &neobankv1.MarkAllNotificationsReadRequest{UserId: userID})
 	if err != nil {
-		return 0, err
+		return 0, dialError("notification", err)
 	}
-	httpReq.Header.Set("X-User-Id", userID)
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return 0, fmt.Errorf("notification service request: %w", err)
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return 0, statusError("notification", status, resp.GetError())
 	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("notification service status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var out struct {
-		MarkedCount int64 `json:"marked_count"`
-	}
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return 0, err
-	}
-	return out.MarkedCount, nil
+	return resp.GetMarkedCount(), nil
 }
 
 type NotificationPreferences struct {
@@ -149,56 +121,71 @@ type UpdateNotificationPreferencesRequest struct {
 }
 
 func (c *NotificationClient) GetNotificationPreferences(ctx context.Context, userID string) (NotificationPreferences, error) {
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/notification-preferences", nil)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := c.rpc.GetNotificationPreferences(ctx, &neobankv1.GetNotificationPreferencesRequest{UserId: userID})
 	if err != nil {
-		return NotificationPreferences{}, err
+		return NotificationPreferences{}, dialError("notification", err)
 	}
-	httpReq.Header.Set("X-User-Id", userID)
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return NotificationPreferences{}, fmt.Errorf("notification service request: %w", err)
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return NotificationPreferences{}, statusError("notification", status, resp.GetError())
 	}
-	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return NotificationPreferences{}, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return NotificationPreferences{}, fmt.Errorf("notification service status %d: %s", resp.StatusCode, string(respBody))
-	}
-	var out NotificationPreferences
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return NotificationPreferences{}, err
-	}
-	return out, nil
+	return toNotificationPreferences(resp.GetPreferences()), nil
 }
 
 func (c *NotificationClient) UpdateNotificationPreferences(ctx context.Context, userID string, req UpdateNotificationPreferencesRequest) (NotificationPreferences, error) {
-	body, err := json.Marshal(req)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	protoReq := &neobankv1.UpdateNotificationPreferencesRequest{UserId: userID}
+	if req.Transfers != nil {
+		protoReq.Transfers = req.Transfers
+	}
+	if req.Cards != nil {
+		protoReq.Cards = req.Cards
+	}
+	if req.KYC != nil {
+		protoReq.Kyc = req.KYC
+	}
+	if req.Push != nil {
+		protoReq.Push = req.Push
+	}
+	if req.Email != nil {
+		protoReq.Email = req.Email
+	}
+	resp, err := c.rpc.UpdateNotificationPreferences(ctx, protoReq)
 	if err != nil {
-		return NotificationPreferences{}, err
+		return NotificationPreferences{}, dialError("notification", err)
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPatch, c.baseURL+"/api/v1/notification-preferences", bytes.NewReader(body))
-	if err != nil {
-		return NotificationPreferences{}, err
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return NotificationPreferences{}, statusError("notification", status, resp.GetError())
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("X-User-Id", userID)
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return NotificationPreferences{}, fmt.Errorf("notification service request: %w", err)
+	return toNotificationPreferences(resp.GetPreferences()), nil
+}
+
+func toNotificationView(n *neobankv1.Notification) NotificationView {
+	if n == nil {
+		return NotificationView{}
 	}
-	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return NotificationPreferences{}, err
+	return NotificationView{
+		ID:        n.GetId(),
+		UserID:    n.GetUserId(),
+		EventType: n.GetEventType(),
+		Title:     n.GetTitle(),
+		Body:      n.GetBody(),
+		Read:      n.GetRead(),
+		CreatedAt: n.GetCreatedAt(),
 	}
-	if resp.StatusCode != http.StatusOK {
-		return NotificationPreferences{}, fmt.Errorf("notification service status %d: %s", resp.StatusCode, string(respBody))
+}
+
+func toNotificationPreferences(p *neobankv1.NotificationPreferences) NotificationPreferences {
+	if p == nil {
+		return NotificationPreferences{}
 	}
-	var out NotificationPreferences
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return NotificationPreferences{}, err
+	return NotificationPreferences{
+		Transfers: p.GetTransfers(),
+		Cards:     p.GetCards(),
+		KYC:       p.GetKyc(),
+		Push:      p.GetPush(),
+		Email:     p.GetEmail(),
 	}
-	return out, nil
 }

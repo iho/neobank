@@ -19,22 +19,54 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_Register_FullMethodName     = "/neobank.v1.UserService/Register"
-	UserService_Login_FullMethodName        = "/neobank.v1.UserService/Login"
-	UserService_GetProfile_FullMethodName   = "/neobank.v1.UserService/GetProfile"
-	UserService_SubmitKYC_FullMethodName    = "/neobank.v1.UserService/SubmitKYC"
-	UserService_GetKYCStatus_FullMethodName = "/neobank.v1.UserService/GetKYCStatus"
+	UserService_Register_FullMethodName                 = "/neobank.v1.UserService/Register"
+	UserService_Login_FullMethodName                    = "/neobank.v1.UserService/Login"
+	UserService_RefreshToken_FullMethodName             = "/neobank.v1.UserService/RefreshToken"
+	UserService_ChangePassword_FullMethodName           = "/neobank.v1.UserService/ChangePassword"
+	UserService_GetProfile_FullMethodName               = "/neobank.v1.UserService/GetProfile"
+	UserService_SubmitKYC_FullMethodName                = "/neobank.v1.UserService/SubmitKYC"
+	UserService_GetKYCStatus_FullMethodName             = "/neobank.v1.UserService/GetKYCStatus"
+	UserService_GetWalletBalance_FullMethodName         = "/neobank.v1.UserService/GetWalletBalance"
+	UserService_ListWallets_FullMethodName              = "/neobank.v1.UserService/ListWallets"
+	UserService_ProvisionWallet_FullMethodName          = "/neobank.v1.UserService/ProvisionWallet"
+	UserService_DepositWallet_FullMethodName            = "/neobank.v1.UserService/DepositWallet"
+	UserService_ListWalletTransactions_FullMethodName   = "/neobank.v1.UserService/ListWalletTransactions"
+	UserService_ExportWalletTransactions_FullMethodName = "/neobank.v1.UserService/ExportWalletTransactions"
+	UserService_ListPayees_FullMethodName               = "/neobank.v1.UserService/ListPayees"
+	UserService_CreatePayee_FullMethodName              = "/neobank.v1.UserService/CreatePayee"
+	UserService_DeletePayee_FullMethodName              = "/neobank.v1.UserService/DeletePayee"
+	UserService_RegisterDeviceToken_FullMethodName      = "/neobank.v1.UserService/RegisterDeviceToken"
+	UserService_DeleteDeviceToken_FullMethodName        = "/neobank.v1.UserService/DeleteDeviceToken"
+	UserService_CloseAccount_FullMethodName             = "/neobank.v1.UserService/CloseAccount"
+	UserService_CreateReferralInvite_FullMethodName     = "/neobank.v1.UserService/CreateReferralInvite"
+	UserService_ListReferralInvites_FullMethodName      = "/neobank.v1.UserService/ListReferralInvites"
 )
 
 // UserServiceClient is the client API for UserService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserServiceClient interface {
-	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
-	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
-	GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*GetProfileResponse, error)
+	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*AuthResponse, error)
+	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*AuthResponse, error)
+	RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*AuthResponse, error)
+	ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*EmptyResponse, error)
+	GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*ProfileResponse, error)
 	SubmitKYC(ctx context.Context, in *SubmitKYCRequest, opts ...grpc.CallOption) (*SubmitKYCResponse, error)
-	GetKYCStatus(ctx context.Context, in *GetKYCStatusRequest, opts ...grpc.CallOption) (*GetKYCStatusResponse, error)
+	GetKYCStatus(ctx context.Context, in *GetKYCStatusRequest, opts ...grpc.CallOption) (*KYCStatusResponse, error)
+	GetWalletBalance(ctx context.Context, in *GetWalletBalanceRequest, opts ...grpc.CallOption) (*WalletBalanceResponse, error)
+	ListWallets(ctx context.Context, in *ListWalletsRequest, opts ...grpc.CallOption) (*ListWalletsResponse, error)
+	ProvisionWallet(ctx context.Context, in *ProvisionWalletRequest, opts ...grpc.CallOption) (*ProvisionWalletResponse, error)
+	DepositWallet(ctx context.Context, in *DepositWalletRequest, opts ...grpc.CallOption) (*DepositWalletResponse, error)
+	ListWalletTransactions(ctx context.Context, in *ListWalletTransactionsRequest, opts ...grpc.CallOption) (*ListWalletTransactionsResponse, error)
+	ExportWalletTransactions(ctx context.Context, in *ExportWalletTransactionsRequest, opts ...grpc.CallOption) (*ExportWalletTransactionsResponse, error)
+	ListPayees(ctx context.Context, in *ListPayeesRequest, opts ...grpc.CallOption) (*ListPayeesResponse, error)
+	CreatePayee(ctx context.Context, in *CreatePayeeRequest, opts ...grpc.CallOption) (*PayeeResponse, error)
+	DeletePayee(ctx context.Context, in *DeletePayeeRequest, opts ...grpc.CallOption) (*EmptyResponse, error)
+	RegisterDeviceToken(ctx context.Context, in *RegisterDeviceTokenRequest, opts ...grpc.CallOption) (*DeviceTokenResponse, error)
+	DeleteDeviceToken(ctx context.Context, in *DeleteDeviceTokenRequest, opts ...grpc.CallOption) (*EmptyResponse, error)
+	CloseAccount(ctx context.Context, in *CloseAccountRequest, opts ...grpc.CallOption) (*EmptyResponse, error)
+	CreateReferralInvite(ctx context.Context, in *CreateReferralInviteRequest, opts ...grpc.CallOption) (*ReferralInviteResponse, error)
+	ListReferralInvites(ctx context.Context, in *ListReferralInvitesRequest, opts ...grpc.CallOption) (*ListReferralInvitesResponse, error)
 }
 
 type userServiceClient struct {
@@ -45,9 +77,9 @@ func NewUserServiceClient(cc grpc.ClientConnInterface) UserServiceClient {
 	return &userServiceClient{cc}
 }
 
-func (c *userServiceClient) Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error) {
+func (c *userServiceClient) Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RegisterResponse)
+	out := new(AuthResponse)
 	err := c.cc.Invoke(ctx, UserService_Register_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -55,9 +87,9 @@ func (c *userServiceClient) Register(ctx context.Context, in *RegisterRequest, o
 	return out, nil
 }
 
-func (c *userServiceClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
+func (c *userServiceClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(LoginResponse)
+	out := new(AuthResponse)
 	err := c.cc.Invoke(ctx, UserService_Login_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -65,9 +97,29 @@ func (c *userServiceClient) Login(ctx context.Context, in *LoginRequest, opts ..
 	return out, nil
 }
 
-func (c *userServiceClient) GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*GetProfileResponse, error) {
+func (c *userServiceClient) RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetProfileResponse)
+	out := new(AuthResponse)
+	err := c.cc.Invoke(ctx, UserService_RefreshToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*EmptyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EmptyResponse)
+	err := c.cc.Invoke(ctx, UserService_ChangePassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*ProfileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProfileResponse)
 	err := c.cc.Invoke(ctx, UserService_GetProfile_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -85,10 +137,150 @@ func (c *userServiceClient) SubmitKYC(ctx context.Context, in *SubmitKYCRequest,
 	return out, nil
 }
 
-func (c *userServiceClient) GetKYCStatus(ctx context.Context, in *GetKYCStatusRequest, opts ...grpc.CallOption) (*GetKYCStatusResponse, error) {
+func (c *userServiceClient) GetKYCStatus(ctx context.Context, in *GetKYCStatusRequest, opts ...grpc.CallOption) (*KYCStatusResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetKYCStatusResponse)
+	out := new(KYCStatusResponse)
 	err := c.cc.Invoke(ctx, UserService_GetKYCStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetWalletBalance(ctx context.Context, in *GetWalletBalanceRequest, opts ...grpc.CallOption) (*WalletBalanceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WalletBalanceResponse)
+	err := c.cc.Invoke(ctx, UserService_GetWalletBalance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListWallets(ctx context.Context, in *ListWalletsRequest, opts ...grpc.CallOption) (*ListWalletsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWalletsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListWallets_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ProvisionWallet(ctx context.Context, in *ProvisionWalletRequest, opts ...grpc.CallOption) (*ProvisionWalletResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProvisionWalletResponse)
+	err := c.cc.Invoke(ctx, UserService_ProvisionWallet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DepositWallet(ctx context.Context, in *DepositWalletRequest, opts ...grpc.CallOption) (*DepositWalletResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DepositWalletResponse)
+	err := c.cc.Invoke(ctx, UserService_DepositWallet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListWalletTransactions(ctx context.Context, in *ListWalletTransactionsRequest, opts ...grpc.CallOption) (*ListWalletTransactionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWalletTransactionsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListWalletTransactions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ExportWalletTransactions(ctx context.Context, in *ExportWalletTransactionsRequest, opts ...grpc.CallOption) (*ExportWalletTransactionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExportWalletTransactionsResponse)
+	err := c.cc.Invoke(ctx, UserService_ExportWalletTransactions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListPayees(ctx context.Context, in *ListPayeesRequest, opts ...grpc.CallOption) (*ListPayeesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPayeesResponse)
+	err := c.cc.Invoke(ctx, UserService_ListPayees_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CreatePayee(ctx context.Context, in *CreatePayeeRequest, opts ...grpc.CallOption) (*PayeeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PayeeResponse)
+	err := c.cc.Invoke(ctx, UserService_CreatePayee_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DeletePayee(ctx context.Context, in *DeletePayeeRequest, opts ...grpc.CallOption) (*EmptyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EmptyResponse)
+	err := c.cc.Invoke(ctx, UserService_DeletePayee_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RegisterDeviceToken(ctx context.Context, in *RegisterDeviceTokenRequest, opts ...grpc.CallOption) (*DeviceTokenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeviceTokenResponse)
+	err := c.cc.Invoke(ctx, UserService_RegisterDeviceToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DeleteDeviceToken(ctx context.Context, in *DeleteDeviceTokenRequest, opts ...grpc.CallOption) (*EmptyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EmptyResponse)
+	err := c.cc.Invoke(ctx, UserService_DeleteDeviceToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CloseAccount(ctx context.Context, in *CloseAccountRequest, opts ...grpc.CallOption) (*EmptyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EmptyResponse)
+	err := c.cc.Invoke(ctx, UserService_CloseAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CreateReferralInvite(ctx context.Context, in *CreateReferralInviteRequest, opts ...grpc.CallOption) (*ReferralInviteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReferralInviteResponse)
+	err := c.cc.Invoke(ctx, UserService_CreateReferralInvite_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListReferralInvites(ctx context.Context, in *ListReferralInvitesRequest, opts ...grpc.CallOption) (*ListReferralInvitesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListReferralInvitesResponse)
+	err := c.cc.Invoke(ctx, UserService_ListReferralInvites_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +291,27 @@ func (c *userServiceClient) GetKYCStatus(ctx context.Context, in *GetKYCStatusRe
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
 type UserServiceServer interface {
-	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
-	Login(context.Context, *LoginRequest) (*LoginResponse, error)
-	GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error)
+	Register(context.Context, *RegisterRequest) (*AuthResponse, error)
+	Login(context.Context, *LoginRequest) (*AuthResponse, error)
+	RefreshToken(context.Context, *RefreshTokenRequest) (*AuthResponse, error)
+	ChangePassword(context.Context, *ChangePasswordRequest) (*EmptyResponse, error)
+	GetProfile(context.Context, *GetProfileRequest) (*ProfileResponse, error)
 	SubmitKYC(context.Context, *SubmitKYCRequest) (*SubmitKYCResponse, error)
-	GetKYCStatus(context.Context, *GetKYCStatusRequest) (*GetKYCStatusResponse, error)
+	GetKYCStatus(context.Context, *GetKYCStatusRequest) (*KYCStatusResponse, error)
+	GetWalletBalance(context.Context, *GetWalletBalanceRequest) (*WalletBalanceResponse, error)
+	ListWallets(context.Context, *ListWalletsRequest) (*ListWalletsResponse, error)
+	ProvisionWallet(context.Context, *ProvisionWalletRequest) (*ProvisionWalletResponse, error)
+	DepositWallet(context.Context, *DepositWalletRequest) (*DepositWalletResponse, error)
+	ListWalletTransactions(context.Context, *ListWalletTransactionsRequest) (*ListWalletTransactionsResponse, error)
+	ExportWalletTransactions(context.Context, *ExportWalletTransactionsRequest) (*ExportWalletTransactionsResponse, error)
+	ListPayees(context.Context, *ListPayeesRequest) (*ListPayeesResponse, error)
+	CreatePayee(context.Context, *CreatePayeeRequest) (*PayeeResponse, error)
+	DeletePayee(context.Context, *DeletePayeeRequest) (*EmptyResponse, error)
+	RegisterDeviceToken(context.Context, *RegisterDeviceTokenRequest) (*DeviceTokenResponse, error)
+	DeleteDeviceToken(context.Context, *DeleteDeviceTokenRequest) (*EmptyResponse, error)
+	CloseAccount(context.Context, *CloseAccountRequest) (*EmptyResponse, error)
+	CreateReferralInvite(context.Context, *CreateReferralInviteRequest) (*ReferralInviteResponse, error)
+	ListReferralInvites(context.Context, *ListReferralInvitesRequest) (*ListReferralInvitesResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -114,20 +322,68 @@ type UserServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedUserServiceServer struct{}
 
-func (UnimplementedUserServiceServer) Register(context.Context, *RegisterRequest) (*RegisterResponse, error) {
+func (UnimplementedUserServiceServer) Register(context.Context, *RegisterRequest) (*AuthResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Register not implemented")
 }
-func (UnimplementedUserServiceServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
+func (UnimplementedUserServiceServer) Login(context.Context, *LoginRequest) (*AuthResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Login not implemented")
 }
-func (UnimplementedUserServiceServer) GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error) {
+func (UnimplementedUserServiceServer) RefreshToken(context.Context, *RefreshTokenRequest) (*AuthResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RefreshToken not implemented")
+}
+func (UnimplementedUserServiceServer) ChangePassword(context.Context, *ChangePasswordRequest) (*EmptyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ChangePassword not implemented")
+}
+func (UnimplementedUserServiceServer) GetProfile(context.Context, *GetProfileRequest) (*ProfileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetProfile not implemented")
 }
 func (UnimplementedUserServiceServer) SubmitKYC(context.Context, *SubmitKYCRequest) (*SubmitKYCResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SubmitKYC not implemented")
 }
-func (UnimplementedUserServiceServer) GetKYCStatus(context.Context, *GetKYCStatusRequest) (*GetKYCStatusResponse, error) {
+func (UnimplementedUserServiceServer) GetKYCStatus(context.Context, *GetKYCStatusRequest) (*KYCStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetKYCStatus not implemented")
+}
+func (UnimplementedUserServiceServer) GetWalletBalance(context.Context, *GetWalletBalanceRequest) (*WalletBalanceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetWalletBalance not implemented")
+}
+func (UnimplementedUserServiceServer) ListWallets(context.Context, *ListWalletsRequest) (*ListWalletsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListWallets not implemented")
+}
+func (UnimplementedUserServiceServer) ProvisionWallet(context.Context, *ProvisionWalletRequest) (*ProvisionWalletResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ProvisionWallet not implemented")
+}
+func (UnimplementedUserServiceServer) DepositWallet(context.Context, *DepositWalletRequest) (*DepositWalletResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DepositWallet not implemented")
+}
+func (UnimplementedUserServiceServer) ListWalletTransactions(context.Context, *ListWalletTransactionsRequest) (*ListWalletTransactionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListWalletTransactions not implemented")
+}
+func (UnimplementedUserServiceServer) ExportWalletTransactions(context.Context, *ExportWalletTransactionsRequest) (*ExportWalletTransactionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExportWalletTransactions not implemented")
+}
+func (UnimplementedUserServiceServer) ListPayees(context.Context, *ListPayeesRequest) (*ListPayeesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPayees not implemented")
+}
+func (UnimplementedUserServiceServer) CreatePayee(context.Context, *CreatePayeeRequest) (*PayeeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreatePayee not implemented")
+}
+func (UnimplementedUserServiceServer) DeletePayee(context.Context, *DeletePayeeRequest) (*EmptyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeletePayee not implemented")
+}
+func (UnimplementedUserServiceServer) RegisterDeviceToken(context.Context, *RegisterDeviceTokenRequest) (*DeviceTokenResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RegisterDeviceToken not implemented")
+}
+func (UnimplementedUserServiceServer) DeleteDeviceToken(context.Context, *DeleteDeviceTokenRequest) (*EmptyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteDeviceToken not implemented")
+}
+func (UnimplementedUserServiceServer) CloseAccount(context.Context, *CloseAccountRequest) (*EmptyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CloseAccount not implemented")
+}
+func (UnimplementedUserServiceServer) CreateReferralInvite(context.Context, *CreateReferralInviteRequest) (*ReferralInviteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateReferralInvite not implemented")
+}
+func (UnimplementedUserServiceServer) ListReferralInvites(context.Context, *ListReferralInvitesRequest) (*ListReferralInvitesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListReferralInvites not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -186,6 +442,42 @@ func _UserService_Login_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_RefreshToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RefreshTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RefreshToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RefreshToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RefreshToken(ctx, req.(*RefreshTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ChangePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangePasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ChangePassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ChangePassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ChangePassword(ctx, req.(*ChangePasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetProfileRequest)
 	if err := dec(in); err != nil {
@@ -240,6 +532,258 @@ func _UserService_GetKYCStatus_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetWalletBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWalletBalanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetWalletBalance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetWalletBalance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetWalletBalance(ctx, req.(*GetWalletBalanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListWallets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWalletsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListWallets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListWallets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListWallets(ctx, req.(*ListWalletsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ProvisionWallet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProvisionWalletRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ProvisionWallet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ProvisionWallet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ProvisionWallet(ctx, req.(*ProvisionWalletRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DepositWallet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DepositWalletRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DepositWallet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DepositWallet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DepositWallet(ctx, req.(*DepositWalletRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListWalletTransactions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWalletTransactionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListWalletTransactions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListWalletTransactions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListWalletTransactions(ctx, req.(*ListWalletTransactionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ExportWalletTransactions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExportWalletTransactionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ExportWalletTransactions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ExportWalletTransactions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ExportWalletTransactions(ctx, req.(*ExportWalletTransactionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListPayees_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPayeesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListPayees(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListPayees_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListPayees(ctx, req.(*ListPayeesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CreatePayee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePayeeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CreatePayee(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CreatePayee_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CreatePayee(ctx, req.(*CreatePayeeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DeletePayee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeletePayeeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DeletePayee(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DeletePayee_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DeletePayee(ctx, req.(*DeletePayeeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RegisterDeviceToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterDeviceTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RegisterDeviceToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RegisterDeviceToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RegisterDeviceToken(ctx, req.(*RegisterDeviceTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DeleteDeviceToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDeviceTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DeleteDeviceToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DeleteDeviceToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DeleteDeviceToken(ctx, req.(*DeleteDeviceTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CloseAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CloseAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CloseAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CloseAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CloseAccount(ctx, req.(*CloseAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CreateReferralInvite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateReferralInviteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CreateReferralInvite(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CreateReferralInvite_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CreateReferralInvite(ctx, req.(*CreateReferralInviteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListReferralInvites_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListReferralInvitesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListReferralInvites(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListReferralInvites_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListReferralInvites(ctx, req.(*ListReferralInvitesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -256,6 +800,14 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserService_Login_Handler,
 		},
 		{
+			MethodName: "RefreshToken",
+			Handler:    _UserService_RefreshToken_Handler,
+		},
+		{
+			MethodName: "ChangePassword",
+			Handler:    _UserService_ChangePassword_Handler,
+		},
+		{
 			MethodName: "GetProfile",
 			Handler:    _UserService_GetProfile_Handler,
 		},
@@ -266,6 +818,62 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetKYCStatus",
 			Handler:    _UserService_GetKYCStatus_Handler,
+		},
+		{
+			MethodName: "GetWalletBalance",
+			Handler:    _UserService_GetWalletBalance_Handler,
+		},
+		{
+			MethodName: "ListWallets",
+			Handler:    _UserService_ListWallets_Handler,
+		},
+		{
+			MethodName: "ProvisionWallet",
+			Handler:    _UserService_ProvisionWallet_Handler,
+		},
+		{
+			MethodName: "DepositWallet",
+			Handler:    _UserService_DepositWallet_Handler,
+		},
+		{
+			MethodName: "ListWalletTransactions",
+			Handler:    _UserService_ListWalletTransactions_Handler,
+		},
+		{
+			MethodName: "ExportWalletTransactions",
+			Handler:    _UserService_ExportWalletTransactions_Handler,
+		},
+		{
+			MethodName: "ListPayees",
+			Handler:    _UserService_ListPayees_Handler,
+		},
+		{
+			MethodName: "CreatePayee",
+			Handler:    _UserService_CreatePayee_Handler,
+		},
+		{
+			MethodName: "DeletePayee",
+			Handler:    _UserService_DeletePayee_Handler,
+		},
+		{
+			MethodName: "RegisterDeviceToken",
+			Handler:    _UserService_RegisterDeviceToken_Handler,
+		},
+		{
+			MethodName: "DeleteDeviceToken",
+			Handler:    _UserService_DeleteDeviceToken_Handler,
+		},
+		{
+			MethodName: "CloseAccount",
+			Handler:    _UserService_CloseAccount_Handler,
+		},
+		{
+			MethodName: "CreateReferralInvite",
+			Handler:    _UserService_CreateReferralInvite_Handler,
+		},
+		{
+			MethodName: "ListReferralInvites",
+			Handler:    _UserService_ListReferralInvites_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

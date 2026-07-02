@@ -222,10 +222,13 @@ func (h *Harness) buildServiceBinaries() {
 
 func (h *Harness) startServiceProcesses() {
 	notifPort := mustFreePort(h.t)
+	notifGrpcPort := mustFreePort(h.t)
 	userPort := mustFreePort(h.t)
 	userGrpcPort := mustFreePort(h.t)
 	paymentPort := mustFreePort(h.t)
+	paymentGrpcPort := mustFreePort(h.t)
 	cardPort := mustFreePort(h.t)
+	cardGrpcPort := mustFreePort(h.t)
 
 	h.NotificationURL = fmt.Sprintf("http://127.0.0.1:%s", notifPort)
 	h.UserURL = fmt.Sprintf("http://127.0.0.1:%s", userPort)
@@ -248,8 +251,9 @@ func (h *Harness) startServiceProcesses() {
 	waitForHTTP200(h.t, h.UserURL+"/health")
 
 	h.startProcess("notification", map[string]string{
-		"DATABASE_URL":  h.DatabaseURL,
-		"HTTP_PORT":     notifPort,
+		"DATABASE_URL":   h.DatabaseURL,
+		"HTTP_PORT":      notifPort,
+		"GRPC_PORT":      notifGrpcPort,
 		"USER_GRPC_ADDR": h.UserGRPCAddr,
 	})
 	h.startProcess("payment", map[string]string{
@@ -257,6 +261,7 @@ func (h *Harness) startServiceProcesses() {
 		"REDIS_URL":                h.RedisURL,
 		"LEDGER_GRPC_ADDR":         h.LedgerAddr,
 		"HTTP_PORT":                paymentPort,
+		"GRPC_PORT":                paymentGrpcPort,
 		"USER_SERVICE_URL":         h.UserURL,
 		"USER_GRPC_ADDR":           h.UserGRPCAddr,
 		"NOTIFICATION_SERVICE_URL": notificationIngest,
@@ -266,6 +271,7 @@ func (h *Harness) startServiceProcesses() {
 		"REDIS_URL":                    h.RedisURL,
 		"LEDGER_GRPC_ADDR":             h.LedgerAddr,
 		"HTTP_PORT":                    cardPort,
+		"GRPC_PORT":                    cardGrpcPort,
 		"USER_SERVICE_URL":             h.UserURL,
 		"USER_GRPC_ADDR":               h.UserGRPCAddr,
 		"NOTIFICATION_SERVICE_URL":     notificationIngest,

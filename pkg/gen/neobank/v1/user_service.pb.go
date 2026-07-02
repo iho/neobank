@@ -21,59 +21,132 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type KYCStatus int32
+type AuthResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	AccessToken   string                 `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken  string                 `protobuf:"bytes,3,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,4,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
 
-const (
-	KYCStatus_KYC_STATUS_UNSPECIFIED   KYCStatus = 0
-	KYCStatus_KYC_STATUS_PENDING       KYCStatus = 1
-	KYCStatus_KYC_STATUS_APPROVED      KYCStatus = 2
-	KYCStatus_KYC_STATUS_REJECTED      KYCStatus = 3
-	KYCStatus_KYC_STATUS_MANUAL_REVIEW KYCStatus = 4
-)
+func (x *AuthResponse) Reset() {
+	*x = AuthResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
 
-// Enum value maps for KYCStatus.
-var (
-	KYCStatus_name = map[int32]string{
-		0: "KYC_STATUS_UNSPECIFIED",
-		1: "KYC_STATUS_PENDING",
-		2: "KYC_STATUS_APPROVED",
-		3: "KYC_STATUS_REJECTED",
-		4: "KYC_STATUS_MANUAL_REVIEW",
+func (x *AuthResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuthResponse) ProtoMessage() {}
+
+func (x *AuthResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
 	}
-	KYCStatus_value = map[string]int32{
-		"KYC_STATUS_UNSPECIFIED":   0,
-		"KYC_STATUS_PENDING":       1,
-		"KYC_STATUS_APPROVED":      2,
-		"KYC_STATUS_REJECTED":      3,
-		"KYC_STATUS_MANUAL_REVIEW": 4,
-	}
-)
-
-func (x KYCStatus) Enum() *KYCStatus {
-	p := new(KYCStatus)
-	*p = x
-	return p
+	return mi.MessageOf(x)
 }
 
-func (x KYCStatus) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (KYCStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_neobank_v1_user_service_proto_enumTypes[0].Descriptor()
-}
-
-func (KYCStatus) Type() protoreflect.EnumType {
-	return &file_neobank_v1_user_service_proto_enumTypes[0]
-}
-
-func (x KYCStatus) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use KYCStatus.Descriptor instead.
-func (KYCStatus) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use AuthResponse.ProtoReflect.Descriptor instead.
+func (*AuthResponse) Descriptor() ([]byte, []int) {
 	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *AuthResponse) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *AuthResponse) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
+func (x *AuthResponse) GetRefreshToken() string {
+	if x != nil {
+		return x.RefreshToken
+	}
+	return ""
+}
+
+func (x *AuthResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *AuthResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type EmptyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	HttpStatus    int32                  `protobuf:"varint,1,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EmptyResponse) Reset() {
+	*x = EmptyResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EmptyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EmptyResponse) ProtoMessage() {}
+
+func (x *EmptyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EmptyResponse.ProtoReflect.Descriptor instead.
+func (*EmptyResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *EmptyResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *EmptyResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
 }
 
 type RegisterRequest struct {
@@ -81,14 +154,15 @@ type RegisterRequest struct {
 	Email          string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
 	Phone          string                 `protobuf:"bytes,2,opt,name=phone,proto3" json:"phone,omitempty"`
 	Password       string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
-	IdempotencyKey string                 `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	InviteCode     string                 `protobuf:"bytes,4,opt,name=invite_code,json=inviteCode,proto3" json:"invite_code,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RegisterRequest) Reset() {
 	*x = RegisterRequest{}
-	mi := &file_neobank_v1_user_service_proto_msgTypes[0]
+	mi := &file_neobank_v1_user_service_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -100,7 +174,7 @@ func (x *RegisterRequest) String() string {
 func (*RegisterRequest) ProtoMessage() {}
 
 func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_user_service_proto_msgTypes[0]
+	mi := &file_neobank_v1_user_service_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -113,7 +187,7 @@ func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterRequest.ProtoReflect.Descriptor instead.
 func (*RegisterRequest) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{0}
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *RegisterRequest) GetEmail() string {
@@ -137,69 +211,16 @@ func (x *RegisterRequest) GetPassword() string {
 	return ""
 }
 
+func (x *RegisterRequest) GetInviteCode() string {
+	if x != nil {
+		return x.InviteCode
+	}
+	return ""
+}
+
 func (x *RegisterRequest) GetIdempotencyKey() string {
 	if x != nil {
 		return x.IdempotencyKey
-	}
-	return ""
-}
-
-type RegisterResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	AccessToken   string                 `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken  string                 `protobuf:"bytes,3,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RegisterResponse) Reset() {
-	*x = RegisterResponse{}
-	mi := &file_neobank_v1_user_service_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RegisterResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RegisterResponse) ProtoMessage() {}
-
-func (x *RegisterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_user_service_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RegisterResponse.ProtoReflect.Descriptor instead.
-func (*RegisterResponse) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *RegisterResponse) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-func (x *RegisterResponse) GetAccessToken() string {
-	if x != nil {
-		return x.AccessToken
-	}
-	return ""
-}
-
-func (x *RegisterResponse) GetRefreshToken() string {
-	if x != nil {
-		return x.RefreshToken
 	}
 	return ""
 }
@@ -214,7 +235,7 @@ type LoginRequest struct {
 
 func (x *LoginRequest) Reset() {
 	*x = LoginRequest{}
-	mi := &file_neobank_v1_user_service_proto_msgTypes[2]
+	mi := &file_neobank_v1_user_service_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -226,7 +247,7 @@ func (x *LoginRequest) String() string {
 func (*LoginRequest) ProtoMessage() {}
 
 func (x *LoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_user_service_proto_msgTypes[2]
+	mi := &file_neobank_v1_user_service_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -239,7 +260,7 @@ func (x *LoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
 func (*LoginRequest) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{2}
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *LoginRequest) GetEmail() string {
@@ -256,30 +277,28 @@ func (x *LoginRequest) GetPassword() string {
 	return ""
 }
 
-type LoginResponse struct {
+type RefreshTokenRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	AccessToken   string                 `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken  string                 `protobuf:"bytes,3,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	RefreshToken  string                 `protobuf:"bytes,1,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *LoginResponse) Reset() {
-	*x = LoginResponse{}
-	mi := &file_neobank_v1_user_service_proto_msgTypes[3]
+func (x *RefreshTokenRequest) Reset() {
+	*x = RefreshTokenRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *LoginResponse) String() string {
+func (x *RefreshTokenRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LoginResponse) ProtoMessage() {}
+func (*RefreshTokenRequest) ProtoMessage() {}
 
-func (x *LoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_user_service_proto_msgTypes[3]
+func (x *RefreshTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -290,28 +309,74 @@ func (x *LoginResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LoginResponse.ProtoReflect.Descriptor instead.
-func (*LoginResponse) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{3}
+// Deprecated: Use RefreshTokenRequest.ProtoReflect.Descriptor instead.
+func (*RefreshTokenRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *LoginResponse) GetUserId() string {
+func (x *RefreshTokenRequest) GetRefreshToken() string {
+	if x != nil {
+		return x.RefreshToken
+	}
+	return ""
+}
+
+type ChangePasswordRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	UserId          string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	CurrentPassword string                 `protobuf:"bytes,2,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
+	NewPassword     string                 `protobuf:"bytes,3,opt,name=new_password,json=newPassword,proto3" json:"new_password,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ChangePasswordRequest) Reset() {
+	*x = ChangePasswordRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangePasswordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangePasswordRequest) ProtoMessage() {}
+
+func (x *ChangePasswordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangePasswordRequest.ProtoReflect.Descriptor instead.
+func (*ChangePasswordRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ChangePasswordRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
 	}
 	return ""
 }
 
-func (x *LoginResponse) GetAccessToken() string {
+func (x *ChangePasswordRequest) GetCurrentPassword() string {
 	if x != nil {
-		return x.AccessToken
+		return x.CurrentPassword
 	}
 	return ""
 }
 
-func (x *LoginResponse) GetRefreshToken() string {
+func (x *ChangePasswordRequest) GetNewPassword() string {
 	if x != nil {
-		return x.RefreshToken
+		return x.NewPassword
 	}
 	return ""
 }
@@ -325,7 +390,7 @@ type GetProfileRequest struct {
 
 func (x *GetProfileRequest) Reset() {
 	*x = GetProfileRequest{}
-	mi := &file_neobank_v1_user_service_proto_msgTypes[4]
+	mi := &file_neobank_v1_user_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -337,7 +402,7 @@ func (x *GetProfileRequest) String() string {
 func (*GetProfileRequest) ProtoMessage() {}
 
 func (x *GetProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_user_service_proto_msgTypes[4]
+	mi := &file_neobank_v1_user_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -350,7 +415,7 @@ func (x *GetProfileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProfileRequest.ProtoReflect.Descriptor instead.
 func (*GetProfileRequest) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{4}
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetProfileRequest) GetUserId() string {
@@ -360,32 +425,30 @@ func (x *GetProfileRequest) GetUserId() string {
 	return ""
 }
 
-type GetProfileResponse struct {
+type ProfileResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Phone         string                 `protobuf:"bytes,3,opt,name=phone,proto3" json:"phone,omitempty"`
-	FullName      string                 `protobuf:"bytes,4,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"`
-	KycStatus     KYCStatus              `protobuf:"varint,5,opt,name=kyc_status,json=kycStatus,proto3,enum=neobank.v1.KYCStatus" json:"kyc_status,omitempty"`
+	Profile       *Profile               `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,2,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetProfileResponse) Reset() {
-	*x = GetProfileResponse{}
-	mi := &file_neobank_v1_user_service_proto_msgTypes[5]
+func (x *ProfileResponse) Reset() {
+	*x = ProfileResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetProfileResponse) String() string {
+func (x *ProfileResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetProfileResponse) ProtoMessage() {}
+func (*ProfileResponse) ProtoMessage() {}
 
-func (x *GetProfileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_user_service_proto_msgTypes[5]
+func (x *ProfileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -396,44 +459,30 @@ func (x *GetProfileResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetProfileResponse.ProtoReflect.Descriptor instead.
-func (*GetProfileResponse) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{5}
+// Deprecated: Use ProfileResponse.ProtoReflect.Descriptor instead.
+func (*ProfileResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *GetProfileResponse) GetUserId() string {
+func (x *ProfileResponse) GetProfile() *Profile {
 	if x != nil {
-		return x.UserId
+		return x.Profile
+	}
+	return nil
+}
+
+func (x *ProfileResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *ProfileResponse) GetError() string {
+	if x != nil {
+		return x.Error
 	}
 	return ""
-}
-
-func (x *GetProfileResponse) GetEmail() string {
-	if x != nil {
-		return x.Email
-	}
-	return ""
-}
-
-func (x *GetProfileResponse) GetPhone() string {
-	if x != nil {
-		return x.Phone
-	}
-	return ""
-}
-
-func (x *GetProfileResponse) GetFullName() string {
-	if x != nil {
-		return x.FullName
-	}
-	return ""
-}
-
-func (x *GetProfileResponse) GetKycStatus() KYCStatus {
-	if x != nil {
-		return x.KycStatus
-	}
-	return KYCStatus_KYC_STATUS_UNSPECIFIED
 }
 
 type SubmitKYCRequest struct {
@@ -442,14 +491,16 @@ type SubmitKYCRequest struct {
 	FullName       string                 `protobuf:"bytes,2,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"`
 	DateOfBirth    string                 `protobuf:"bytes,3,opt,name=date_of_birth,json=dateOfBirth,proto3" json:"date_of_birth,omitempty"`
 	CountryCode    string                 `protobuf:"bytes,4,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
-	IdempotencyKey string                 `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	DocumentType   string                 `protobuf:"bytes,5,opt,name=document_type,json=documentType,proto3" json:"document_type,omitempty"`
+	DocumentNumber string                 `protobuf:"bytes,6,opt,name=document_number,json=documentNumber,proto3" json:"document_number,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,7,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SubmitKYCRequest) Reset() {
 	*x = SubmitKYCRequest{}
-	mi := &file_neobank_v1_user_service_proto_msgTypes[6]
+	mi := &file_neobank_v1_user_service_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -461,7 +512,7 @@ func (x *SubmitKYCRequest) String() string {
 func (*SubmitKYCRequest) ProtoMessage() {}
 
 func (x *SubmitKYCRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_user_service_proto_msgTypes[6]
+	mi := &file_neobank_v1_user_service_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -474,7 +525,7 @@ func (x *SubmitKYCRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitKYCRequest.ProtoReflect.Descriptor instead.
 func (*SubmitKYCRequest) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{6}
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SubmitKYCRequest) GetUserId() string {
@@ -505,6 +556,20 @@ func (x *SubmitKYCRequest) GetCountryCode() string {
 	return ""
 }
 
+func (x *SubmitKYCRequest) GetDocumentType() string {
+	if x != nil {
+		return x.DocumentType
+	}
+	return ""
+}
+
+func (x *SubmitKYCRequest) GetDocumentNumber() string {
+	if x != nil {
+		return x.DocumentNumber
+	}
+	return ""
+}
+
 func (x *SubmitKYCRequest) GetIdempotencyKey() string {
 	if x != nil {
 		return x.IdempotencyKey
@@ -513,16 +578,20 @@ func (x *SubmitKYCRequest) GetIdempotencyKey() string {
 }
 
 type SubmitKYCResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	KycCaseId     string                 `protobuf:"bytes,1,opt,name=kyc_case_id,json=kycCaseId,proto3" json:"kyc_case_id,omitempty"`
-	Status        KYCStatus              `protobuf:"varint,2,opt,name=status,proto3,enum=neobank.v1.KYCStatus" json:"status,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	KycCaseId       string                 `protobuf:"bytes,1,opt,name=kyc_case_id,json=kycCaseId,proto3" json:"kyc_case_id,omitempty"`
+	Status          string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	WalletId        string                 `protobuf:"bytes,3,opt,name=wallet_id,json=walletId,proto3" json:"wallet_id,omitempty"`
+	RejectionReason string                 `protobuf:"bytes,4,opt,name=rejection_reason,json=rejectionReason,proto3" json:"rejection_reason,omitempty"`
+	HttpStatus      int32                  `protobuf:"varint,5,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error           string                 `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SubmitKYCResponse) Reset() {
 	*x = SubmitKYCResponse{}
-	mi := &file_neobank_v1_user_service_proto_msgTypes[7]
+	mi := &file_neobank_v1_user_service_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -534,7 +603,7 @@ func (x *SubmitKYCResponse) String() string {
 func (*SubmitKYCResponse) ProtoMessage() {}
 
 func (x *SubmitKYCResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_user_service_proto_msgTypes[7]
+	mi := &file_neobank_v1_user_service_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -547,7 +616,7 @@ func (x *SubmitKYCResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitKYCResponse.ProtoReflect.Descriptor instead.
 func (*SubmitKYCResponse) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{7}
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SubmitKYCResponse) GetKycCaseId() string {
@@ -557,11 +626,39 @@ func (x *SubmitKYCResponse) GetKycCaseId() string {
 	return ""
 }
 
-func (x *SubmitKYCResponse) GetStatus() KYCStatus {
+func (x *SubmitKYCResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
 	}
-	return KYCStatus_KYC_STATUS_UNSPECIFIED
+	return ""
+}
+
+func (x *SubmitKYCResponse) GetWalletId() string {
+	if x != nil {
+		return x.WalletId
+	}
+	return ""
+}
+
+func (x *SubmitKYCResponse) GetRejectionReason() string {
+	if x != nil {
+		return x.RejectionReason
+	}
+	return ""
+}
+
+func (x *SubmitKYCResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *SubmitKYCResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
 }
 
 type GetKYCStatusRequest struct {
@@ -573,7 +670,7 @@ type GetKYCStatusRequest struct {
 
 func (x *GetKYCStatusRequest) Reset() {
 	*x = GetKYCStatusRequest{}
-	mi := &file_neobank_v1_user_service_proto_msgTypes[8]
+	mi := &file_neobank_v1_user_service_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -585,7 +682,7 @@ func (x *GetKYCStatusRequest) String() string {
 func (*GetKYCStatusRequest) ProtoMessage() {}
 
 func (x *GetKYCStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_user_service_proto_msgTypes[8]
+	mi := &file_neobank_v1_user_service_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -598,7 +695,7 @@ func (x *GetKYCStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetKYCStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetKYCStatusRequest) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{8}
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetKYCStatusRequest) GetUserId() string {
@@ -608,29 +705,31 @@ func (x *GetKYCStatusRequest) GetUserId() string {
 	return ""
 }
 
-type GetKYCStatusResponse struct {
+type KYCStatusResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	Status          KYCStatus              `protobuf:"varint,1,opt,name=status,proto3,enum=neobank.v1.KYCStatus" json:"status,omitempty"`
+	Status          string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
 	RejectionReason string                 `protobuf:"bytes,2,opt,name=rejection_reason,json=rejectionReason,proto3" json:"rejection_reason,omitempty"`
+	HttpStatus      int32                  `protobuf:"varint,3,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error           string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
-func (x *GetKYCStatusResponse) Reset() {
-	*x = GetKYCStatusResponse{}
-	mi := &file_neobank_v1_user_service_proto_msgTypes[9]
+func (x *KYCStatusResponse) Reset() {
+	*x = KYCStatusResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetKYCStatusResponse) String() string {
+func (x *KYCStatusResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetKYCStatusResponse) ProtoMessage() {}
+func (*KYCStatusResponse) ProtoMessage() {}
 
-func (x *GetKYCStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_user_service_proto_msgTypes[9]
+func (x *KYCStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -641,21 +740,1511 @@ func (x *GetKYCStatusResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetKYCStatusResponse.ProtoReflect.Descriptor instead.
-func (*GetKYCStatusResponse) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{9}
+// Deprecated: Use KYCStatusResponse.ProtoReflect.Descriptor instead.
+func (*KYCStatusResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *GetKYCStatusResponse) GetStatus() KYCStatus {
+func (x *KYCStatusResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
 	}
-	return KYCStatus_KYC_STATUS_UNSPECIFIED
+	return ""
 }
 
-func (x *GetKYCStatusResponse) GetRejectionReason() string {
+func (x *KYCStatusResponse) GetRejectionReason() string {
 	if x != nil {
 		return x.RejectionReason
+	}
+	return ""
+}
+
+func (x *KYCStatusResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *KYCStatusResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type GetWalletBalanceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Currency      string                 `protobuf:"bytes,2,opt,name=currency,proto3" json:"currency,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWalletBalanceRequest) Reset() {
+	*x = GetWalletBalanceRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWalletBalanceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWalletBalanceRequest) ProtoMessage() {}
+
+func (x *GetWalletBalanceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWalletBalanceRequest.ProtoReflect.Descriptor instead.
+func (*GetWalletBalanceRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetWalletBalanceRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *GetWalletBalanceRequest) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+type WalletBalanceResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Balance       *WalletBalance         `protobuf:"bytes,1,opt,name=balance,proto3" json:"balance,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,2,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WalletBalanceResponse) Reset() {
+	*x = WalletBalanceResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WalletBalanceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WalletBalanceResponse) ProtoMessage() {}
+
+func (x *WalletBalanceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WalletBalanceResponse.ProtoReflect.Descriptor instead.
+func (*WalletBalanceResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *WalletBalanceResponse) GetBalance() *WalletBalance {
+	if x != nil {
+		return x.Balance
+	}
+	return nil
+}
+
+func (x *WalletBalanceResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *WalletBalanceResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type ListWalletsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWalletsRequest) Reset() {
+	*x = ListWalletsRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWalletsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWalletsRequest) ProtoMessage() {}
+
+func (x *ListWalletsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWalletsRequest.ProtoReflect.Descriptor instead.
+func (*ListWalletsRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ListWalletsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type ListWalletsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Wallets       []*WalletBalance       `protobuf:"bytes,1,rep,name=wallets,proto3" json:"wallets,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,2,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWalletsResponse) Reset() {
+	*x = ListWalletsResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWalletsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWalletsResponse) ProtoMessage() {}
+
+func (x *ListWalletsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWalletsResponse.ProtoReflect.Descriptor instead.
+func (*ListWalletsResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ListWalletsResponse) GetWallets() []*WalletBalance {
+	if x != nil {
+		return x.Wallets
+	}
+	return nil
+}
+
+func (x *ListWalletsResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *ListWalletsResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type ProvisionWalletRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Currency       string                 `protobuf:"bytes,2,opt,name=currency,proto3" json:"currency,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ProvisionWalletRequest) Reset() {
+	*x = ProvisionWalletRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProvisionWalletRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProvisionWalletRequest) ProtoMessage() {}
+
+func (x *ProvisionWalletRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProvisionWalletRequest.ProtoReflect.Descriptor instead.
+func (*ProvisionWalletRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ProvisionWalletRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ProvisionWalletRequest) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *ProvisionWalletRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type ProvisionWalletResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	WalletId        string                 `protobuf:"bytes,1,opt,name=wallet_id,json=walletId,proto3" json:"wallet_id,omitempty"`
+	LedgerAccountId string                 `protobuf:"bytes,2,opt,name=ledger_account_id,json=ledgerAccountId,proto3" json:"ledger_account_id,omitempty"`
+	HttpStatus      int32                  `protobuf:"varint,3,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error           string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ProvisionWalletResponse) Reset() {
+	*x = ProvisionWalletResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProvisionWalletResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProvisionWalletResponse) ProtoMessage() {}
+
+func (x *ProvisionWalletResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProvisionWalletResponse.ProtoReflect.Descriptor instead.
+func (*ProvisionWalletResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ProvisionWalletResponse) GetWalletId() string {
+	if x != nil {
+		return x.WalletId
+	}
+	return ""
+}
+
+func (x *ProvisionWalletResponse) GetLedgerAccountId() string {
+	if x != nil {
+		return x.LedgerAccountId
+	}
+	return ""
+}
+
+func (x *ProvisionWalletResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *ProvisionWalletResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type DepositWalletRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Amount         string                 `protobuf:"bytes,2,opt,name=amount,proto3" json:"amount,omitempty"`
+	Currency       string                 `protobuf:"bytes,3,opt,name=currency,proto3" json:"currency,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *DepositWalletRequest) Reset() {
+	*x = DepositWalletRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DepositWalletRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DepositWalletRequest) ProtoMessage() {}
+
+func (x *DepositWalletRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DepositWalletRequest.ProtoReflect.Descriptor instead.
+func (*DepositWalletRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *DepositWalletRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *DepositWalletRequest) GetAmount() string {
+	if x != nil {
+		return x.Amount
+	}
+	return ""
+}
+
+func (x *DepositWalletRequest) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *DepositWalletRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type DepositWalletResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Deposit       *Deposit               `protobuf:"bytes,1,opt,name=deposit,proto3" json:"deposit,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,2,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DepositWalletResponse) Reset() {
+	*x = DepositWalletResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DepositWalletResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DepositWalletResponse) ProtoMessage() {}
+
+func (x *DepositWalletResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DepositWalletResponse.ProtoReflect.Descriptor instead.
+func (*DepositWalletResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *DepositWalletResponse) GetDeposit() *Deposit {
+	if x != nil {
+		return x.Deposit
+	}
+	return nil
+}
+
+func (x *DepositWalletResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *DepositWalletResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type ListWalletTransactionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Cursor        string                 `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWalletTransactionsRequest) Reset() {
+	*x = ListWalletTransactionsRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWalletTransactionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWalletTransactionsRequest) ProtoMessage() {}
+
+func (x *ListWalletTransactionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWalletTransactionsRequest.ProtoReflect.Descriptor instead.
+func (*ListWalletTransactionsRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ListWalletTransactionsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ListWalletTransactionsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListWalletTransactionsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+type ListWalletTransactionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Transactions  []*WalletTransaction   `protobuf:"bytes,1,rep,name=transactions,proto3" json:"transactions,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,3,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWalletTransactionsResponse) Reset() {
+	*x = ListWalletTransactionsResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWalletTransactionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWalletTransactionsResponse) ProtoMessage() {}
+
+func (x *ListWalletTransactionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWalletTransactionsResponse.ProtoReflect.Descriptor instead.
+func (*ListWalletTransactionsResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ListWalletTransactionsResponse) GetTransactions() []*WalletTransaction {
+	if x != nil {
+		return x.Transactions
+	}
+	return nil
+}
+
+func (x *ListWalletTransactionsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *ListWalletTransactionsResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *ListWalletTransactionsResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type ExportWalletTransactionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Format        string                 `protobuf:"bytes,2,opt,name=format,proto3" json:"format,omitempty"`
+	From          string                 `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"`
+	To            string                 `protobuf:"bytes,4,opt,name=to,proto3" json:"to,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExportWalletTransactionsRequest) Reset() {
+	*x = ExportWalletTransactionsRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExportWalletTransactionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExportWalletTransactionsRequest) ProtoMessage() {}
+
+func (x *ExportWalletTransactionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExportWalletTransactionsRequest.ProtoReflect.Descriptor instead.
+func (*ExportWalletTransactionsRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ExportWalletTransactionsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ExportWalletTransactionsRequest) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+func (x *ExportWalletTransactionsRequest) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *ExportWalletTransactionsRequest) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+type ExportWalletTransactionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CsvData       []byte                 `protobuf:"bytes,1,opt,name=csv_data,json=csvData,proto3" json:"csv_data,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,2,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExportWalletTransactionsResponse) Reset() {
+	*x = ExportWalletTransactionsResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExportWalletTransactionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExportWalletTransactionsResponse) ProtoMessage() {}
+
+func (x *ExportWalletTransactionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExportWalletTransactionsResponse.ProtoReflect.Descriptor instead.
+func (*ExportWalletTransactionsResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ExportWalletTransactionsResponse) GetCsvData() []byte {
+	if x != nil {
+		return x.CsvData
+	}
+	return nil
+}
+
+func (x *ExportWalletTransactionsResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *ExportWalletTransactionsResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type ListPayeesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPayeesRequest) Reset() {
+	*x = ListPayeesRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPayeesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPayeesRequest) ProtoMessage() {}
+
+func (x *ListPayeesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPayeesRequest.ProtoReflect.Descriptor instead.
+func (*ListPayeesRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ListPayeesRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ListPayeesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListPayeesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Payees        []*Payee               `protobuf:"bytes,1,rep,name=payees,proto3" json:"payees,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,2,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPayeesResponse) Reset() {
+	*x = ListPayeesResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPayeesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPayeesResponse) ProtoMessage() {}
+
+func (x *ListPayeesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPayeesResponse.ProtoReflect.Descriptor instead.
+func (*ListPayeesResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ListPayeesResponse) GetPayees() []*Payee {
+	if x != nil {
+		return x.Payees
+	}
+	return nil
+}
+
+func (x *ListPayeesResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *ListPayeesResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type CreatePayeeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	PayeeUserId   string                 `protobuf:"bytes,2,opt,name=payee_user_id,json=payeeUserId,proto3" json:"payee_user_id,omitempty"`
+	Nickname      string                 `protobuf:"bytes,3,opt,name=nickname,proto3" json:"nickname,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatePayeeRequest) Reset() {
+	*x = CreatePayeeRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatePayeeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatePayeeRequest) ProtoMessage() {}
+
+func (x *CreatePayeeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatePayeeRequest.ProtoReflect.Descriptor instead.
+func (*CreatePayeeRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *CreatePayeeRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *CreatePayeeRequest) GetPayeeUserId() string {
+	if x != nil {
+		return x.PayeeUserId
+	}
+	return ""
+}
+
+func (x *CreatePayeeRequest) GetNickname() string {
+	if x != nil {
+		return x.Nickname
+	}
+	return ""
+}
+
+type PayeeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Payee         *Payee                 `protobuf:"bytes,1,opt,name=payee,proto3" json:"payee,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,2,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PayeeResponse) Reset() {
+	*x = PayeeResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PayeeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PayeeResponse) ProtoMessage() {}
+
+func (x *PayeeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PayeeResponse.ProtoReflect.Descriptor instead.
+func (*PayeeResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *PayeeResponse) GetPayee() *Payee {
+	if x != nil {
+		return x.Payee
+	}
+	return nil
+}
+
+func (x *PayeeResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *PayeeResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type DeletePayeeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	PayeeId       string                 `protobuf:"bytes,2,opt,name=payee_id,json=payeeId,proto3" json:"payee_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeletePayeeRequest) Reset() {
+	*x = DeletePayeeRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeletePayeeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePayeeRequest) ProtoMessage() {}
+
+func (x *DeletePayeeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePayeeRequest.ProtoReflect.Descriptor instead.
+func (*DeletePayeeRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *DeletePayeeRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *DeletePayeeRequest) GetPayeeId() string {
+	if x != nil {
+		return x.PayeeId
+	}
+	return ""
+}
+
+type RegisterDeviceTokenRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Platform       string                 `protobuf:"bytes,2,opt,name=platform,proto3" json:"platform,omitempty"`
+	Token          string                 `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *RegisterDeviceTokenRequest) Reset() {
+	*x = RegisterDeviceTokenRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterDeviceTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterDeviceTokenRequest) ProtoMessage() {}
+
+func (x *RegisterDeviceTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterDeviceTokenRequest.ProtoReflect.Descriptor instead.
+func (*RegisterDeviceTokenRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *RegisterDeviceTokenRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *RegisterDeviceTokenRequest) GetPlatform() string {
+	if x != nil {
+		return x.Platform
+	}
+	return ""
+}
+
+func (x *RegisterDeviceTokenRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *RegisterDeviceTokenRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type DeviceTokenResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DeviceToken   *DeviceToken           `protobuf:"bytes,1,opt,name=device_token,json=deviceToken,proto3" json:"device_token,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,2,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeviceTokenResponse) Reset() {
+	*x = DeviceTokenResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeviceTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeviceTokenResponse) ProtoMessage() {}
+
+func (x *DeviceTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeviceTokenResponse.ProtoReflect.Descriptor instead.
+func (*DeviceTokenResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *DeviceTokenResponse) GetDeviceToken() *DeviceToken {
+	if x != nil {
+		return x.DeviceToken
+	}
+	return nil
+}
+
+func (x *DeviceTokenResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *DeviceTokenResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type DeleteDeviceTokenRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	TokenId        string                 `protobuf:"bytes,2,opt,name=token_id,json=tokenId,proto3" json:"token_id,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *DeleteDeviceTokenRequest) Reset() {
+	*x = DeleteDeviceTokenRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteDeviceTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteDeviceTokenRequest) ProtoMessage() {}
+
+func (x *DeleteDeviceTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteDeviceTokenRequest.ProtoReflect.Descriptor instead.
+func (*DeleteDeviceTokenRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *DeleteDeviceTokenRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *DeleteDeviceTokenRequest) GetTokenId() string {
+	if x != nil {
+		return x.TokenId
+	}
+	return ""
+}
+
+func (x *DeleteDeviceTokenRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type CloseAccountRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,2,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CloseAccountRequest) Reset() {
+	*x = CloseAccountRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloseAccountRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloseAccountRequest) ProtoMessage() {}
+
+func (x *CloseAccountRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloseAccountRequest.ProtoReflect.Descriptor instead.
+func (*CloseAccountRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *CloseAccountRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *CloseAccountRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type CreateReferralInviteRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,2,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CreateReferralInviteRequest) Reset() {
+	*x = CreateReferralInviteRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateReferralInviteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateReferralInviteRequest) ProtoMessage() {}
+
+func (x *CreateReferralInviteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateReferralInviteRequest.ProtoReflect.Descriptor instead.
+func (*CreateReferralInviteRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *CreateReferralInviteRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *CreateReferralInviteRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type ReferralInviteResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invite        *ReferralInvite        `protobuf:"bytes,1,opt,name=invite,proto3" json:"invite,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,2,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReferralInviteResponse) Reset() {
+	*x = ReferralInviteResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReferralInviteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReferralInviteResponse) ProtoMessage() {}
+
+func (x *ReferralInviteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReferralInviteResponse.ProtoReflect.Descriptor instead.
+func (*ReferralInviteResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *ReferralInviteResponse) GetInvite() *ReferralInvite {
+	if x != nil {
+		return x.Invite
+	}
+	return nil
+}
+
+func (x *ReferralInviteResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *ReferralInviteResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type ListReferralInvitesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReferralInvitesRequest) Reset() {
+	*x = ListReferralInvitesRequest{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReferralInvitesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReferralInvitesRequest) ProtoMessage() {}
+
+func (x *ListReferralInvitesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReferralInvitesRequest.ProtoReflect.Descriptor instead.
+func (*ListReferralInvitesRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *ListReferralInvitesRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ListReferralInvitesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListReferralInvitesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invites       []*ReferralInvite      `protobuf:"bytes,1,rep,name=invites,proto3" json:"invites,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,2,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReferralInvitesResponse) Reset() {
+	*x = ListReferralInvitesResponse{}
+	mi := &file_neobank_v1_user_service_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReferralInvitesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReferralInvitesResponse) ProtoMessage() {}
+
+func (x *ListReferralInvitesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_user_service_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReferralInvitesResponse.ProtoReflect.Descriptor instead.
+func (*ListReferralInvitesResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_user_service_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *ListReferralInvitesResponse) GetInvites() []*ReferralInvite {
+	if x != nil {
+		return x.Invites
+	}
+	return nil
+}
+
+func (x *ListReferralInvitesResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *ListReferralInvitesResponse) GetError() string {
+	if x != nil {
+		return x.Error
 	}
 	return ""
 }
@@ -665,59 +2254,198 @@ var File_neobank_v1_user_service_proto protoreflect.FileDescriptor
 const file_neobank_v1_user_service_proto_rawDesc = "" +
 	"\n" +
 	"\x1dneobank/v1/user_service.proto\x12\n" +
-	"neobank.v1\"\x82\x01\n" +
+	"neobank.v1\x1a\x16neobank/v1/types.proto\"\xa6\x01\n" +
+	"\fAuthResponse\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12!\n" +
+	"\faccess_token\x18\x02 \x01(\tR\vaccessToken\x12#\n" +
+	"\rrefresh_token\x18\x03 \x01(\tR\frefreshToken\x12\x1f\n" +
+	"\vhttp_status\x18\x04 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error\"F\n" +
+	"\rEmptyResponse\x12\x1f\n" +
+	"\vhttp_status\x18\x01 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"\xa3\x01\n" +
 	"\x0fRegisterRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x14\n" +
 	"\x05phone\x18\x02 \x01(\tR\x05phone\x12\x1a\n" +
-	"\bpassword\x18\x03 \x01(\tR\bpassword\x12'\n" +
-	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"s\n" +
-	"\x10RegisterResponse\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12!\n" +
-	"\faccess_token\x18\x02 \x01(\tR\vaccessToken\x12#\n" +
-	"\rrefresh_token\x18\x03 \x01(\tR\frefreshToken\"@\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword\x12\x1f\n" +
+	"\vinvite_code\x18\x04 \x01(\tR\n" +
+	"inviteCode\x12'\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"@\n" +
 	"\fLoginRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"p\n" +
-	"\rLoginResponse\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12!\n" +
-	"\faccess_token\x18\x02 \x01(\tR\vaccessToken\x12#\n" +
-	"\rrefresh_token\x18\x03 \x01(\tR\frefreshToken\",\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\":\n" +
+	"\x13RefreshTokenRequest\x12#\n" +
+	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"~\n" +
+	"\x15ChangePasswordRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12)\n" +
+	"\x10current_password\x18\x02 \x01(\tR\x0fcurrentPassword\x12!\n" +
+	"\fnew_password\x18\x03 \x01(\tR\vnewPassword\",\n" +
 	"\x11GetProfileRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xac\x01\n" +
-	"\x12GetProfileResponse\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
-	"\x05email\x18\x02 \x01(\tR\x05email\x12\x14\n" +
-	"\x05phone\x18\x03 \x01(\tR\x05phone\x12\x1b\n" +
-	"\tfull_name\x18\x04 \x01(\tR\bfullName\x124\n" +
-	"\n" +
-	"kyc_status\x18\x05 \x01(\x0e2\x15.neobank.v1.KYCStatusR\tkycStatus\"\xb8\x01\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"w\n" +
+	"\x0fProfileResponse\x12-\n" +
+	"\aprofile\x18\x01 \x01(\v2\x13.neobank.v1.ProfileR\aprofile\x12\x1f\n" +
+	"\vhttp_status\x18\x02 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\x86\x02\n" +
 	"\x10SubmitKYCRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
 	"\tfull_name\x18\x02 \x01(\tR\bfullName\x12\"\n" +
 	"\rdate_of_birth\x18\x03 \x01(\tR\vdateOfBirth\x12!\n" +
-	"\fcountry_code\x18\x04 \x01(\tR\vcountryCode\x12'\n" +
-	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"b\n" +
+	"\fcountry_code\x18\x04 \x01(\tR\vcountryCode\x12#\n" +
+	"\rdocument_type\x18\x05 \x01(\tR\fdocumentType\x12'\n" +
+	"\x0fdocument_number\x18\x06 \x01(\tR\x0edocumentNumber\x12'\n" +
+	"\x0fidempotency_key\x18\a \x01(\tR\x0eidempotencyKey\"\xca\x01\n" +
 	"\x11SubmitKYCResponse\x12\x1e\n" +
-	"\vkyc_case_id\x18\x01 \x01(\tR\tkycCaseId\x12-\n" +
-	"\x06status\x18\x02 \x01(\x0e2\x15.neobank.v1.KYCStatusR\x06status\".\n" +
+	"\vkyc_case_id\x18\x01 \x01(\tR\tkycCaseId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12\x1b\n" +
+	"\twallet_id\x18\x03 \x01(\tR\bwalletId\x12)\n" +
+	"\x10rejection_reason\x18\x04 \x01(\tR\x0frejectionReason\x12\x1f\n" +
+	"\vhttp_status\x18\x05 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x06 \x01(\tR\x05error\".\n" +
 	"\x13GetKYCStatusRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"p\n" +
-	"\x14GetKYCStatusResponse\x12-\n" +
-	"\x06status\x18\x01 \x01(\x0e2\x15.neobank.v1.KYCStatusR\x06status\x12)\n" +
-	"\x10rejection_reason\x18\x02 \x01(\tR\x0frejectionReason*\x8f\x01\n" +
-	"\tKYCStatus\x12\x1a\n" +
-	"\x16KYC_STATUS_UNSPECIFIED\x10\x00\x12\x16\n" +
-	"\x12KYC_STATUS_PENDING\x10\x01\x12\x17\n" +
-	"\x13KYC_STATUS_APPROVED\x10\x02\x12\x17\n" +
-	"\x13KYC_STATUS_REJECTED\x10\x03\x12\x1c\n" +
-	"\x18KYC_STATUS_MANUAL_REVIEW\x10\x042\xfc\x02\n" +
-	"\vUserService\x12E\n" +
-	"\bRegister\x12\x1b.neobank.v1.RegisterRequest\x1a\x1c.neobank.v1.RegisterResponse\x12<\n" +
-	"\x05Login\x12\x18.neobank.v1.LoginRequest\x1a\x19.neobank.v1.LoginResponse\x12K\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x8d\x01\n" +
+	"\x11KYCStatusResponse\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12)\n" +
+	"\x10rejection_reason\x18\x02 \x01(\tR\x0frejectionReason\x12\x1f\n" +
+	"\vhttp_status\x18\x03 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\"N\n" +
+	"\x17GetWalletBalanceRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
+	"\bcurrency\x18\x02 \x01(\tR\bcurrency\"\x83\x01\n" +
+	"\x15WalletBalanceResponse\x123\n" +
+	"\abalance\x18\x01 \x01(\v2\x19.neobank.v1.WalletBalanceR\abalance\x12\x1f\n" +
+	"\vhttp_status\x18\x02 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"-\n" +
+	"\x12ListWalletsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x81\x01\n" +
+	"\x13ListWalletsResponse\x123\n" +
+	"\awallets\x18\x01 \x03(\v2\x19.neobank.v1.WalletBalanceR\awallets\x12\x1f\n" +
+	"\vhttp_status\x18\x02 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"v\n" +
+	"\x16ProvisionWalletRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
+	"\bcurrency\x18\x02 \x01(\tR\bcurrency\x12'\n" +
+	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\"\x99\x01\n" +
+	"\x17ProvisionWalletResponse\x12\x1b\n" +
+	"\twallet_id\x18\x01 \x01(\tR\bwalletId\x12*\n" +
+	"\x11ledger_account_id\x18\x02 \x01(\tR\x0fledgerAccountId\x12\x1f\n" +
+	"\vhttp_status\x18\x03 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\"\x8c\x01\n" +
+	"\x14DepositWalletRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x16\n" +
+	"\x06amount\x18\x02 \x01(\tR\x06amount\x12\x1a\n" +
+	"\bcurrency\x18\x03 \x01(\tR\bcurrency\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"}\n" +
+	"\x15DepositWalletResponse\x12-\n" +
+	"\adeposit\x18\x01 \x01(\v2\x13.neobank.v1.DepositR\adeposit\x12\x1f\n" +
+	"\vhttp_status\x18\x02 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"f\n" +
+	"\x1dListWalletTransactionsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06cursor\x18\x03 \x01(\tR\x06cursor\"\xbb\x01\n" +
+	"\x1eListWalletTransactionsResponse\x12A\n" +
+	"\ftransactions\x18\x01 \x03(\v2\x1d.neobank.v1.WalletTransactionR\ftransactions\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x1f\n" +
+	"\vhttp_status\x18\x03 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\"v\n" +
+	"\x1fExportWalletTransactionsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x16\n" +
+	"\x06format\x18\x02 \x01(\tR\x06format\x12\x12\n" +
+	"\x04from\x18\x03 \x01(\tR\x04from\x12\x0e\n" +
+	"\x02to\x18\x04 \x01(\tR\x02to\"t\n" +
+	" ExportWalletTransactionsResponse\x12\x19\n" +
+	"\bcsv_data\x18\x01 \x01(\fR\acsvData\x12\x1f\n" +
+	"\vhttp_status\x18\x02 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"B\n" +
+	"\x11ListPayeesRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"v\n" +
+	"\x12ListPayeesResponse\x12)\n" +
+	"\x06payees\x18\x01 \x03(\v2\x11.neobank.v1.PayeeR\x06payees\x12\x1f\n" +
+	"\vhttp_status\x18\x02 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"m\n" +
+	"\x12CreatePayeeRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\"\n" +
+	"\rpayee_user_id\x18\x02 \x01(\tR\vpayeeUserId\x12\x1a\n" +
+	"\bnickname\x18\x03 \x01(\tR\bnickname\"o\n" +
+	"\rPayeeResponse\x12'\n" +
+	"\x05payee\x18\x01 \x01(\v2\x11.neobank.v1.PayeeR\x05payee\x12\x1f\n" +
+	"\vhttp_status\x18\x02 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"H\n" +
+	"\x12DeletePayeeRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x19\n" +
+	"\bpayee_id\x18\x02 \x01(\tR\apayeeId\"\x90\x01\n" +
+	"\x1aRegisterDeviceTokenRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
+	"\bplatform\x18\x02 \x01(\tR\bplatform\x12\x14\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\x88\x01\n" +
+	"\x13DeviceTokenResponse\x12:\n" +
+	"\fdevice_token\x18\x01 \x01(\v2\x17.neobank.v1.DeviceTokenR\vdeviceToken\x12\x1f\n" +
+	"\vhttp_status\x18\x02 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"w\n" +
+	"\x18DeleteDeviceTokenRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x19\n" +
+	"\btoken_id\x18\x02 \x01(\tR\atokenId\x12'\n" +
+	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\"W\n" +
+	"\x13CloseAccountRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12'\n" +
+	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\"_\n" +
+	"\x1bCreateReferralInviteRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12'\n" +
+	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\"\x83\x01\n" +
+	"\x16ReferralInviteResponse\x122\n" +
+	"\x06invite\x18\x01 \x01(\v2\x1a.neobank.v1.ReferralInviteR\x06invite\x12\x1f\n" +
+	"\vhttp_status\x18\x02 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"K\n" +
+	"\x1aListReferralInvitesRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\x8a\x01\n" +
+	"\x1bListReferralInvitesResponse\x124\n" +
+	"\ainvites\x18\x01 \x03(\v2\x1a.neobank.v1.ReferralInviteR\ainvites\x12\x1f\n" +
+	"\vhttp_status\x18\x02 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error2\x82\x0e\n" +
+	"\vUserService\x12A\n" +
+	"\bRegister\x12\x1b.neobank.v1.RegisterRequest\x1a\x18.neobank.v1.AuthResponse\x12;\n" +
+	"\x05Login\x12\x18.neobank.v1.LoginRequest\x1a\x18.neobank.v1.AuthResponse\x12I\n" +
+	"\fRefreshToken\x12\x1f.neobank.v1.RefreshTokenRequest\x1a\x18.neobank.v1.AuthResponse\x12N\n" +
+	"\x0eChangePassword\x12!.neobank.v1.ChangePasswordRequest\x1a\x19.neobank.v1.EmptyResponse\x12H\n" +
 	"\n" +
-	"GetProfile\x12\x1d.neobank.v1.GetProfileRequest\x1a\x1e.neobank.v1.GetProfileResponse\x12H\n" +
-	"\tSubmitKYC\x12\x1c.neobank.v1.SubmitKYCRequest\x1a\x1d.neobank.v1.SubmitKYCResponse\x12Q\n" +
-	"\fGetKYCStatus\x12\x1f.neobank.v1.GetKYCStatusRequest\x1a .neobank.v1.GetKYCStatusResponseB\xa0\x01\n" +
+	"GetProfile\x12\x1d.neobank.v1.GetProfileRequest\x1a\x1b.neobank.v1.ProfileResponse\x12H\n" +
+	"\tSubmitKYC\x12\x1c.neobank.v1.SubmitKYCRequest\x1a\x1d.neobank.v1.SubmitKYCResponse\x12N\n" +
+	"\fGetKYCStatus\x12\x1f.neobank.v1.GetKYCStatusRequest\x1a\x1d.neobank.v1.KYCStatusResponse\x12Z\n" +
+	"\x10GetWalletBalance\x12#.neobank.v1.GetWalletBalanceRequest\x1a!.neobank.v1.WalletBalanceResponse\x12N\n" +
+	"\vListWallets\x12\x1e.neobank.v1.ListWalletsRequest\x1a\x1f.neobank.v1.ListWalletsResponse\x12Z\n" +
+	"\x0fProvisionWallet\x12\".neobank.v1.ProvisionWalletRequest\x1a#.neobank.v1.ProvisionWalletResponse\x12T\n" +
+	"\rDepositWallet\x12 .neobank.v1.DepositWalletRequest\x1a!.neobank.v1.DepositWalletResponse\x12o\n" +
+	"\x16ListWalletTransactions\x12).neobank.v1.ListWalletTransactionsRequest\x1a*.neobank.v1.ListWalletTransactionsResponse\x12u\n" +
+	"\x18ExportWalletTransactions\x12+.neobank.v1.ExportWalletTransactionsRequest\x1a,.neobank.v1.ExportWalletTransactionsResponse\x12K\n" +
+	"\n" +
+	"ListPayees\x12\x1d.neobank.v1.ListPayeesRequest\x1a\x1e.neobank.v1.ListPayeesResponse\x12H\n" +
+	"\vCreatePayee\x12\x1e.neobank.v1.CreatePayeeRequest\x1a\x19.neobank.v1.PayeeResponse\x12H\n" +
+	"\vDeletePayee\x12\x1e.neobank.v1.DeletePayeeRequest\x1a\x19.neobank.v1.EmptyResponse\x12^\n" +
+	"\x13RegisterDeviceToken\x12&.neobank.v1.RegisterDeviceTokenRequest\x1a\x1f.neobank.v1.DeviceTokenResponse\x12T\n" +
+	"\x11DeleteDeviceToken\x12$.neobank.v1.DeleteDeviceTokenRequest\x1a\x19.neobank.v1.EmptyResponse\x12J\n" +
+	"\fCloseAccount\x12\x1f.neobank.v1.CloseAccountRequest\x1a\x19.neobank.v1.EmptyResponse\x12c\n" +
+	"\x14CreateReferralInvite\x12'.neobank.v1.CreateReferralInviteRequest\x1a\".neobank.v1.ReferralInviteResponse\x12f\n" +
+	"\x13ListReferralInvites\x12&.neobank.v1.ListReferralInvitesRequest\x1a'.neobank.v1.ListReferralInvitesResponseB\xa0\x01\n" +
 	"\x0ecom.neobank.v1B\x10UserServiceProtoP\x01Z3github.com/iho/neobank/pkg/gen/neobank/v1;neobankv1\xa2\x02\x03NXX\xaa\x02\n" +
 	"Neobank.V1\xca\x02\n" +
 	"Neobank\\V1\xe2\x02\x16Neobank\\V1\\GPBMetadata\xea\x02\vNeobank::V1b\x06proto3"
@@ -734,40 +2462,111 @@ func file_neobank_v1_user_service_proto_rawDescGZIP() []byte {
 	return file_neobank_v1_user_service_proto_rawDescData
 }
 
-var file_neobank_v1_user_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_neobank_v1_user_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_neobank_v1_user_service_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_neobank_v1_user_service_proto_goTypes = []any{
-	(KYCStatus)(0),               // 0: neobank.v1.KYCStatus
-	(*RegisterRequest)(nil),      // 1: neobank.v1.RegisterRequest
-	(*RegisterResponse)(nil),     // 2: neobank.v1.RegisterResponse
-	(*LoginRequest)(nil),         // 3: neobank.v1.LoginRequest
-	(*LoginResponse)(nil),        // 4: neobank.v1.LoginResponse
-	(*GetProfileRequest)(nil),    // 5: neobank.v1.GetProfileRequest
-	(*GetProfileResponse)(nil),   // 6: neobank.v1.GetProfileResponse
-	(*SubmitKYCRequest)(nil),     // 7: neobank.v1.SubmitKYCRequest
-	(*SubmitKYCResponse)(nil),    // 8: neobank.v1.SubmitKYCResponse
-	(*GetKYCStatusRequest)(nil),  // 9: neobank.v1.GetKYCStatusRequest
-	(*GetKYCStatusResponse)(nil), // 10: neobank.v1.GetKYCStatusResponse
+	(*AuthResponse)(nil),                     // 0: neobank.v1.AuthResponse
+	(*EmptyResponse)(nil),                    // 1: neobank.v1.EmptyResponse
+	(*RegisterRequest)(nil),                  // 2: neobank.v1.RegisterRequest
+	(*LoginRequest)(nil),                     // 3: neobank.v1.LoginRequest
+	(*RefreshTokenRequest)(nil),              // 4: neobank.v1.RefreshTokenRequest
+	(*ChangePasswordRequest)(nil),            // 5: neobank.v1.ChangePasswordRequest
+	(*GetProfileRequest)(nil),                // 6: neobank.v1.GetProfileRequest
+	(*ProfileResponse)(nil),                  // 7: neobank.v1.ProfileResponse
+	(*SubmitKYCRequest)(nil),                 // 8: neobank.v1.SubmitKYCRequest
+	(*SubmitKYCResponse)(nil),                // 9: neobank.v1.SubmitKYCResponse
+	(*GetKYCStatusRequest)(nil),              // 10: neobank.v1.GetKYCStatusRequest
+	(*KYCStatusResponse)(nil),                // 11: neobank.v1.KYCStatusResponse
+	(*GetWalletBalanceRequest)(nil),          // 12: neobank.v1.GetWalletBalanceRequest
+	(*WalletBalanceResponse)(nil),            // 13: neobank.v1.WalletBalanceResponse
+	(*ListWalletsRequest)(nil),               // 14: neobank.v1.ListWalletsRequest
+	(*ListWalletsResponse)(nil),              // 15: neobank.v1.ListWalletsResponse
+	(*ProvisionWalletRequest)(nil),           // 16: neobank.v1.ProvisionWalletRequest
+	(*ProvisionWalletResponse)(nil),          // 17: neobank.v1.ProvisionWalletResponse
+	(*DepositWalletRequest)(nil),             // 18: neobank.v1.DepositWalletRequest
+	(*DepositWalletResponse)(nil),            // 19: neobank.v1.DepositWalletResponse
+	(*ListWalletTransactionsRequest)(nil),    // 20: neobank.v1.ListWalletTransactionsRequest
+	(*ListWalletTransactionsResponse)(nil),   // 21: neobank.v1.ListWalletTransactionsResponse
+	(*ExportWalletTransactionsRequest)(nil),  // 22: neobank.v1.ExportWalletTransactionsRequest
+	(*ExportWalletTransactionsResponse)(nil), // 23: neobank.v1.ExportWalletTransactionsResponse
+	(*ListPayeesRequest)(nil),                // 24: neobank.v1.ListPayeesRequest
+	(*ListPayeesResponse)(nil),               // 25: neobank.v1.ListPayeesResponse
+	(*CreatePayeeRequest)(nil),               // 26: neobank.v1.CreatePayeeRequest
+	(*PayeeResponse)(nil),                    // 27: neobank.v1.PayeeResponse
+	(*DeletePayeeRequest)(nil),               // 28: neobank.v1.DeletePayeeRequest
+	(*RegisterDeviceTokenRequest)(nil),       // 29: neobank.v1.RegisterDeviceTokenRequest
+	(*DeviceTokenResponse)(nil),              // 30: neobank.v1.DeviceTokenResponse
+	(*DeleteDeviceTokenRequest)(nil),         // 31: neobank.v1.DeleteDeviceTokenRequest
+	(*CloseAccountRequest)(nil),              // 32: neobank.v1.CloseAccountRequest
+	(*CreateReferralInviteRequest)(nil),      // 33: neobank.v1.CreateReferralInviteRequest
+	(*ReferralInviteResponse)(nil),           // 34: neobank.v1.ReferralInviteResponse
+	(*ListReferralInvitesRequest)(nil),       // 35: neobank.v1.ListReferralInvitesRequest
+	(*ListReferralInvitesResponse)(nil),      // 36: neobank.v1.ListReferralInvitesResponse
+	(*Profile)(nil),                          // 37: neobank.v1.Profile
+	(*WalletBalance)(nil),                    // 38: neobank.v1.WalletBalance
+	(*Deposit)(nil),                          // 39: neobank.v1.Deposit
+	(*WalletTransaction)(nil),                // 40: neobank.v1.WalletTransaction
+	(*Payee)(nil),                            // 41: neobank.v1.Payee
+	(*DeviceToken)(nil),                      // 42: neobank.v1.DeviceToken
+	(*ReferralInvite)(nil),                   // 43: neobank.v1.ReferralInvite
 }
 var file_neobank_v1_user_service_proto_depIdxs = []int32{
-	0,  // 0: neobank.v1.GetProfileResponse.kyc_status:type_name -> neobank.v1.KYCStatus
-	0,  // 1: neobank.v1.SubmitKYCResponse.status:type_name -> neobank.v1.KYCStatus
-	0,  // 2: neobank.v1.GetKYCStatusResponse.status:type_name -> neobank.v1.KYCStatus
-	1,  // 3: neobank.v1.UserService.Register:input_type -> neobank.v1.RegisterRequest
-	3,  // 4: neobank.v1.UserService.Login:input_type -> neobank.v1.LoginRequest
-	5,  // 5: neobank.v1.UserService.GetProfile:input_type -> neobank.v1.GetProfileRequest
-	7,  // 6: neobank.v1.UserService.SubmitKYC:input_type -> neobank.v1.SubmitKYCRequest
-	9,  // 7: neobank.v1.UserService.GetKYCStatus:input_type -> neobank.v1.GetKYCStatusRequest
-	2,  // 8: neobank.v1.UserService.Register:output_type -> neobank.v1.RegisterResponse
-	4,  // 9: neobank.v1.UserService.Login:output_type -> neobank.v1.LoginResponse
-	6,  // 10: neobank.v1.UserService.GetProfile:output_type -> neobank.v1.GetProfileResponse
-	8,  // 11: neobank.v1.UserService.SubmitKYC:output_type -> neobank.v1.SubmitKYCResponse
-	10, // 12: neobank.v1.UserService.GetKYCStatus:output_type -> neobank.v1.GetKYCStatusResponse
-	8,  // [8:13] is the sub-list for method output_type
-	3,  // [3:8] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	37, // 0: neobank.v1.ProfileResponse.profile:type_name -> neobank.v1.Profile
+	38, // 1: neobank.v1.WalletBalanceResponse.balance:type_name -> neobank.v1.WalletBalance
+	38, // 2: neobank.v1.ListWalletsResponse.wallets:type_name -> neobank.v1.WalletBalance
+	39, // 3: neobank.v1.DepositWalletResponse.deposit:type_name -> neobank.v1.Deposit
+	40, // 4: neobank.v1.ListWalletTransactionsResponse.transactions:type_name -> neobank.v1.WalletTransaction
+	41, // 5: neobank.v1.ListPayeesResponse.payees:type_name -> neobank.v1.Payee
+	41, // 6: neobank.v1.PayeeResponse.payee:type_name -> neobank.v1.Payee
+	42, // 7: neobank.v1.DeviceTokenResponse.device_token:type_name -> neobank.v1.DeviceToken
+	43, // 8: neobank.v1.ReferralInviteResponse.invite:type_name -> neobank.v1.ReferralInvite
+	43, // 9: neobank.v1.ListReferralInvitesResponse.invites:type_name -> neobank.v1.ReferralInvite
+	2,  // 10: neobank.v1.UserService.Register:input_type -> neobank.v1.RegisterRequest
+	3,  // 11: neobank.v1.UserService.Login:input_type -> neobank.v1.LoginRequest
+	4,  // 12: neobank.v1.UserService.RefreshToken:input_type -> neobank.v1.RefreshTokenRequest
+	5,  // 13: neobank.v1.UserService.ChangePassword:input_type -> neobank.v1.ChangePasswordRequest
+	6,  // 14: neobank.v1.UserService.GetProfile:input_type -> neobank.v1.GetProfileRequest
+	8,  // 15: neobank.v1.UserService.SubmitKYC:input_type -> neobank.v1.SubmitKYCRequest
+	10, // 16: neobank.v1.UserService.GetKYCStatus:input_type -> neobank.v1.GetKYCStatusRequest
+	12, // 17: neobank.v1.UserService.GetWalletBalance:input_type -> neobank.v1.GetWalletBalanceRequest
+	14, // 18: neobank.v1.UserService.ListWallets:input_type -> neobank.v1.ListWalletsRequest
+	16, // 19: neobank.v1.UserService.ProvisionWallet:input_type -> neobank.v1.ProvisionWalletRequest
+	18, // 20: neobank.v1.UserService.DepositWallet:input_type -> neobank.v1.DepositWalletRequest
+	20, // 21: neobank.v1.UserService.ListWalletTransactions:input_type -> neobank.v1.ListWalletTransactionsRequest
+	22, // 22: neobank.v1.UserService.ExportWalletTransactions:input_type -> neobank.v1.ExportWalletTransactionsRequest
+	24, // 23: neobank.v1.UserService.ListPayees:input_type -> neobank.v1.ListPayeesRequest
+	26, // 24: neobank.v1.UserService.CreatePayee:input_type -> neobank.v1.CreatePayeeRequest
+	28, // 25: neobank.v1.UserService.DeletePayee:input_type -> neobank.v1.DeletePayeeRequest
+	29, // 26: neobank.v1.UserService.RegisterDeviceToken:input_type -> neobank.v1.RegisterDeviceTokenRequest
+	31, // 27: neobank.v1.UserService.DeleteDeviceToken:input_type -> neobank.v1.DeleteDeviceTokenRequest
+	32, // 28: neobank.v1.UserService.CloseAccount:input_type -> neobank.v1.CloseAccountRequest
+	33, // 29: neobank.v1.UserService.CreateReferralInvite:input_type -> neobank.v1.CreateReferralInviteRequest
+	35, // 30: neobank.v1.UserService.ListReferralInvites:input_type -> neobank.v1.ListReferralInvitesRequest
+	0,  // 31: neobank.v1.UserService.Register:output_type -> neobank.v1.AuthResponse
+	0,  // 32: neobank.v1.UserService.Login:output_type -> neobank.v1.AuthResponse
+	0,  // 33: neobank.v1.UserService.RefreshToken:output_type -> neobank.v1.AuthResponse
+	1,  // 34: neobank.v1.UserService.ChangePassword:output_type -> neobank.v1.EmptyResponse
+	7,  // 35: neobank.v1.UserService.GetProfile:output_type -> neobank.v1.ProfileResponse
+	9,  // 36: neobank.v1.UserService.SubmitKYC:output_type -> neobank.v1.SubmitKYCResponse
+	11, // 37: neobank.v1.UserService.GetKYCStatus:output_type -> neobank.v1.KYCStatusResponse
+	13, // 38: neobank.v1.UserService.GetWalletBalance:output_type -> neobank.v1.WalletBalanceResponse
+	15, // 39: neobank.v1.UserService.ListWallets:output_type -> neobank.v1.ListWalletsResponse
+	17, // 40: neobank.v1.UserService.ProvisionWallet:output_type -> neobank.v1.ProvisionWalletResponse
+	19, // 41: neobank.v1.UserService.DepositWallet:output_type -> neobank.v1.DepositWalletResponse
+	21, // 42: neobank.v1.UserService.ListWalletTransactions:output_type -> neobank.v1.ListWalletTransactionsResponse
+	23, // 43: neobank.v1.UserService.ExportWalletTransactions:output_type -> neobank.v1.ExportWalletTransactionsResponse
+	25, // 44: neobank.v1.UserService.ListPayees:output_type -> neobank.v1.ListPayeesResponse
+	27, // 45: neobank.v1.UserService.CreatePayee:output_type -> neobank.v1.PayeeResponse
+	1,  // 46: neobank.v1.UserService.DeletePayee:output_type -> neobank.v1.EmptyResponse
+	30, // 47: neobank.v1.UserService.RegisterDeviceToken:output_type -> neobank.v1.DeviceTokenResponse
+	1,  // 48: neobank.v1.UserService.DeleteDeviceToken:output_type -> neobank.v1.EmptyResponse
+	1,  // 49: neobank.v1.UserService.CloseAccount:output_type -> neobank.v1.EmptyResponse
+	34, // 50: neobank.v1.UserService.CreateReferralInvite:output_type -> neobank.v1.ReferralInviteResponse
+	36, // 51: neobank.v1.UserService.ListReferralInvites:output_type -> neobank.v1.ListReferralInvitesResponse
+	31, // [31:52] is the sub-list for method output_type
+	10, // [10:31] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_neobank_v1_user_service_proto_init() }
@@ -775,19 +2574,19 @@ func file_neobank_v1_user_service_proto_init() {
 	if File_neobank_v1_user_service_proto != nil {
 		return
 	}
+	file_neobank_v1_types_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_neobank_v1_user_service_proto_rawDesc), len(file_neobank_v1_user_service_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   10,
+			NumEnums:      0,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_neobank_v1_user_service_proto_goTypes,
 		DependencyIndexes: file_neobank_v1_user_service_proto_depIdxs,
-		EnumInfos:         file_neobank_v1_user_service_proto_enumTypes,
 		MessageInfos:      file_neobank_v1_user_service_proto_msgTypes,
 	}.Build()
 	File_neobank_v1_user_service_proto = out.File

@@ -169,6 +169,7 @@ func main() {
 	neobankv1.RegisterUserInternalServiceServer(grpcServer, grpcadapter.NewServer(
 		userRepo, walletRepo, listDeviceTokensUC, upsertPayeeUC, piiAccessRepo,
 	))
+	neobankv1.RegisterUserServiceServer(grpcServer, grpcadapter.NewGatewayServer(strictServer))
 	grpcLis, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.GRPCPort))
 	if err != nil {
 		logger.Error("grpc listen failed", "error", err)

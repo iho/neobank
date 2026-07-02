@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package neobank.v1;
+
+import "neobank/v1/types.proto";
+
+option go_package = "github.com/iho/neobank/pkg/gen/neobank/v1;neobankv1";
+
+service NotificationService {
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc MarkNotificationRead(MarkNotificationReadRequest) returns (NotificationResponse);
+  rpc MarkAllNotificationsRead(MarkAllNotificationsReadRequest) returns (MarkAllReadResponse);
+  rpc GetNotificationPreferences(GetNotificationPreferencesRequest) returns (NotificationPreferencesResponse);
+  rpc UpdateNotificationPreferences(UpdateNotificationPreferencesRequest) returns (NotificationPreferencesResponse);
+}
+
+message ListNotificationsRequest {
+  string user_id = 1;
+  int32 limit = 2;
+  string cursor = 3;
+}
+
+message MarkNotificationReadRequest {
+  string user_id = 1;
+  string notification_id = 2;
+}
+
+message MarkAllNotificationsReadRequest {
+  string user_id = 1;
+}
+
+message GetNotificationPreferencesRequest {
+  string user_id = 1;
+}
+
+message UpdateNotificationPreferencesRequest {
+  string user_id = 1;
+  optional bool transfers = 2;
+  optional bool cards = 3;
+  optional bool kyc = 4;
+  optional bool push = 5;
+  optional bool email = 6;
+}
+
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  int64 unread_count = 2;
+  string next_cursor = 3;
+  int32 http_status = 4;
+  string error = 5;
+}
+
+message NotificationResponse {
+  Notification notification = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message MarkAllReadResponse {
+  int64 marked_count = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message NotificationPreferencesResponse {
+  NotificationPreferences preferences = 1;
+  int32 http_status = 2;
+  string error = 3;
+}

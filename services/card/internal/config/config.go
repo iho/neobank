@@ -5,6 +5,7 @@ import "os"
 type Config struct {
 	DatabaseURL            string
 	HTTPPort               string
+	GRPCPort               string
 	UserURL                string
 	UserGRPCAddr           string
 	LedgerAddr             string
@@ -18,6 +19,7 @@ func Load() Config {
 	return Config{
 		DatabaseURL:            env("DATABASE_URL", "postgres://neobank:neobank@localhost:5432/neobank?sslmode=disable"),
 		HTTPPort:               env("HTTP_PORT", "8084"),
+		GRPCPort:               env("GRPC_PORT", "50054"),
 		UserURL:                env("USER_SERVICE_URL", "http://localhost:8081"),
 		UserGRPCAddr:           env("USER_GRPC_ADDR", "localhost:50052"),
 		LedgerAddr:             env("LEDGER_GRPC_ADDR", "localhost:50051"),

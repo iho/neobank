@@ -2,53 +2,58 @@ syntax = "proto3";
 
 package neobank.v1;
 
+import "neobank/v1/types.proto";
+
 option go_package = "github.com/iho/neobank/pkg/gen/neobank/v1;neobankv1";
 
 service PaymentService {
-  rpc CreateP2PTransfer(CreateP2PTransferRequest) returns (CreateP2PTransferResponse);
-  rpc GetTransfer(GetTransferRequest) returns (GetTransferResponse);
+  rpc CreateP2PTransfer(CreateP2PTransferRequest) returns (TransferResponse);
+  rpc GetTransfer(GetTransferRequest) returns (TransferResponse);
   rpc ListTransfers(ListTransfersRequest) returns (ListTransfersResponse);
+  rpc GetLimits(GetLimitsRequest) returns (LimitsResponse);
 }
 
 message CreateP2PTransferRequest {
-  string sender_user_id = 1;
+  string user_id = 1;
   string recipient_phone = 2;
-  string amount = 3;
-  string currency = 4;
-  string memo = 5;
-  string idempotency_key = 6;
-}
-
-message CreateP2PTransferResponse {
-  TransferView transfer = 1;
+  string recipient_email = 3;
+  string recipient_user_id = 4;
+  string amount = 5;
+  string currency = 6;
+  string memo = 7;
+  string idempotency_key = 8;
 }
 
 message GetTransferRequest {
-  string transfer_id = 1;
-}
-
-message GetTransferResponse {
-  TransferView transfer = 1;
+  string user_id = 1;
+  string transfer_id = 2;
 }
 
 message ListTransfersRequest {
   string user_id = 1;
   int32 limit = 2;
-  int32 offset = 3;
+  string cursor = 3;
+}
+
+message GetLimitsRequest {
+  string user_id = 1;
+}
+
+message TransferResponse {
+  Transfer transfer = 1;
+  int32 http_status = 2;
+  string error = 3;
 }
 
 message ListTransfersResponse {
-  repeated TransferView transfers = 1;
+  repeated Transfer transfers = 1;
+  string next_cursor = 2;
+  int32 http_status = 3;
+  string error = 4;
 }
 
-message TransferView {
-  string id = 1;
-  string status = 2;
-  string sender_user_id = 3;
-  string recipient_user_id = 4;
-  string amount = 5;
-  string currency = 6;
-  string ledger_transfer_id = 7;
-  string failure_reason = 8;
-  string memo = 9;
+message LimitsResponse {
+  TransferLimits p2p = 1;
+  int32 http_status = 2;
+  string error = 3;
 }

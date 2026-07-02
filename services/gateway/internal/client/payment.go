@@ -1,36 +1,47 @@
 package client
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 
-	"github.com/iho/neobank/pkg/otel"
+	neobankv1 "github.com/iho/neobank/pkg/gen/neobank/v1"
+	"github.com/iho/neobank/pkg/grpcutil"
+	"google.golang.org/grpc"
 )
 
 type PaymentClient struct {
-	baseURL    string
-	httpClient *http.Client
+	conn *grpc.ClientConn
+	rpc  neobankv1.PaymentServiceClient
 }
 
-func NewPaymentClient(baseURL string) *PaymentClient {
-	return &PaymentClient{
-		baseURL:    baseURL,
-		httpClient: &http.Client{Transport: otel.OutboundTransport(nil)},
+func NewPaymentClient(ctx context.Context, cfg Config) (*PaymentClient, error) {
+	if cfg.Addr == "" {
+		cfg.Addr = "localhost:50053"
 	}
+	conn, err := grpcutil.Dial(ctx, cfg.Addr)
+	if err != nil {
+		return nil, fmt.Errorf("dial payment service: %w", err)
+	}
+	return &PaymentClient{
+		conn: conn,
+		rpc:  neobankv1.NewPaymentServiceClient(conn),
+	}, nil
+}
+
+func (c *PaymentClient) Close() error {
+	if c.conn == nil {
+		return nil
+	}
+	return c.conn.Close()
 }
 
 type CreateTransferRequest struct {
-	RecipientPhone   string `json:"recipient_phone,omitempty"`
-	RecipientEmail   string `json:"recipient_email,omitempty"`
-	RecipientUserID  string `json:"recipient_user_id,omitempty"`
-	Amount           string `json:"amount"`
-	Currency         string `json:"currency"`
-	Memo             string `json:"memo"`
+	RecipientPhone  string `json:"recipient_phone,omitempty"`
+	RecipientEmail  string `json:"recipient_email,omitempty"`
+	RecipientUserID string `json:"recipient_user_id,omitempty"`
+	Amount          string `json:"amount"`
+	Currency        string `json:"currency"`
+	Memo            string `json:"memo"`
 }
 
 type TransferView struct {
@@ -69,122 +80,116 @@ type LimitsResponse struct {
 }
 
 func (c *PaymentClient) ListTransfers(ctx context.Context, userID string, limit int, cursor string) (TransferList, int, error) {
-	reqURL := fmt.Sprintf("%s/api/v1/transfers?limit=%d", c.baseURL, limit)
-	if cursor != "" {
-		reqURL += "&cursor=" + url.QueryEscape(cursor)
-	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := c.rpc.ListTransfers(ctx, &neobankv1.ListTransfersRequest{
+		UserId: userID,
+		Limit:  int32(limit),
+		Cursor: cursor,
+	})
 	if err != nil {
-		return TransferList{}, 0, err
+		return TransferList{}, 0, dialError("payment", err)
 	}
-	httpReq.Header.Set("X-User-Id", userID)
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return TransferList{}, 0, fmt.Errorf("payment service request: %w", err)
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return TransferList{}, status, statusError("payment", status, resp.GetError())
 	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return TransferList{}, 0, err
+	out := TransferList{NextCursor: resp.GetNextCursor()}
+	for _, t := range resp.GetTransfers() {
+		out.Transfers = append(out.Transfers, toTransferView(t))
 	}
-	if resp.StatusCode != http.StatusOK {
-		return TransferList{}, resp.StatusCode, fmt.Errorf("payment service status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var out TransferList
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return TransferList{}, resp.StatusCode, err
-	}
-	return out, resp.StatusCode, nil
+	return out, status, nil
 }
 
 func (c *PaymentClient) GetLimits(ctx context.Context, userID string) (LimitsResponse, int, error) {
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/limits", nil)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := c.rpc.GetLimits(ctx, &neobankv1.GetLimitsRequest{UserId: userID})
 	if err != nil {
-		return LimitsResponse{}, 0, err
+		return LimitsResponse{}, 0, dialError("payment", err)
 	}
-	httpReq.Header.Set("X-User-Id", userID)
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return LimitsResponse{}, 0, fmt.Errorf("payment service request: %w", err)
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return LimitsResponse{}, status, statusError("payment", status, resp.GetError())
 	}
-	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return LimitsResponse{}, 0, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return LimitsResponse{}, resp.StatusCode, fmt.Errorf("payment service status %d: %s", resp.StatusCode, string(respBody))
-	}
-	var out LimitsResponse
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return LimitsResponse{}, resp.StatusCode, err
-	}
-	return out, resp.StatusCode, nil
+	return LimitsResponse{P2P: toTransferLimitsView(resp.GetP2P())}, status, nil
 }
 
 func (c *PaymentClient) GetTransfer(ctx context.Context, userID, transferID string) (TransferView, int, error) {
-	reqURL := fmt.Sprintf("%s/api/v1/transfers/%s", c.baseURL, transferID)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	resp, err := c.rpc.GetTransfer(ctx, &neobankv1.GetTransferRequest{
+		UserId:     userID,
+		TransferId: transferID,
+	})
 	if err != nil {
-		return TransferView{}, 0, err
+		return TransferView{}, 0, dialError("payment", err)
 	}
-	httpReq.Header.Set("X-User-Id", userID)
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return TransferView{}, 0, fmt.Errorf("payment service request: %w", err)
+	status := int(resp.GetHttpStatus())
+	if status != 200 {
+		return TransferView{}, status, statusError("payment", status, resp.GetError())
 	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return TransferView{}, 0, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return TransferView{}, resp.StatusCode, fmt.Errorf("payment service status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var out TransferView
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return TransferView{}, resp.StatusCode, err
-	}
-	return out, resp.StatusCode, nil
+	return toTransferView(resp.GetTransfer()), status, nil
 }
 
 func (c *PaymentClient) CreateP2PTransfer(ctx context.Context, userID, idempotencyKey string, req CreateTransferRequest) (TransferView, int, error) {
-	body, err := json.Marshal(req)
+	ctx = grpcutil.WithUserID(ctx, userID)
+	ctx = grpcutil.WithIdempotencyKey(ctx, idempotencyKey)
+	resp, err := c.rpc.CreateP2PTransfer(ctx, &neobankv1.CreateP2PTransferRequest{
+		UserId:          userID,
+		RecipientPhone:  req.RecipientPhone,
+		RecipientEmail:  req.RecipientEmail,
+		RecipientUserId: req.RecipientUserID,
+		Amount:          req.Amount,
+		Currency:        req.Currency,
+		Memo:            req.Memo,
+		IdempotencyKey:  idempotencyKey,
+	})
 	if err != nil {
-		return TransferView{}, 0, err
+		return TransferView{}, 0, dialError("payment", err)
 	}
+	status := int(resp.GetHttpStatus())
+	out := toTransferView(resp.GetTransfer())
+	if status >= 400 {
+		return out, status, statusError("payment", status, "")
+	}
+	return out, status, nil
+}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/transfers", bytes.NewReader(body))
-	if err != nil {
-		return TransferView{}, 0, err
+func toTransferView(t *neobankv1.Transfer) TransferView {
+	if t == nil {
+		return TransferView{}
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Idempotency-Key", idempotencyKey)
-	httpReq.Header.Set("X-User-Id", userID)
+	return TransferView{
+		ID:               t.GetId(),
+		Status:           t.GetStatus(),
+		SenderUserID:     t.GetSenderUserId(),
+		RecipientUserID:  t.GetRecipientUserId(),
+		Amount:           t.GetAmount(),
+		Currency:         t.GetCurrency(),
+		LedgerTransferID: t.GetLedgerTransferId(),
+		FailureReason:    t.GetFailureReason(),
+		Memo:             t.GetMemo(),
+		CreatedAt:        t.GetCreatedAt(),
+		CompletedAt:      t.GetCompletedAt(),
+	}
+}
 
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return TransferView{}, 0, fmt.Errorf("payment service request: %w", err)
+func toLimitGaugeView(g *neobankv1.LimitGauge) LimitGaugeView {
+	if g == nil {
+		return LimitGaugeView{}
 	}
-	defer resp.Body.Close()
+	return LimitGaugeView{
+		Limit:     g.GetLimit(),
+		Used:      g.GetUsed(),
+		Remaining: g.GetRemaining(),
+	}
+}
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return TransferView{}, 0, err
+func toTransferLimitsView(l *neobankv1.TransferLimits) TransferLimitsView {
+	if l == nil {
+		return TransferLimitsView{}
 	}
-
-	var out TransferView
-	if err := json.Unmarshal(respBody, &out); err != nil {
-		return TransferView{}, resp.StatusCode, fmt.Errorf("payment service status %d: %s", resp.StatusCode, string(respBody))
+	return TransferLimitsView{
+		HourlyTransferCount: toLimitGaugeView(l.GetHourlyTransferCount()),
+		DailyTransferAmount: toLimitGaugeView(l.GetDailyTransferAmount()),
+		SingleTransferMax:   l.GetSingleTransferMax(),
 	}
-	if resp.StatusCode >= 400 {
-		return out, resp.StatusCode, fmt.Errorf("payment service status %d", resp.StatusCode)
-	}
-	return out, resp.StatusCode, nil
 }

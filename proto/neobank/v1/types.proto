@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package neobank.v1;
+
+option go_package = "github.com/iho/neobank/pkg/gen/neobank/v1;neobankv1";
+
+enum KYCStatus {
+  KYC_STATUS_UNSPECIFIED = 0;
+  KYC_STATUS_PENDING = 1;
+  KYC_STATUS_APPROVED = 2;
+  KYC_STATUS_REJECTED = 3;
+  KYC_STATUS_MANUAL_REVIEW = 4;
+}
+
+message Profile {
+  string user_id = 1;
+  string email = 2;
+  string phone = 3;
+  string status = 4;
+  string full_name = 5;
+  string date_of_birth = 6;
+  string country_code = 7;
+  string kyc_status = 8;
+  string created_at = 9;
+}
+
+message WalletBalance {
+  string wallet_id = 1;
+  string ledger_account_id = 2;
+  string currency = 3;
+  string balance = 4;
+  string encumbered_balance = 5;
+  string available_balance = 6;
+}
+
+message WalletTransaction {
+  string id = 1;
+  string type = 2;
+  string amount = 3;
+  string currency = 4;
+  string direction = 5;
+  string status = 6;
+  string counterparty = 7;
+  string memo = 8;
+  string reference_id = 9;
+  string created_at = 10;
+}
+
+message Payee {
+  string id = 1;
+  string payee_user_id = 2;
+  string nickname = 3;
+  string payee_email = 4;
+  string payee_phone = 5;
+  string last_used_at = 6;
+  string created_at = 7;
+}
+
+message DeviceToken {
+  string id = 1;
+  string user_id = 2;
+  string platform = 3;
+  string token = 4;
+  string created_at = 5;
+}
+
+message ReferralInvite {
+  string id = 1;
+  string inviter_user_id = 2;
+  string invite_code = 3;
+  string invitee_user_id = 4;
+  string status = 5;
+  string created_at = 6;
+  string accepted_at = 7;
+}
+
+message Deposit {
+  string id = 1;
+  string wallet_id = 2;
+  string amount = 3;
+  string currency = 4;
+  string ledger_transfer_id = 5;
+  string status = 6;
+  string created_at = 7;
+}
+
+message Transfer {
+  string id = 1;
+  string status = 2;
+  string sender_user_id = 3;
+  string recipient_user_id = 4;
+  string amount = 5;
+  string currency = 6;
+  string ledger_transfer_id = 7;
+  string failure_reason = 8;
+  string memo = 9;
+  string created_at = 10;
+  string completed_at = 11;
+}
+
+message LimitGauge {
+  string limit = 1;
+  string used = 2;
+  string remaining = 3;
+}
+
+message TransferLimits {
+  LimitGauge hourly_transfer_count = 1;
+  LimitGauge daily_transfer_amount = 2;
+  string single_transfer_max = 3;
+}
+
+message Card {
+  string id = 1;
+  string user_id = 2;
+  string wallet_id = 3;
+  string last_four = 4;
+  string status = 5;
+  int32 expiry_month = 6;
+  int32 expiry_year = 7;
+  string daily_limit = 8;
+  bool online_only = 9;
+}
+
+message Authorization {
+  string id = 1;
+  string card_id = 2;
+  string user_id = 3;
+  string merchant_name = 4;
+  string merchant_category_code = 5;
+  string amount = 6;
+  string currency = 7;
+  string status = 8;
+  string ledger_hold_id = 9;
+  string ledger_transfer_id = 10;
+  string failure_reason = 11;
+  string created_at = 12;
+  string captured_at = 13;
+}
+
+message Notification {
+  string id = 1;
+  string user_id = 2;
+  string event_type = 3;
+  string title = 4;
+  string body = 5;
+  bool read = 6;
+  string created_at = 7;
+}
+
+message NotificationPreferences {
+  bool transfers = 1;
+  bool cards = 2;
+  bool kyc = 3;
+  bool push = 4;
+  bool email = 5;
+}

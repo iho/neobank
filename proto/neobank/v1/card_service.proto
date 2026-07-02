@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package neobank.v1;
+
+import "neobank/v1/types.proto";
+
+option go_package = "github.com/iho/neobank/pkg/gen/neobank/v1;neobankv1";
+
+service CardService {
+  rpc IssueCard(IssueCardRequest) returns (CardResponse);
+  rpc ListCards(ListCardsRequest) returns (ListCardsResponse);
+  rpc GetCard(GetCardRequest) returns (CardResponse);
+  rpc UpdateCardControls(UpdateCardControlsRequest) returns (CardResponse);
+  rpc FreezeCard(CardActionRequest) returns (CardResponse);
+  rpc UnfreezeCard(CardActionRequest) returns (CardResponse);
+  rpc AuthorizeTransaction(AuthorizeTransactionRequest) returns (AuthorizationResponse);
+  rpc ListAuthorizations(ListAuthorizationsRequest) returns (ListAuthorizationsResponse);
+  rpc GetAuthorization(GetAuthorizationRequest) returns (AuthorizationResponse);
+  rpc CaptureAuthorization(CaptureAuthorizationRequest) returns (AuthorizationResponse);
+}
+
+message IssueCardRequest {
+  string user_id = 1;
+  string wallet_id = 2;
+  string cardholder_name = 3;
+  string daily_limit = 4;
+  bool online_only = 5;
+  string idempotency_key = 6;
+}
+
+message ListCardsRequest {
+  string user_id = 1;
+}
+
+message GetCardRequest {
+  string user_id = 1;
+  string card_id = 2;
+}
+
+message UpdateCardControlsRequest {
+  string user_id = 1;
+  string card_id = 2;
+  optional string daily_limit = 3;
+  optional bool online_only = 4;
+}
+
+message CardActionRequest {
+  string user_id = 1;
+  string card_id = 2;
+}
+
+message AuthorizeTransactionRequest {
+  string user_id = 1;
+  string card_id = 2;
+  string amount = 3;
+  string currency = 4;
+  string merchant_name = 5;
+  string merchant_category_code = 6;
+  string channel = 7;
+  string idempotency_key = 8;
+}
+
+message ListAuthorizationsRequest {
+  string user_id = 1;
+  int32 limit = 2;
+}
+
+message GetAuthorizationRequest {
+  string user_id = 1;
+  string authorization_id = 2;
+}
+
+message CaptureAuthorizationRequest {
+  string user_id = 1;
+  string authorization_id = 2;
+}
+
+message CardResponse {
+  Card card = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message ListCardsResponse {
+  repeated Card cards = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message AuthorizationResponse {
+  Authorization authorization = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message ListAuthorizationsResponse {
+  repeated Authorization authorizations = 1;
+  int32 http_status = 2;
+  string error = 3;
+}

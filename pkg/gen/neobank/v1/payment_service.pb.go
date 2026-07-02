@@ -22,15 +22,17 @@ const (
 )
 
 type CreateP2PTransferRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	SenderUserId   string                 `protobuf:"bytes,1,opt,name=sender_user_id,json=senderUserId,proto3" json:"sender_user_id,omitempty"`
-	RecipientPhone string                 `protobuf:"bytes,2,opt,name=recipient_phone,json=recipientPhone,proto3" json:"recipient_phone,omitempty"`
-	Amount         string                 `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"`
-	Currency       string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
-	Memo           string                 `protobuf:"bytes,5,opt,name=memo,proto3" json:"memo,omitempty"`
-	IdempotencyKey string                 `protobuf:"bytes,6,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	UserId          string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	RecipientPhone  string                 `protobuf:"bytes,2,opt,name=recipient_phone,json=recipientPhone,proto3" json:"recipient_phone,omitempty"`
+	RecipientEmail  string                 `protobuf:"bytes,3,opt,name=recipient_email,json=recipientEmail,proto3" json:"recipient_email,omitempty"`
+	RecipientUserId string                 `protobuf:"bytes,4,opt,name=recipient_user_id,json=recipientUserId,proto3" json:"recipient_user_id,omitempty"`
+	Amount          string                 `protobuf:"bytes,5,opt,name=amount,proto3" json:"amount,omitempty"`
+	Currency        string                 `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
+	Memo            string                 `protobuf:"bytes,7,opt,name=memo,proto3" json:"memo,omitempty"`
+	IdempotencyKey  string                 `protobuf:"bytes,8,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CreateP2PTransferRequest) Reset() {
@@ -63,9 +65,9 @@ func (*CreateP2PTransferRequest) Descriptor() ([]byte, []int) {
 	return file_neobank_v1_payment_service_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *CreateP2PTransferRequest) GetSenderUserId() string {
+func (x *CreateP2PTransferRequest) GetUserId() string {
 	if x != nil {
-		return x.SenderUserId
+		return x.UserId
 	}
 	return ""
 }
@@ -73,6 +75,20 @@ func (x *CreateP2PTransferRequest) GetSenderUserId() string {
 func (x *CreateP2PTransferRequest) GetRecipientPhone() string {
 	if x != nil {
 		return x.RecipientPhone
+	}
+	return ""
+}
+
+func (x *CreateP2PTransferRequest) GetRecipientEmail() string {
+	if x != nil {
+		return x.RecipientEmail
+	}
+	return ""
+}
+
+func (x *CreateP2PTransferRequest) GetRecipientUserId() string {
+	if x != nil {
+		return x.RecipientUserId
 	}
 	return ""
 }
@@ -105,60 +121,17 @@ func (x *CreateP2PTransferRequest) GetIdempotencyKey() string {
 	return ""
 }
 
-type CreateP2PTransferResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Transfer      *TransferView          `protobuf:"bytes,1,opt,name=transfer,proto3" json:"transfer,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateP2PTransferResponse) Reset() {
-	*x = CreateP2PTransferResponse{}
-	mi := &file_neobank_v1_payment_service_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateP2PTransferResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateP2PTransferResponse) ProtoMessage() {}
-
-func (x *CreateP2PTransferResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_payment_service_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateP2PTransferResponse.ProtoReflect.Descriptor instead.
-func (*CreateP2PTransferResponse) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_payment_service_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *CreateP2PTransferResponse) GetTransfer() *TransferView {
-	if x != nil {
-		return x.Transfer
-	}
-	return nil
-}
-
 type GetTransferRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TransferId    string                 `protobuf:"bytes,1,opt,name=transfer_id,json=transferId,proto3" json:"transfer_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	TransferId    string                 `protobuf:"bytes,2,opt,name=transfer_id,json=transferId,proto3" json:"transfer_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetTransferRequest) Reset() {
 	*x = GetTransferRequest{}
-	mi := &file_neobank_v1_payment_service_proto_msgTypes[2]
+	mi := &file_neobank_v1_payment_service_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -170,7 +143,7 @@ func (x *GetTransferRequest) String() string {
 func (*GetTransferRequest) ProtoMessage() {}
 
 func (x *GetTransferRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_payment_service_proto_msgTypes[2]
+	mi := &file_neobank_v1_payment_service_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -183,7 +156,14 @@ func (x *GetTransferRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTransferRequest.ProtoReflect.Descriptor instead.
 func (*GetTransferRequest) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_payment_service_proto_rawDescGZIP(), []int{2}
+	return file_neobank_v1_payment_service_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GetTransferRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
 }
 
 func (x *GetTransferRequest) GetTransferId() string {
@@ -193,62 +173,18 @@ func (x *GetTransferRequest) GetTransferId() string {
 	return ""
 }
 
-type GetTransferResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Transfer      *TransferView          `protobuf:"bytes,1,opt,name=transfer,proto3" json:"transfer,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetTransferResponse) Reset() {
-	*x = GetTransferResponse{}
-	mi := &file_neobank_v1_payment_service_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetTransferResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetTransferResponse) ProtoMessage() {}
-
-func (x *GetTransferResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_payment_service_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetTransferResponse.ProtoReflect.Descriptor instead.
-func (*GetTransferResponse) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_payment_service_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *GetTransferResponse) GetTransfer() *TransferView {
-	if x != nil {
-		return x.Transfer
-	}
-	return nil
-}
-
 type ListTransfersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	Cursor        string                 `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListTransfersRequest) Reset() {
 	*x = ListTransfersRequest{}
-	mi := &file_neobank_v1_payment_service_proto_msgTypes[4]
+	mi := &file_neobank_v1_payment_service_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -260,7 +196,7 @@ func (x *ListTransfersRequest) String() string {
 func (*ListTransfersRequest) ProtoMessage() {}
 
 func (x *ListTransfersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_neobank_v1_payment_service_proto_msgTypes[4]
+	mi := &file_neobank_v1_payment_service_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -273,7 +209,7 @@ func (x *ListTransfersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTransfersRequest.ProtoReflect.Descriptor instead.
 func (*ListTransfersRequest) Descriptor() ([]byte, []int) {
-	return file_neobank_v1_payment_service_proto_rawDescGZIP(), []int{4}
+	return file_neobank_v1_payment_service_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ListTransfersRequest) GetUserId() string {
@@ -290,16 +226,123 @@ func (x *ListTransfersRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListTransfersRequest) GetOffset() int32 {
+func (x *ListTransfersRequest) GetCursor() string {
 	if x != nil {
-		return x.Offset
+		return x.Cursor
+	}
+	return ""
+}
+
+type GetLimitsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLimitsRequest) Reset() {
+	*x = GetLimitsRequest{}
+	mi := &file_neobank_v1_payment_service_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLimitsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLimitsRequest) ProtoMessage() {}
+
+func (x *GetLimitsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_payment_service_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLimitsRequest.ProtoReflect.Descriptor instead.
+func (*GetLimitsRequest) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_payment_service_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetLimitsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type TransferResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Transfer      *Transfer              `protobuf:"bytes,1,opt,name=transfer,proto3" json:"transfer,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,2,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TransferResponse) Reset() {
+	*x = TransferResponse{}
+	mi := &file_neobank_v1_payment_service_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TransferResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TransferResponse) ProtoMessage() {}
+
+func (x *TransferResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_neobank_v1_payment_service_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TransferResponse.ProtoReflect.Descriptor instead.
+func (*TransferResponse) Descriptor() ([]byte, []int) {
+	return file_neobank_v1_payment_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *TransferResponse) GetTransfer() *Transfer {
+	if x != nil {
+		return x.Transfer
+	}
+	return nil
+}
+
+func (x *TransferResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
 	}
 	return 0
 }
 
+func (x *TransferResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 type ListTransfersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Transfers     []*TransferView        `protobuf:"bytes,1,rep,name=transfers,proto3" json:"transfers,omitempty"`
+	Transfers     []*Transfer            `protobuf:"bytes,1,rep,name=transfers,proto3" json:"transfers,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,3,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -334,42 +377,57 @@ func (*ListTransfersResponse) Descriptor() ([]byte, []int) {
 	return file_neobank_v1_payment_service_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *ListTransfersResponse) GetTransfers() []*TransferView {
+func (x *ListTransfersResponse) GetTransfers() []*Transfer {
 	if x != nil {
 		return x.Transfers
 	}
 	return nil
 }
 
-type TransferView struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Status           string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	SenderUserId     string                 `protobuf:"bytes,3,opt,name=sender_user_id,json=senderUserId,proto3" json:"sender_user_id,omitempty"`
-	RecipientUserId  string                 `protobuf:"bytes,4,opt,name=recipient_user_id,json=recipientUserId,proto3" json:"recipient_user_id,omitempty"`
-	Amount           string                 `protobuf:"bytes,5,opt,name=amount,proto3" json:"amount,omitempty"`
-	Currency         string                 `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
-	LedgerTransferId string                 `protobuf:"bytes,7,opt,name=ledger_transfer_id,json=ledgerTransferId,proto3" json:"ledger_transfer_id,omitempty"`
-	FailureReason    string                 `protobuf:"bytes,8,opt,name=failure_reason,json=failureReason,proto3" json:"failure_reason,omitempty"`
-	Memo             string                 `protobuf:"bytes,9,opt,name=memo,proto3" json:"memo,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+func (x *ListTransfersResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
 }
 
-func (x *TransferView) Reset() {
-	*x = TransferView{}
+func (x *ListTransfersResponse) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *ListTransfersResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type LimitsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	P2P           *TransferLimits        `protobuf:"bytes,1,opt,name=p2p,proto3" json:"p2p,omitempty"`
+	HttpStatus    int32                  `protobuf:"varint,2,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LimitsResponse) Reset() {
+	*x = LimitsResponse{}
 	mi := &file_neobank_v1_payment_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *TransferView) String() string {
+func (x *LimitsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*TransferView) ProtoMessage() {}
+func (*LimitsResponse) ProtoMessage() {}
 
-func (x *TransferView) ProtoReflect() protoreflect.Message {
+func (x *LimitsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_neobank_v1_payment_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -381,70 +439,28 @@ func (x *TransferView) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use TransferView.ProtoReflect.Descriptor instead.
-func (*TransferView) Descriptor() ([]byte, []int) {
+// Deprecated: Use LimitsResponse.ProtoReflect.Descriptor instead.
+func (*LimitsResponse) Descriptor() ([]byte, []int) {
 	return file_neobank_v1_payment_service_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *TransferView) GetId() string {
+func (x *LimitsResponse) GetP2P() *TransferLimits {
 	if x != nil {
-		return x.Id
+		return x.P2P
 	}
-	return ""
+	return nil
 }
 
-func (x *TransferView) GetStatus() string {
+func (x *LimitsResponse) GetHttpStatus() int32 {
 	if x != nil {
-		return x.Status
+		return x.HttpStatus
 	}
-	return ""
+	return 0
 }
 
-func (x *TransferView) GetSenderUserId() string {
+func (x *LimitsResponse) GetError() string {
 	if x != nil {
-		return x.SenderUserId
-	}
-	return ""
-}
-
-func (x *TransferView) GetRecipientUserId() string {
-	if x != nil {
-		return x.RecipientUserId
-	}
-	return ""
-}
-
-func (x *TransferView) GetAmount() string {
-	if x != nil {
-		return x.Amount
-	}
-	return ""
-}
-
-func (x *TransferView) GetCurrency() string {
-	if x != nil {
-		return x.Currency
-	}
-	return ""
-}
-
-func (x *TransferView) GetLedgerTransferId() string {
-	if x != nil {
-		return x.LedgerTransferId
-	}
-	return ""
-}
-
-func (x *TransferView) GetFailureReason() string {
-	if x != nil {
-		return x.FailureReason
-	}
-	return ""
-}
-
-func (x *TransferView) GetMemo() string {
-	if x != nil {
-		return x.Memo
+		return x.Error
 	}
 	return ""
 }
@@ -454,41 +470,48 @@ var File_neobank_v1_payment_service_proto protoreflect.FileDescriptor
 const file_neobank_v1_payment_service_proto_rawDesc = "" +
 	"\n" +
 	" neobank/v1/payment_service.proto\x12\n" +
-	"neobank.v1\"\xda\x01\n" +
-	"\x18CreateP2PTransferRequest\x12$\n" +
-	"\x0esender_user_id\x18\x01 \x01(\tR\fsenderUserId\x12'\n" +
-	"\x0frecipient_phone\x18\x02 \x01(\tR\x0erecipientPhone\x12\x16\n" +
-	"\x06amount\x18\x03 \x01(\tR\x06amount\x12\x1a\n" +
-	"\bcurrency\x18\x04 \x01(\tR\bcurrency\x12\x12\n" +
-	"\x04memo\x18\x05 \x01(\tR\x04memo\x12'\n" +
-	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey\"Q\n" +
-	"\x19CreateP2PTransferResponse\x124\n" +
-	"\btransfer\x18\x01 \x01(\v2\x18.neobank.v1.TransferViewR\btransfer\"5\n" +
-	"\x12GetTransferRequest\x12\x1f\n" +
-	"\vtransfer_id\x18\x01 \x01(\tR\n" +
-	"transferId\"K\n" +
-	"\x13GetTransferResponse\x124\n" +
-	"\btransfer\x18\x01 \x01(\v2\x18.neobank.v1.TransferViewR\btransfer\"]\n" +
+	"neobank.v1\x1a\x16neobank/v1/types.proto\"\xa2\x02\n" +
+	"\x18CreateP2PTransferRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12'\n" +
+	"\x0frecipient_phone\x18\x02 \x01(\tR\x0erecipientPhone\x12'\n" +
+	"\x0frecipient_email\x18\x03 \x01(\tR\x0erecipientEmail\x12*\n" +
+	"\x11recipient_user_id\x18\x04 \x01(\tR\x0frecipientUserId\x12\x16\n" +
+	"\x06amount\x18\x05 \x01(\tR\x06amount\x12\x1a\n" +
+	"\bcurrency\x18\x06 \x01(\tR\bcurrency\x12\x12\n" +
+	"\x04memo\x18\a \x01(\tR\x04memo\x12'\n" +
+	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKey\"N\n" +
+	"\x12GetTransferRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1f\n" +
+	"\vtransfer_id\x18\x02 \x01(\tR\n" +
+	"transferId\"]\n" +
 	"\x14ListTransfersRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"O\n" +
-	"\x15ListTransfersResponse\x126\n" +
-	"\ttransfers\x18\x01 \x03(\v2\x18.neobank.v1.TransferViewR\ttransfers\"\xa5\x02\n" +
-	"\fTransferView\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\x12$\n" +
-	"\x0esender_user_id\x18\x03 \x01(\tR\fsenderUserId\x12*\n" +
-	"\x11recipient_user_id\x18\x04 \x01(\tR\x0frecipientUserId\x12\x16\n" +
-	"\x06amount\x18\x05 \x01(\tR\x06amount\x12\x1a\n" +
-	"\bcurrency\x18\x06 \x01(\tR\bcurrency\x12,\n" +
-	"\x12ledger_transfer_id\x18\a \x01(\tR\x10ledgerTransferId\x12%\n" +
-	"\x0efailure_reason\x18\b \x01(\tR\rfailureReason\x12\x12\n" +
-	"\x04memo\x18\t \x01(\tR\x04memo2\x98\x02\n" +
-	"\x0ePaymentService\x12`\n" +
-	"\x11CreateP2PTransfer\x12$.neobank.v1.CreateP2PTransferRequest\x1a%.neobank.v1.CreateP2PTransferResponse\x12N\n" +
-	"\vGetTransfer\x12\x1e.neobank.v1.GetTransferRequest\x1a\x1f.neobank.v1.GetTransferResponse\x12T\n" +
-	"\rListTransfers\x12 .neobank.v1.ListTransfersRequest\x1a!.neobank.v1.ListTransfersResponseB\xa3\x01\n" +
+	"\x06cursor\x18\x03 \x01(\tR\x06cursor\"+\n" +
+	"\x10GetLimitsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"{\n" +
+	"\x10TransferResponse\x120\n" +
+	"\btransfer\x18\x01 \x01(\v2\x14.neobank.v1.TransferR\btransfer\x12\x1f\n" +
+	"\vhttp_status\x18\x02 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\xa3\x01\n" +
+	"\x15ListTransfersResponse\x122\n" +
+	"\ttransfers\x18\x01 \x03(\v2\x14.neobank.v1.TransferR\ttransfers\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x1f\n" +
+	"\vhttp_status\x18\x03 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\"u\n" +
+	"\x0eLimitsResponse\x12,\n" +
+	"\x03p2p\x18\x01 \x01(\v2\x1a.neobank.v1.TransferLimitsR\x03p2p\x12\x1f\n" +
+	"\vhttp_status\x18\x02 \x01(\x05R\n" +
+	"httpStatus\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error2\xd3\x02\n" +
+	"\x0ePaymentService\x12W\n" +
+	"\x11CreateP2PTransfer\x12$.neobank.v1.CreateP2PTransferRequest\x1a\x1c.neobank.v1.TransferResponse\x12K\n" +
+	"\vGetTransfer\x12\x1e.neobank.v1.GetTransferRequest\x1a\x1c.neobank.v1.TransferResponse\x12T\n" +
+	"\rListTransfers\x12 .neobank.v1.ListTransfersRequest\x1a!.neobank.v1.ListTransfersResponse\x12E\n" +
+	"\tGetLimits\x12\x1c.neobank.v1.GetLimitsRequest\x1a\x1a.neobank.v1.LimitsResponseB\xa3\x01\n" +
 	"\x0ecom.neobank.v1B\x13PaymentServiceProtoP\x01Z3github.com/iho/neobank/pkg/gen/neobank/v1;neobankv1\xa2\x02\x03NXX\xaa\x02\n" +
 	"Neobank.V1\xca\x02\n" +
 	"Neobank\\V1\xe2\x02\x16Neobank\\V1\\GPBMetadata\xea\x02\vNeobank::V1b\x06proto3"
@@ -507,26 +530,30 @@ func file_neobank_v1_payment_service_proto_rawDescGZIP() []byte {
 
 var file_neobank_v1_payment_service_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_neobank_v1_payment_service_proto_goTypes = []any{
-	(*CreateP2PTransferRequest)(nil),  // 0: neobank.v1.CreateP2PTransferRequest
-	(*CreateP2PTransferResponse)(nil), // 1: neobank.v1.CreateP2PTransferResponse
-	(*GetTransferRequest)(nil),        // 2: neobank.v1.GetTransferRequest
-	(*GetTransferResponse)(nil),       // 3: neobank.v1.GetTransferResponse
-	(*ListTransfersRequest)(nil),      // 4: neobank.v1.ListTransfersRequest
-	(*ListTransfersResponse)(nil),     // 5: neobank.v1.ListTransfersResponse
-	(*TransferView)(nil),              // 6: neobank.v1.TransferView
+	(*CreateP2PTransferRequest)(nil), // 0: neobank.v1.CreateP2PTransferRequest
+	(*GetTransferRequest)(nil),       // 1: neobank.v1.GetTransferRequest
+	(*ListTransfersRequest)(nil),     // 2: neobank.v1.ListTransfersRequest
+	(*GetLimitsRequest)(nil),         // 3: neobank.v1.GetLimitsRequest
+	(*TransferResponse)(nil),         // 4: neobank.v1.TransferResponse
+	(*ListTransfersResponse)(nil),    // 5: neobank.v1.ListTransfersResponse
+	(*LimitsResponse)(nil),           // 6: neobank.v1.LimitsResponse
+	(*Transfer)(nil),                 // 7: neobank.v1.Transfer
+	(*TransferLimits)(nil),           // 8: neobank.v1.TransferLimits
 }
 var file_neobank_v1_payment_service_proto_depIdxs = []int32{
-	6, // 0: neobank.v1.CreateP2PTransferResponse.transfer:type_name -> neobank.v1.TransferView
-	6, // 1: neobank.v1.GetTransferResponse.transfer:type_name -> neobank.v1.TransferView
-	6, // 2: neobank.v1.ListTransfersResponse.transfers:type_name -> neobank.v1.TransferView
+	7, // 0: neobank.v1.TransferResponse.transfer:type_name -> neobank.v1.Transfer
+	7, // 1: neobank.v1.ListTransfersResponse.transfers:type_name -> neobank.v1.Transfer
+	8, // 2: neobank.v1.LimitsResponse.p2p:type_name -> neobank.v1.TransferLimits
 	0, // 3: neobank.v1.PaymentService.CreateP2PTransfer:input_type -> neobank.v1.CreateP2PTransferRequest
-	2, // 4: neobank.v1.PaymentService.GetTransfer:input_type -> neobank.v1.GetTransferRequest
-	4, // 5: neobank.v1.PaymentService.ListTransfers:input_type -> neobank.v1.ListTransfersRequest
-	1, // 6: neobank.v1.PaymentService.CreateP2PTransfer:output_type -> neobank.v1.CreateP2PTransferResponse
-	3, // 7: neobank.v1.PaymentService.GetTransfer:output_type -> neobank.v1.GetTransferResponse
-	5, // 8: neobank.v1.PaymentService.ListTransfers:output_type -> neobank.v1.ListTransfersResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
+	1, // 4: neobank.v1.PaymentService.GetTransfer:input_type -> neobank.v1.GetTransferRequest
+	2, // 5: neobank.v1.PaymentService.ListTransfers:input_type -> neobank.v1.ListTransfersRequest
+	3, // 6: neobank.v1.PaymentService.GetLimits:input_type -> neobank.v1.GetLimitsRequest
+	4, // 7: neobank.v1.PaymentService.CreateP2PTransfer:output_type -> neobank.v1.TransferResponse
+	4, // 8: neobank.v1.PaymentService.GetTransfer:output_type -> neobank.v1.TransferResponse
+	5, // 9: neobank.v1.PaymentService.ListTransfers:output_type -> neobank.v1.ListTransfersResponse
+	6, // 10: neobank.v1.PaymentService.GetLimits:output_type -> neobank.v1.LimitsResponse
+	7, // [7:11] is the sub-list for method output_type
+	3, // [3:7] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
 	3, // [3:3] is the sub-list for extension extendee
 	0, // [0:3] is the sub-list for field type_name
@@ -537,6 +564,7 @@ func file_neobank_v1_payment_service_proto_init() {
 	if File_neobank_v1_payment_service_proto != nil {
 		return
 	}
+	file_neobank_v1_types_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

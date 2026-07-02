@@ -28,6 +28,7 @@ import (
 const (
 	IdempotencyKeyHeader = "x-idempotency-key"
 	CorrelationIDHeader  = "x-correlation-id"
+	UserIDHeader         = "x-user-id"
 )
 
 // Dial opens an insecure gRPC connection (mTLS in production).
@@ -55,6 +56,11 @@ func correlationInterceptor(ctx context.Context, method string, req, reply any, 
 // WithIdempotencyKey attaches an idempotency key to outgoing gRPC metadata.
 func WithIdempotencyKey(ctx context.Context, key string) context.Context {
 	return metadata.AppendToOutgoingContext(ctx, IdempotencyKeyHeader, key)
+}
+
+// WithUserID attaches the authenticated user id to outgoing gRPC metadata.
+func WithUserID(ctx context.Context, userID string) context.Context {
+	return metadata.AppendToOutgoingContext(ctx, UserIDHeader, userID)
 }
 
 // DefaultTimeout wraps a context with a sensible RPC timeout.

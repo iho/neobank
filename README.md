@@ -418,9 +418,12 @@ Contract source: [pkg/events/catalog.go](pkg/events/catalog.go). Export with `ma
 | `REDIS_URL` | `redis://localhost:6379/0` | gateway, user, payment, card |
 | `JWT_SECRET` | `dev-secret-change-me` | gateway, user |
 | `LEDGER_GRPC_ADDR` | `localhost:50051` | user, payment, card |
-| `USER_SERVICE_URL` | `http://localhost:8081` | gateway (HTTP), payment/card wallet projection |
-| `USER_GRPC_ADDR` | `localhost:50052` | payment, card, notification (internal lookups) |
-| `GRPC_PORT` | `50052` | user (gRPC listener) |
+| `USER_GRPC_ADDR` | `localhost:50052` | gateway, payment, card, notification |
+| `PAYMENT_GRPC_ADDR` | `localhost:50053` | gateway |
+| `CARD_GRPC_ADDR` | `localhost:50054` | gateway |
+| `NOTIFICATION_GRPC_ADDR` | `localhost:50055` | gateway |
+| `USER_SERVICE_URL` | `http://localhost:8081` | payment/card wallet projection ingest |
+| `GRPC_PORT` | `50052`–`50055` | user/payment/card/notification gRPC listeners |
 | `PAYMENT_SERVICE_URL` | `http://localhost:8082` | gateway |
 | `CARD_SERVICE_URL` | `http://localhost:8084` | gateway |
 | `NOTIFICATION_SERVICE_URL` | `http://localhost:8083` | gateway, outbox |
@@ -516,7 +519,7 @@ Integration tests cover P2P, card auth/capture, wallet projection dedup, notific
 
 - Standalone Fraud service (today: `pkg/fraud` in Payment/Card)
 - Real KYC/AML vendors (today: stubs with persisted evidence)
-- gRPC between Gateway and services (Phase 1 done: payment/card/notification → user via gRPC)
+- mTLS on internal gRPC (today: insecure credentials via grpcutil)
 - Kubernetes manifests and production Vault (HA, AppRole, auto-unseal)
 - Outbox partition + WORM archival to object storage
 - Background saga recovery worker (today: client retry + watchdog alerts)

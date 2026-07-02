@@ -62,9 +62,10 @@ lifecycle, not snapshots.
       every status-changing mutation (transfer create/complete/fail, card issue/freeze/
       unfreeze, authorization create/hold/capture/fail, KYC submit/approve, wallet
       provision).
-- [ ] Still open: enforce append-only at the DB level (separate role with INSERT-only
-      grants, no UPDATE/DELETE on audit tables) — requires a deployment/ops decision on
-      DB roles, not just application code.
+- [x] Enforce append-only at the DB level — UPDATE/DELETE triggers on audit/evidence
+      tables (`audit_log`, `pii_access_log`, `gdpr_requests`, `kyc_submissions`,
+      `screening_checks`, `fraud_decisions`, `aml_evaluations`; migrations 000011/000009/000008).
+      Production can still add INSERT-only DB roles on top; triggers block all roles.
 - [x] Record the actor on every mutation — `audit.Resolve` defaults `Actor` from
       `reqctx.Actor(ctx)`; gateway `Actor` middleware sets `reqctx.WithActor` from JWT
       (or dev-auth `X-User-Id` when allowed) and forwards via `reqctx.Transport`.
@@ -119,8 +120,8 @@ Service tables and goledger can drift (saga compensation failures, crashes betwe
       `deployments/crontab` + `make up-jobs`.
 - [x] Persist reconciliation runs — `payment.reconciliation_runs` /
       `card.reconciliation_runs` (started_at, finished_at, checked_count, break_count,
-      breaks JSON, status). Break *resolution* tracking (marking a break as
-      investigated/closed) is not built — today it's read-only evidence.
+      breaks JSON, status). Break resolution via `cmd/resolve-break` (open → investigated →
+      closed) for payment and card; `make list-payment-breaks` / `make list-card-breaks`.
 - [x] Also fixed in passing: `MarkFailed` in `p2p_transfer.go` (and the equivalent in
       `authorize_transaction.go`) now runs inside the same tx as its audit-log insert,
       and the error is propagated instead of discarded.

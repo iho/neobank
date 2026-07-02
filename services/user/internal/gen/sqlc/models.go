@@ -22,6 +22,12 @@ type UserAuditLog struct {
 	CreatedAt     pgtype.Timestamptz
 }
 
+type UserConsumerInbox struct {
+	EventID     uuid.UUID
+	EventType   string
+	ProcessedAt pgtype.Timestamptz
+}
+
 type UserKycCase struct {
 	ID              uuid.UUID
 	UserID          uuid.UUID

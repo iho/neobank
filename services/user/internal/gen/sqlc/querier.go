@@ -13,6 +13,7 @@ import (
 
 type Querier interface {
 	ApproveKYCCase(ctx context.Context, arg ApproveKYCCaseParams) error
+	ConsumerInboxExists(ctx context.Context, eventID uuid.UUID) (bool, error)
 	CreateKYCCase(ctx context.Context, arg CreateKYCCaseParams) (CreateKYCCaseRow, error)
 	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
@@ -27,6 +28,7 @@ type Querier interface {
 	GetUserProfile(ctx context.Context, id uuid.UUID) (GetUserProfileRow, error)
 	GetWalletByUserAndCurrency(ctx context.Context, arg GetWalletByUserAndCurrencyParams) (GetWalletByUserAndCurrencyRow, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
+	InsertConsumerInbox(ctx context.Context, arg InsertConsumerInboxParams) error
 	InsertKYCSubmission(ctx context.Context, arg InsertKYCSubmissionParams) error
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error
 	InsertScreeningCheck(ctx context.Context, arg InsertScreeningCheckParams) error

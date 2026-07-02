@@ -17,6 +17,7 @@ func main() {
 		"migrations/003_saga_alerts.sql",
 		"migrations/004_wallet_transactions.sql",
 		"migrations/005_kyc_evidence.sql",
+		"migrations/006_consumer_inbox.sql",
 	}
 
 	ctx := context.Background()

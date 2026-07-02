@@ -83,7 +83,14 @@ Each service follows **clean architecture**: OpenAPI spec → oapi-codegen (stri
 make up
 ```
 
-Starts PostgreSQL (`:5432`), Redis (`:6379`), and Kafka (`:9092`).
+Starts PostgreSQL (`:5432`), Redis (`:6379`), Kafka (`:9092`), and an optional
+OpenTelemetry collector (`:4317` gRPC, `:4318` HTTP).
+
+To emit traces from services:
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317
+```
 
 ### 2. Ledger (external)
 

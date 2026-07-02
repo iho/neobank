@@ -70,6 +70,7 @@ func main() {
 	auditRepo := sqlcrepo.NewAuditRepository(queries)
 	sagaStore := sqlcrepo.NewSagaStore(queries)
 	walletTxRepo := sqlcrepo.NewWalletTransactionRepository(queries)
+	inboxRepo := sqlcrepo.NewConsumerInboxRepository(queries)
 
 	producer := outbox.NewProducer(outbox.ProducerConfig{
 		KafkaBrokers:    cfg.KafkaBrokers,
@@ -93,7 +94,7 @@ func main() {
 	getKYCStatusUC := usecase.NewGetKYCStatusUseCase(kycRepo)
 	getProfileUC := usecase.NewGetProfileUseCase(userRepo)
 	walletBalanceUC := usecase.NewGetWalletBalanceUseCase(walletRepo, ledgerAdapter)
-	projectWalletEventUC := usecase.NewProjectWalletEventUseCase(walletTxRepo)
+	projectWalletEventUC := usecase.NewProjectWalletEventUseCase(walletTxRepo, inboxRepo)
 	listWalletTxUC := usecase.NewListWalletTransactionsUseCase(walletTxRepo)
 
 	if cfg.KafkaBrokers != "" {

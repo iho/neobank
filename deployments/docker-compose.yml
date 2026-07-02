@@ -44,6 +44,15 @@ services:
       timeout: 10s
       retries: 10
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
   # Run goledger separately: clone github.com/iho/goledger and use its docker-compose.full.yml
   # Ledger gRPC: localhost:50051, HTTP: localhost:8080
 

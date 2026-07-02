@@ -158,3 +158,12 @@ CREATE UNIQUE INDEX idx_user_wallet_tx_event_dedup
 
 CREATE INDEX idx_user_wallet_tx_user_created
     ON "user".wallet_transactions (user_id, created_at DESC);
+
+CREATE TABLE "user".consumer_inbox (
+    event_id      UUID PRIMARY KEY,
+    event_type    TEXT NOT NULL,
+    processed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_user_consumer_inbox_type
+    ON "user".consumer_inbox (event_type, processed_at DESC);

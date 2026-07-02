@@ -66,10 +66,8 @@ lifecycle, not snapshots.
       grants, no UPDATE/DELETE on audit tables) — requires a deployment/ops decision on
       DB roles, not just application code.
 - [x] Record the actor on every mutation — `audit.Resolve` defaults `Actor` from
-      `reqctx.Actor(ctx)` (falls back to `"system"`); nothing currently sets an actor
-      into context from the JWT claims, so today every row records `"system"`. Wiring
-      the authenticated user ID into `reqctx.WithActor` in gateway/service middleware is
-      a small follow-up.
+      `reqctx.Actor(ctx)`; gateway `Actor` middleware sets `reqctx.WithActor` from JWT
+      (or dev-auth `X-User-Id` when allowed) and forwards via `reqctx.Transport`.
 
 ### 3. Fraud decisions are not persisted — HIGH — ✅ DONE
 `pkg/fraud.Checker.Evaluate` returns a decision that is acted on and discarded. Regulators
@@ -79,8 +77,8 @@ lifecycle, not snapshots.
       reason code, risk score, correlation ID — `payment.fraud_decisions` /
       `card.fraud_decisions`, written from the `fraud_check` saga step in
       `p2p_transfer.go`, `issue_card.go`, `authorize_transaction.go`.
-- [ ] Still open: version the rule configuration so past decisions can be explained
-      (`pkg/fraud.Checker` has no rule-set version today).
+- [x] Version the rule configuration — `pkg/fraud.DefaultRuleSetVersion`, persisted on
+      every `fraud_decisions` row (`rule_set_version` column, migrations 003).
 
 ### 4. KYC has no evidence trail — HIGH — partially done
 KYC still auto-approves via stub screening, but submission evidence and screening
@@ -117,8 +115,8 @@ Service tables and goledger can drift (saga compensation failures, crashes betwe
       has no `GetHold`-by-ID — the card job resolves each authorization's ledger account
       via the user service and caches per user+currency for the run).
       `services/payment/cmd/reconcile`, `services/card/cmd/reconcile`; `make
-      reconcile-payment` / `make reconcile-card`. Not yet scheduled — needs a cron/k8s
-      CronJob entry in deployment config.
+      reconcile-payment` / `make reconcile-card`. Scheduled hourly via
+      `deployments/crontab` + `make up-jobs`.
 - [x] Persist reconciliation runs — `payment.reconciliation_runs` /
       `card.reconciliation_runs` (started_at, finished_at, checked_count, break_count,
       breaks JSON, status). Break *resolution* tracking (marking a break as
@@ -153,15 +151,16 @@ validation with no environment guard.
       written before the migration).
 - [ ] Still open: document the event catalog as a contract (schema registry or versioned
       JSON schemas); regulators care that replayed history is interpretable years later.
-- [x] Consumer-side inbox/dedup for at-least-once delivery (notification service) —
-      `notification.consumer_inbox` event-level dedup in `IngestEventUseCase`; per-user
-      notification rows still use `ON CONFLICT (event_id, user_id) DO NOTHING`.
+- [x] Consumer-side inbox/dedup for at-least-once delivery — `notification.consumer_inbox`
+      and `user.consumer_inbox` event-level dedup; row-level `ON CONFLICT` on notifications
+      and wallet_transactions as a second layer.
 
 ### 9. Observability wiring — LOW — partially done
 - [x] Wire `pkg/otel` through gateway → services → ledger client — gated on
       `OTEL_EXPORTER_OTLP_ENDPOINT`; `otel.HTTPMiddleware` on all services,
       `otel.OutboundTransport` on HTTP clients, `otelgrpc` on gRPC ledger dial.
-      Collector deployment still open (needs infra).
+      Local collector in `deployments/docker-compose.yml` (debug exporter); production
+      backend (Jaeger/Tempo/etc.) still needs infra.
 - [x] Structured HTTP access logs — `pkg/sloghttp` middleware on gateway and all
       services; logs `correlation_id`, `user_id`, `idempotency_key`, status, duration.
       `sloghttp.Logger(ctx)` helper for handler/worker logs. Retained log shipping
@@ -175,7 +174,7 @@ validation with no environment guard.
 2. ~~Append-only audit/history tables + actor recording (#2)~~ — done (actor defaults to
    `"system"` until JWT identity is threaded into `reqctx.WithActor`).
 3. ~~Persist fraud decisions (#3)~~ — done.
-4. ~~Reconciliation job (#6)~~ — done, not yet scheduled.
+4. ~~Reconciliation job (#6)~~ — done and scheduled via `up-jobs`.
 5. Outbox retention/archival (#5) — open, needs an infra/compliance decision.
 6. KYC/AML evidence model (#4) — KYC evidence + screening done; AML txn-monitoring stub done;
    real vendor integration still needed.

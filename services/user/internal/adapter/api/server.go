@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/iho/neobank/pkg/audit"
 	"github.com/iho/neobank/pkg/events"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	sqlcrepo "github.com/iho/neobank/services/user/internal/adapter/sqlc"
@@ -28,6 +29,7 @@ type Server struct {
 	provisionWallet     *usecase.ProvisionWalletUseCase
 	users               *sqlcrepo.UserRepository
 	wallets             *sqlcrepo.WalletRepository
+	piiAccess           audit.PIIAccessRecorder
 }
 
 func NewServer(
@@ -43,6 +45,7 @@ func NewServer(
 	provisionWallet *usecase.ProvisionWalletUseCase,
 	users *sqlcrepo.UserRepository,
 	wallets *sqlcrepo.WalletRepository,
+	piiAccess audit.PIIAccessRecorder,
 ) *Server {
 	return &Server{
 		register:           register,
@@ -57,7 +60,19 @@ func NewServer(
 		provisionWallet:    provisionWallet,
 		users:              users,
 		wallets:            wallets,
+		piiAccess:          piiAccess,
 	}
+}
+
+func (s *Server) recordPIIAccess(ctx context.Context, subjectUserID, resource string, metadata map[string]any) error {
+	if s.piiAccess == nil {
+		return nil
+	}
+	return s.piiAccess.RecordPIIAccess(ctx, audit.PIIAccessEntry{
+		SubjectUserID: subjectUserID,
+		Resource:      resource,
+		Metadata:      metadata,
+	})
 }
 
 func (s *Server) GetHealth(_ context.Context, _ api.GetHealthRequestObject) (api.GetHealthResponseObject, error) {
@@ -165,6 +180,9 @@ func (s *Server) GetProfile(ctx context.Context, req api.GetProfileRequestObject
 			resp.DateOfBirth = &openapi_types.Date{Time: dob}
 		}
 	}
+	if err := s.recordPIIAccess(ctx, profile.UserID, audit.PIIResourceProfile, nil); err != nil {
+		return nil, err
+	}
 	return api.GetProfile200JSONResponse(resp), nil
 }
 
@@ -207,6 +225,9 @@ func (s *Server) GetKYCStatus(ctx context.Context, req api.GetKYCStatusRequestOb
 	if kycCase.RejectionReason != "" {
 		resp.RejectionReason = &kycCase.RejectionReason
 	}
+	if err := s.recordPIIAccess(ctx, req.Params.XUserId.String(), audit.PIIResourceKYCStatus, nil); err != nil {
+		return nil, err
+	}
 	return api.GetKYCStatus200JSONResponse(resp), nil
 }
 
@@ -239,6 +260,11 @@ func (s *Server) ListWalletTransactions(ctx context.Context, req api.ListWalletT
 			view.Memo = &row.Memo
 		}
 		views = append(views, view)
+	}
+	if err := s.recordPIIAccess(ctx, req.Params.XUserId.String(), audit.PIIResourceWalletTransactions, map[string]any{
+		"count": len(views),
+	}); err != nil {
+		return nil, err
 	}
 	return api.ListWalletTransactions200JSONResponse{Transactions: views}, nil
 }
@@ -284,6 +310,11 @@ func (s *Server) GetWalletBalance(ctx context.Context, req api.GetWalletBalanceR
 			return api.GetWalletBalance404JSONResponse{Error: "wallet_not_found"}, nil
 		}
 		return api.GetWalletBalance404JSONResponse{Error: err.Error()}, nil
+	}
+	if err := s.recordPIIAccess(ctx, req.Params.XUserId.String(), audit.PIIResourceWalletBalance, map[string]any{
+		"currency": currency,
+	}); err != nil {
+		return nil, err
 	}
 	walletID, _ := uuid.Parse(balance.WalletID)
 	return api.GetWalletBalance200JSONResponse{
@@ -335,6 +366,9 @@ func (s *Server) GetUserByPhone(ctx context.Context, req api.GetUserByPhoneReque
 	if err != nil {
 		return nil, err
 	}
+	if err := s.recordPIIAccess(ctx, user.ID, audit.PIIResourceUserByPhone, nil); err != nil {
+		return nil, err
+	}
 	return api.GetUserByPhone200JSONResponse{
 		Id:     openapi_types.UUID(id),
 		Email:  user.Email,
@@ -361,6 +395,11 @@ func (s *Server) GetWallet(ctx context.Context, req api.GetWalletRequestObject) 
 	}
 	userID, err := uuid.Parse(wallet.UserID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.recordPIIAccess(ctx, wallet.UserID, audit.PIIResourceInternalWallet, map[string]any{
+		"currency": currency,
+	}); err != nil {
 		return nil, err
 	}
 	return api.GetWallet200JSONResponse{

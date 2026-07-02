@@ -128,8 +128,9 @@ Service tables and goledger can drift (saga compensation failures, crashes betwe
 ### 7. PII and data protection — MEDIUM — partially done
 - [ ] Field-level encryption (or pgcrypto/KMS envelope) for `document_number`, DOB, phone —
       still open; needs a KMS/key-management decision, not just an app-code change.
-- [ ] Audit access to PII (who read which customer record) — still open; the `audit_log`
-      table built for #2 only covers writes, not reads.
+- [x] Audit access to PII (who read which customer record) — `user.pii_access_log` records
+      successful reads of profile, KYC status, wallet balance/transactions, internal user-by-phone,
+      and internal wallet lookups; actor/correlation from `reqctx`.
 - [ ] GDPR export/delete workflows — still open; document that deletion must be *masking*,
       not row deletion, because financial records must be retained.
 - [x] Dev-auth bypasses hardened — see #7b below.

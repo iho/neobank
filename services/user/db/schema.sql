@@ -140,6 +140,23 @@ CREATE TABLE "user".audit_log (
 CREATE INDEX idx_user_audit_log_entity
     ON "user".audit_log (entity_type, entity_id, created_at);
 
+-- Append-only trail for reads of customer PII (profile, KYC, wallet lookups).
+CREATE TABLE "user".pii_access_log (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subject_user_id UUID NOT NULL,
+    resource        TEXT NOT NULL,
+    actor           TEXT NOT NULL DEFAULT 'system',
+    correlation_id  TEXT,
+    metadata        JSONB NOT NULL DEFAULT '{}',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_user_pii_access_log_subject
+    ON "user".pii_access_log (subject_user_id, created_at);
+
+CREATE INDEX idx_user_pii_access_log_actor
+    ON "user".pii_access_log (actor, created_at);
+
 CREATE TABLE "user".wallet_transactions (
     user_id         UUID NOT NULL REFERENCES "user".users(id),
     id              TEXT NOT NULL,

@@ -68,6 +68,7 @@ func main() {
 	kycRepo := sqlcrepo.NewKYCRepository(queries)
 	outboxRepo := sqlcrepo.NewOutboxRepository(queries)
 	auditRepo := sqlcrepo.NewAuditRepository(queries)
+	piiAccessRepo := sqlcrepo.NewPIIAccessRepository(queries)
 	sagaStore := sqlcrepo.NewSagaStore(queries)
 	walletTxRepo := sqlcrepo.NewWalletTransactionRepository(queries)
 	inboxRepo := sqlcrepo.NewConsumerInboxRepository(queries)
@@ -110,7 +111,7 @@ func main() {
 	strictServer := apiadapter.NewServer(
 		registerUC, loginUC, refreshUC, submitKYCUC, getKYCStatusUC, getProfileUC, walletBalanceUC,
 		listWalletTxUC, projectWalletEventUC,
-		provisionWalletUC, userRepo, walletRepo,
+		provisionWalletUC, userRepo, walletRepo, piiAccessRepo,
 	)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
 

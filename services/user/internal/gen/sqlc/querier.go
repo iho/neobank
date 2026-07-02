@@ -31,9 +31,11 @@ type Querier interface {
 	InsertConsumerInbox(ctx context.Context, arg InsertConsumerInboxParams) error
 	InsertKYCSubmission(ctx context.Context, arg InsertKYCSubmissionParams) error
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) error
+	InsertPIIAccessLog(ctx context.Context, arg InsertPIIAccessLogParams) error
 	InsertScreeningCheck(ctx context.Context, arg InsertScreeningCheckParams) error
 	InsertWalletTransaction(ctx context.Context, arg InsertWalletTransactionParams) error
 	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
+	ListPIIAccessBySubject(ctx context.Context, subjectUserID uuid.UUID) ([]ListPIIAccessBySubjectRow, error)
 	ListWalletTransactionsByUser(ctx context.Context, arg ListWalletTransactionsByUserParams) ([]ListWalletTransactionsByUserRow, error)
 	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
 	RejectKYCCase(ctx context.Context, arg RejectKYCCaseParams) error

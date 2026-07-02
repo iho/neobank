@@ -70,6 +70,16 @@ type UserOutboxPublication struct {
 	PublishedAt pgtype.Timestamptz
 }
 
+type UserPiiAccessLog struct {
+	ID            uuid.UUID
+	SubjectUserID uuid.UUID
+	Resource      string
+	Actor         string
+	CorrelationID pgtype.Text
+	Metadata      []byte
+	CreatedAt     pgtype.Timestamptz
+}
+
 type UserProfile struct {
 	UserID      uuid.UUID
 	FullName    pgtype.Text

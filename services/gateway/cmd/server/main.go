@@ -15,6 +15,7 @@ import (
 	"github.com/iho/neobank/pkg/auth"
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
+	"github.com/iho/neobank/pkg/otel"
 	"github.com/iho/neobank/pkg/reqctx"
 	"github.com/iho/neobank/pkg/sloghttp"
 	apiadapter "github.com/iho/neobank/services/gateway/internal/adapter/api"
@@ -28,6 +29,13 @@ func main() {
 	cfg := config.Load()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	ctx := context.Background()
+
+	shutdownOtel, err := otel.InitIfEnabled(ctx, "gateway")
+	if err != nil {
+		logger.Error("otel init failed", "error", err)
+	} else if otel.Enabled() {
+		logger.Info("otel tracing enabled", "endpoint", os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
+	}
 
 	ledger, err := ledgerclient.New(ctx, ledgerclient.Config{Addr: cfg.LedgerAddr})
 	if err != nil {
@@ -53,6 +61,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	r.Use(otel.HTTPMiddleware("gateway"))
 	r.Use(reqctx.Middleware)
 	r.Use(gwmiddleware.Actor(jwtAuth, cfg.AllowDevAuth))
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
@@ -79,5 +88,6 @@ func main() {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	_ = shutdownOtel(shutdownCtx)
 	_ = srv.Shutdown(shutdownCtx)
 }

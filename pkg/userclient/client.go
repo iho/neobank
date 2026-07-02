@@ -23,7 +23,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/iho/neobank/pkg/reqctx"
+	"github.com/iho/neobank/pkg/otel"
 )
 
 type Client struct {
@@ -34,7 +34,7 @@ type Client struct {
 func New(baseURL string) *Client {
 	return &Client{
 		baseURL:    baseURL,
-		httpClient: &http.Client{Transport: reqctx.Transport(nil)},
+		httpClient: &http.Client{Transport: otel.OutboundTransport(nil)},
 	}
 }
 

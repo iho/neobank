@@ -18,6 +18,7 @@ package otel
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -27,6 +28,20 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
+
+// Enabled reports whether OTEL_EXPORTER_OTLP_ENDPOINT is configured.
+func Enabled() bool {
+	return os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != ""
+}
+
+// InitIfEnabled configures tracing when OTEL_EXPORTER_OTLP_ENDPOINT is set.
+func InitIfEnabled(ctx context.Context, serviceName string) (func(context.Context) error, error) {
+	if !Enabled() {
+		return func(context.Context) error { return nil }, nil
+	}
+
+	return Init(ctx, serviceName)
+}
 
 // Init configures the global OpenTelemetry tracer provider.
 func Init(ctx context.Context, serviceName string) (func(context.Context) error, error) {

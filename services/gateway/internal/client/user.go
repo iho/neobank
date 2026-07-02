@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/iho/neobank/pkg/reqctx"
+	"github.com/iho/neobank/pkg/otel"
 )
 
 type UserClient struct {
@@ -19,7 +19,7 @@ type UserClient struct {
 func NewUserClient(baseURL string) *UserClient {
 	return &UserClient{
 		baseURL:    baseURL,
-		httpClient: &http.Client{Transport: reqctx.Transport(nil)},
+		httpClient: &http.Client{Transport: otel.OutboundTransport(nil)},
 	}
 }
 

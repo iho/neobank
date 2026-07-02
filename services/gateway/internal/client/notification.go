@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/iho/neobank/pkg/reqctx"
+	"github.com/iho/neobank/pkg/otel"
 )
 
 type NotificationClient struct {
@@ -18,7 +18,7 @@ type NotificationClient struct {
 func NewNotificationClient(baseURL string) *NotificationClient {
 	return &NotificationClient{
 		baseURL:    baseURL,
-		httpClient: &http.Client{Transport: reqctx.Transport(nil)},
+		httpClient: &http.Client{Transport: otel.OutboundTransport(nil)},
 	}
 }
 

@@ -16,6 +16,7 @@ import (
 	"github.com/iho/neobank/pkg/fraud"
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
+	"github.com/iho/neobank/pkg/otel"
 	"github.com/iho/neobank/pkg/outbox"
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/reqctx"
@@ -35,6 +36,13 @@ func main() {
 	cfg := config.Load()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	ctx := context.Background()
+
+	shutdownOtel, err := otel.InitIfEnabled(ctx, "payment")
+	if err != nil {
+		logger.Error("otel init failed", "error", err)
+	} else if otel.Enabled() {
+		logger.Info("otel tracing enabled", "endpoint", os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
+	}
 
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -86,6 +94,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	r.Use(otel.HTTPMiddleware("payment"))
 	r.Use(reqctx.Middleware)
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
 	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("payment")))
@@ -111,5 +120,6 @@ func main() {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	_ = shutdownOtel(shutdownCtx)
 	_ = srv.Shutdown(shutdownCtx)
 }

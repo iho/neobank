@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/iho/neobank/pkg/otel"
 	"github.com/iho/neobank/pkg/reqctx"
 )
 
@@ -37,6 +38,7 @@ func Dial(ctx context.Context, addr string, opts ...grpc.DialOption) (*grpc.Clie
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithChainUnaryInterceptor(correlationInterceptor),
 	}
+	base = append(base, otel.GRPCDialOptions()...)
 
 	return grpc.NewClient(addr, append(base, opts...)...)
 }

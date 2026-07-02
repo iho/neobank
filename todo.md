@@ -158,10 +158,10 @@ validation with no environment guard.
       notification rows still use `ON CONFLICT (event_id, user_id) DO NOTHING`.
 
 ### 9. Observability wiring — LOW — partially done
-- [ ] Still open: wire `pkg/otel` through gateway → services → ledger client so trace IDs
-      actually flow to a collector. `pkg/reqctx` correlation IDs now flow end-to-end
-      independently of OTel, which covers the audit/traceability need; OTel wiring is
-      about operational tracing/metrics, a separate (lower-severity) gap.
+- [x] Wire `pkg/otel` through gateway → services → ledger client — gated on
+      `OTEL_EXPORTER_OTLP_ENDPOINT`; `otel.HTTPMiddleware` on all services,
+      `otel.OutboundTransport` on HTTP clients, `otelgrpc` on gRPC ledger dial.
+      Collector deployment still open (needs infra).
 - [x] Structured HTTP access logs — `pkg/sloghttp` middleware on gateway and all
       services; logs `correlation_id`, `user_id`, `idempotency_key`, status, duration.
       `sloghttp.Logger(ctx)` helper for handler/worker logs. Retained log shipping

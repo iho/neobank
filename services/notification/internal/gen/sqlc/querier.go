@@ -6,9 +6,13 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
+	ConsumerInboxExists(ctx context.Context, eventID uuid.UUID) (bool, error)
+	InsertConsumerInbox(ctx context.Context, arg InsertConsumerInboxParams) error
 	InsertNotification(ctx context.Context, arg InsertNotificationParams) error
 	ListNotificationsByUser(ctx context.Context, arg ListNotificationsByUserParams) ([]ListNotificationsByUserRow, error)
 }

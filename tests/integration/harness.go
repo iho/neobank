@@ -165,6 +165,7 @@ func (h *Harness) runMigrations() {
 		filepath.Join(root, "services/card/migrations/005_reconciliation_breaks.sql"),
 		filepath.Join(root, "services/card/migrations/006_saga_alerts.sql"),
 		filepath.Join(root, "services/notification/migrations/001_init.sql"),
+		filepath.Join(root, "services/notification/migrations/002_consumer_inbox.sql"),
 	}
 	for _, path := range files {
 		sql, err := os.ReadFile(path)

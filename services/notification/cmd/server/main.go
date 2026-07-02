@@ -38,8 +38,9 @@ func main() {
 
 	queries := sqlc.New(pool)
 	notificationRepo := sqlcrepo.NewNotificationRepository(queries)
+	inboxRepo := sqlcrepo.NewConsumerInboxRepository(queries)
 
-	ingestUC := usecase.NewIngestEventUseCase(notificationRepo)
+	ingestUC := usecase.NewIngestEventUseCase(notificationRepo, inboxRepo)
 	listUC := usecase.NewListNotificationsUseCase(notificationRepo)
 
 	strictServer := apiadapter.NewServer(ingestUC, listUC)

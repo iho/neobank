@@ -11,14 +11,42 @@ import (
 )
 
 type IngestEventUseCase struct {
-	repo NotificationRepository
+	repo  NotificationRepository
+	inbox ConsumerInboxRepository
 }
 
-func NewIngestEventUseCase(repo NotificationRepository) *IngestEventUseCase {
-	return &IngestEventUseCase{repo: repo}
+func NewIngestEventUseCase(repo NotificationRepository, inbox ConsumerInboxRepository) *IngestEventUseCase {
+	return &IngestEventUseCase{repo: repo, inbox: inbox}
 }
 
 func (uc *IngestEventUseCase) Execute(ctx context.Context, envelope events.Envelope) error {
+	if envelope.EventID == "" {
+		return fmt.Errorf("event_id is required")
+	}
+	if uc.inbox != nil {
+		exists, err := uc.inbox.Exists(ctx, envelope.EventID)
+		if err != nil {
+			return fmt.Errorf("check consumer inbox: %w", err)
+		}
+		if exists {
+			return nil
+		}
+	}
+
+	if err := uc.dispatch(ctx, envelope); err != nil {
+		return err
+	}
+
+	if uc.inbox != nil {
+		if err := uc.inbox.Record(ctx, envelope.EventID, envelope.EventType); err != nil {
+			return fmt.Errorf("record consumer inbox: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (uc *IngestEventUseCase) dispatch(ctx context.Context, envelope events.Envelope) error {
 	switch envelope.EventType {
 	case events.TypeTransferCompleted:
 		return uc.handleTransferCompleted(ctx, envelope)

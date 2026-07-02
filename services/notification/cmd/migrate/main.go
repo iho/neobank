@@ -11,10 +11,9 @@ import (
 
 func main() {
 	cfg := config.Load()
-	sql, err := os.ReadFile("migrations/001_init.sql")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "read migration: %v\n", err)
-		os.Exit(1)
+	migrations := []string{
+		"migrations/001_init.sql",
+		"migrations/002_consumer_inbox.sql",
 	}
 
 	ctx := context.Background()
@@ -25,9 +24,16 @@ func main() {
 	}
 	defer conn.Close(ctx)
 
-	if _, err := conn.Exec(ctx, string(sql)); err != nil {
-		fmt.Fprintf(os.Stderr, "migrate: %v\n", err)
-		os.Exit(1)
+	for _, path := range migrations {
+		sql, err := os.ReadFile(path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "read migration %s: %v\n", path, err)
+			os.Exit(1)
+		}
+		if _, err := conn.Exec(ctx, string(sql)); err != nil {
+			fmt.Fprintf(os.Stderr, "migrate %s: %v\n", path, err)
+			os.Exit(1)
+		}
 	}
 
 	fmt.Println("notification service migrations applied")

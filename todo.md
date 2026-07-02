@@ -153,8 +153,9 @@ validation with no environment guard.
       written before the migration).
 - [ ] Still open: document the event catalog as a contract (schema registry or versioned
       JSON schemas); regulators care that replayed history is interpretable years later.
-- [ ] Still open: consumer-side inbox/dedup for at-least-once delivery (notification
-      service) — Kafka delivery is at-least-once and nothing dedupes on the consumer side.
+- [x] Consumer-side inbox/dedup for at-least-once delivery (notification service) —
+      `notification.consumer_inbox` event-level dedup in `IngestEventUseCase`; per-user
+      notification rows still use `ON CONFLICT (event_id, user_id) DO NOTHING`.
 
 ### 9. Observability wiring — LOW — partially done
 - [ ] Still open: wire `pkg/otel` through gateway → services → ledger client so trace IDs

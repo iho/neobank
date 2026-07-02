@@ -14,3 +14,13 @@ CREATE TABLE notification.notifications (
 
 CREATE INDEX idx_notifications_user_created
     ON notification.notifications (user_id, created_at DESC);
+
+-- Event-level dedup for at-least-once Kafka/HTTP delivery.
+CREATE TABLE notification.consumer_inbox (
+    event_id      UUID PRIMARY KEY,
+    event_type    TEXT NOT NULL,
+    processed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_notification_consumer_inbox_type
+    ON notification.consumer_inbox (event_type, processed_at DESC);

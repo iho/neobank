@@ -603,7 +603,7 @@ func mapWalletBalanceResponse(resp genapi.GetWalletBalanceResponseObject) (*neob
 	case genapi.GetWalletBalance200JSONResponse:
 		balance := toProtoWalletBalance(genapi.WalletBalance(r))
 		return &neobankv1.WalletBalanceResponse{
-			Balance:    &balance,
+			Balance:    balance,
 			HttpStatus: 200,
 		}, nil
 	case genapi.GetWalletBalance404JSONResponse:
@@ -619,7 +619,7 @@ func mapListWalletsResponse(resp genapi.ListWalletsResponseObject) (*neobankv1.L
 		wallets := make([]*neobankv1.WalletBalance, 0, len(r.Wallets))
 		for _, w := range r.Wallets {
 			balance := toProtoWalletBalance(w)
-			wallets = append(wallets, &balance)
+			wallets = append(wallets, balance)
 		}
 		return &neobankv1.ListWalletsResponse{Wallets: wallets, HttpStatus: 200}, nil
 	default:
@@ -661,7 +661,7 @@ func mapListWalletTransactionsResponse(resp genapi.ListWalletTransactionsRespons
 		txs := make([]*neobankv1.WalletTransaction, 0, len(r.Transactions))
 		for _, tx := range r.Transactions {
 			item := toProtoWalletTransaction(tx)
-			txs = append(txs, &item)
+			txs = append(txs, item)
 		}
 		out := &neobankv1.ListWalletTransactionsResponse{Transactions: txs, HttpStatus: 200}
 		if r.NextCursor != nil {
@@ -694,7 +694,7 @@ func mapListPayeesResponse(resp genapi.ListPayeesResponseObject) (*neobankv1.Lis
 		payees := make([]*neobankv1.Payee, 0, len(r.Payees))
 		for _, p := range r.Payees {
 			item := toProtoPayee(p)
-			payees = append(payees, &item)
+			payees = append(payees, item)
 		}
 		return &neobankv1.ListPayeesResponse{Payees: payees, HttpStatus: 200}, nil
 	default:
@@ -706,7 +706,7 @@ func mapPayeeResponse(resp genapi.CreatePayeeResponseObject) (*neobankv1.PayeeRe
 	switch r := resp.(type) {
 	case genapi.CreatePayee201JSONResponse:
 		payee := toProtoPayee(genapi.Payee(r))
-		return &neobankv1.PayeeResponse{Payee: &payee, HttpStatus: 201}, nil
+		return &neobankv1.PayeeResponse{Payee: payee, HttpStatus: 201}, nil
 	case genapi.CreatePayee400JSONResponse:
 		return &neobankv1.PayeeResponse{HttpStatus: 400, Error: r.Error}, nil
 	default:
@@ -730,7 +730,7 @@ func mapReferralInviteResponse(resp genapi.CreateReferralInviteResponseObject) (
 	switch r := resp.(type) {
 	case genapi.CreateReferralInvite201JSONResponse:
 		invite := toProtoReferralInvite(genapi.ReferralInvite(r))
-		return &neobankv1.ReferralInviteResponse{Invite: &invite, HttpStatus: 201}, nil
+		return &neobankv1.ReferralInviteResponse{Invite: invite, HttpStatus: 201}, nil
 	case genapi.CreateReferralInvite400JSONResponse:
 		return &neobankv1.ReferralInviteResponse{HttpStatus: 400, Error: r.Error}, nil
 	default:
@@ -744,7 +744,7 @@ func mapListReferralInvitesResponse(resp genapi.ListReferralInvitesResponseObjec
 		invites := make([]*neobankv1.ReferralInvite, 0, len(r.Invites))
 		for _, inv := range r.Invites {
 			item := toProtoReferralInvite(inv)
-			invites = append(invites, &item)
+			invites = append(invites, item)
 		}
 		return &neobankv1.ListReferralInvitesResponse{Invites: invites, HttpStatus: 200}, nil
 	default:
@@ -773,8 +773,8 @@ func toProtoProfile(p genapi.Profile) *neobankv1.Profile {
 	return out
 }
 
-func toProtoWalletBalance(w genapi.WalletBalance) neobankv1.WalletBalance {
-	out := neobankv1.WalletBalance{
+func toProtoWalletBalance(w genapi.WalletBalance) *neobankv1.WalletBalance {
+	out := &neobankv1.WalletBalance{
 		WalletId:         w.WalletId.String(),
 		Currency:         w.Currency,
 		Balance:          w.Balance,
@@ -789,8 +789,8 @@ func toProtoWalletBalance(w genapi.WalletBalance) neobankv1.WalletBalance {
 	return out
 }
 
-func toProtoWalletTransaction(tx genapi.WalletTransaction) neobankv1.WalletTransaction {
-	out := neobankv1.WalletTransaction{
+func toProtoWalletTransaction(tx genapi.WalletTransaction) *neobankv1.WalletTransaction {
+	out := &neobankv1.WalletTransaction{
 		Id:        tx.Id,
 		Type:      tx.Type,
 		Amount:    tx.Amount,
@@ -828,8 +828,8 @@ func toProtoDeposit(d genapi.DepositWalletResponse) *neobankv1.Deposit {
 	return out
 }
 
-func toProtoPayee(p genapi.Payee) neobankv1.Payee {
-	out := neobankv1.Payee{
+func toProtoPayee(p genapi.Payee) *neobankv1.Payee {
+	out := &neobankv1.Payee{
 		Id:          p.Id.String(),
 		PayeeUserId: p.PayeeUserId.String(),
 		LastUsedAt:  p.LastUsedAt.UTC().Format(time.RFC3339),
@@ -857,8 +857,8 @@ func toProtoDeviceToken(t genapi.DeviceToken) neobankv1.DeviceToken {
 	}
 }
 
-func toProtoReferralInvite(inv genapi.ReferralInvite) neobankv1.ReferralInvite {
-	out := neobankv1.ReferralInvite{
+func toProtoReferralInvite(inv genapi.ReferralInvite) *neobankv1.ReferralInvite {
+	out := &neobankv1.ReferralInvite{
 		Id:            inv.Id.String(),
 		InviterUserId: inv.InviterUserId.String(),
 		InviteCode:    inv.InviteCode,

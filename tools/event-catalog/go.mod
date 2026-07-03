@@ -1,6 +1,6 @@
 module github.com/iho/neobank/tools/event-catalog
 
-go 1.24.0
+go 1.25.0
 
 require github.com/iho/neobank/pkg v0.0.0
 

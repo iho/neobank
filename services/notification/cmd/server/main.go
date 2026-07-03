@@ -93,9 +93,9 @@ func main() {
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
 	r.Use(metrics.HTTPMiddleware("notification"))
 	r.Use(otel.HTTPMiddleware("notification"))
-	metrics.Mount(r)
 	r.Use(reqctx.Middleware)
 	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("notification")))
+	metrics.Mount(r)
 	genapi.HandlerFromMux(strictHandler, r)
 
 	grpcServer, err := grpcutil.NewServer()

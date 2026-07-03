@@ -97,11 +97,11 @@ func main() {
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
 	r.Use(metrics.HTTPMiddleware("gateway"))
 	r.Use(otel.HTTPMiddleware("gateway"))
-	metrics.Mount(r)
 	r.Use(reqctx.Middleware)
 	r.Use(gwmiddleware.Actor(jwtAuth, cfg.AllowDevAuth))
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
 	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("gateway")))
+	metrics.Mount(r)
 	genapi.HandlerFromMux(strictHandler, r)
 
 	srv := &http.Server{

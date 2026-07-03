@@ -167,10 +167,10 @@ func main() {
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
 	r.Use(metrics.HTTPMiddleware("user"))
 	r.Use(otel.HTTPMiddleware("user"))
-	metrics.Mount(r)
 	r.Use(reqctx.Middleware)
 	r.Use(idempotency.Middleware(idempotency.NewStoreFromEnv(cfg.RedisURL, logger)))
 	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("user")))
+	metrics.Mount(r)
 	genapi.HandlerFromMux(strictHandler, r)
 
 	grpcServer, err := grpcutil.NewServer()

@@ -197,17 +197,6 @@ func (h *Harness) issueCardWithControls(t *testing.T, userID, walletID, dailyLim
 	return out
 }
 
-func (h *Harness) updateCardControls(t *testing.T, userID, cardID, dailyLimit string, onlineOnly bool) {
-	t.Helper()
-	status := (&httpClient{base: h.CardURL}).do(t, http.MethodPatch, "/api/v1/cards/"+cardID+"/controls", userID, newID("update-controls"), map[string]any{
-		"daily_limit": dailyLimit,
-		"online_only": onlineOnly,
-	}, nil)
-	if status != http.StatusOK {
-		t.Fatalf("update card controls: status %d", status)
-	}
-}
-
 func (h *Harness) authorizeCardWithChannel(t *testing.T, userID, cardID, amount, channel, idempotencyKey string) (authorizationResponse, int) {
 	t.Helper()
 	var out authorizationResponse

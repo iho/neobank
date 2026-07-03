@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine AS build
+FROM golang:1.25.11-alpine AS build
 WORKDIR /src
 RUN apk add --no-cache git
 
@@ -6,7 +6,7 @@ COPY pkg ./pkg
 COPY services/payment ./services/payment
 COPY services/card ./services/card
 COPY tools/saga-watchdog ./tools/saga-watchdog
-RUN printf '%s\n' 'go 1.24.0' '' 'use (' \
+RUN printf '%s\n' 'go 1.25.0' '' 'use (' \
     '	./pkg' \
     '	./services/payment' \
     '	./services/card' \

@@ -3,7 +3,7 @@
 #
 # SERVICE must be one of: user, payment, card, notification, gateway
 
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25.11
 
 FROM golang:${GO_VERSION}-alpine AS build
 ARG SERVICE
@@ -17,7 +17,7 @@ COPY pkg ./pkg
 COPY services/${SERVICE} ./services/${SERVICE}
 
 ENV CGO_ENABLED=0 GOOS=linux
-RUN printf 'go 1.24.0\n\nuse (\n\t./pkg\n\t./services/%s\n)\n' "${SERVICE}" > go.work
+RUN printf 'go 1.25.0\n\nuse (\n\t./pkg\n\t./services/%s\n)\n' "${SERVICE}" > go.work
 RUN cd services/${SERVICE} && \
     go build -trimpath -ldflags="-s -w" \
     -o /out/server ./cmd/server

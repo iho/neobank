@@ -1,6 +1,6 @@
 # Build goledger server + CLI for the compose overlay.
 # Clones from GitHub by default; override GOLEDGER_REPO / GOLEDGER_REF at build time.
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25.11-alpine AS builder
 
 ARG GOLEDGER_REPO=https://github.com/iho/goledger.git
 ARG GOLEDGER_REF=main
@@ -16,7 +16,7 @@ RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o /goledger ./cmd/server
 RUN CGO_ENABLED=0 GOOS=linux go build -o /goledger-cli ./cmd/cli
 
-FROM alpine:3.19
+FROM alpine:3.20
 
 RUN apk add --no-cache ca-certificates tzdata wget
 

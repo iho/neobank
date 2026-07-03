@@ -24,6 +24,6 @@ WORKDIR /app
 
 COPY --from=builder /goledger /goledger
 COPY --from=builder /goledger-cli /goledger-cli
-COPY --from=builder /app/internal/infrastructure/postgres/migrations ./migrations
+COPY --from=builder /app/internal/infrastructure/postgres/migrations ./internal/infrastructure/postgres/migrations
 
 EXPOSE 8080 50051

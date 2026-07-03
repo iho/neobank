@@ -111,7 +111,7 @@ func (h *Harness) startPostgres() {
 		postgres.WithDatabase("neobank"),
 		postgres.WithUsername("neobank"),
 		postgres.WithPassword("neobank"),
-		testcontainers.WithWaitStrategy(wait.ForListeningPort("5432/tcp").WithStartupTimeout(60*time.Second)),
+		postgres.BasicWaitStrategies(),
 	)
 	if err != nil {
 		h.t.Fatalf("start postgres: %v", err)

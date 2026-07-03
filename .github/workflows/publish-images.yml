@@ -199,13 +199,13 @@ jobs:
 
       - name: Register and login
         run: |
-          IDEM=$(uuidgen)
           curl -fsS -X POST http://localhost:8080/v1/auth/register \
             -H "Content-Type: application/json" \
-            -H "Idempotency-Key: ${IDEM}" \
+            -H "Idempotency-Key: $(uuidgen)" \
             -d '{"email":"ci@example.com","phone":"+15550001111","password":"secret123"}'
           curl -fsS -X POST http://localhost:8080/v1/auth/login \
             -H "Content-Type: application/json" \
+            -H "Idempotency-Key: $(uuidgen)" \
             -d '{"email":"ci@example.com","password":"secret123"}' | grep -q access_token
 
       - name: Tear down

@@ -269,6 +269,7 @@ curl -s -X POST http://localhost:8080/v1/auth/register \
 # Login — capture access token (requires jq)
 TOKEN=$(curl -s -X POST http://localhost:8080/v1/auth/login \
   -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
   -d '{"email":"alice@example.com","password":"secret123"}' | jq -r .access_token)
 
 # Submit KYC (auto-approved in MVP) — provisions wallet via saga

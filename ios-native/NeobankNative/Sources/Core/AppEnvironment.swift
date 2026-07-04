@@ -10,6 +10,7 @@ struct AppEnvironment {
     let walletController: WalletHomeController
     let cardsController: CardsController
     let notificationsController: NotificationsController
+    let transferSubmitController: TransferSubmitController
 
     init() {
         let tokenStorage = TokenStorage()
@@ -47,6 +48,7 @@ struct AppEnvironment {
         let walletRepository = WalletRepository(client: apiClient)
         let cardRepository = CardRepository(client: apiClient)
         let notificationRepository = NotificationRepository(client: apiClient)
+        let transferRepository = TransferRepository(client: apiClient)
 
         self.sessionStore = sessionStore
         self.authController = AuthController(
@@ -58,5 +60,6 @@ struct AppEnvironment {
         self.walletController = WalletHomeController(repository: walletRepository)
         self.cardsController = CardsController(repository: cardRepository)
         self.notificationsController = NotificationsController(repository: notificationRepository)
+        self.transferSubmitController = TransferSubmitController(repository: transferRepository)
     }
 }

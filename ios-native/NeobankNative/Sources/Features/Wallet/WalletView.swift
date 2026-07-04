@@ -5,7 +5,7 @@ struct WalletView: View {
     @Environment(WalletHomeController.self) private var walletController
     @Environment(AuthController.self) private var authController
     @AppStorage("appAppearance") private var appearance: AppAppearance = .system
-    @State private var showSendComingSoon = false
+    @State private var showSendFlow = false
 
     var body: some View {
         NavigationStack {
@@ -85,7 +85,7 @@ struct WalletView: View {
         .refreshable { await walletController.load() }
         .safeAreaInset(edge: .bottom) {
             Button {
-                showSendComingSoon = true
+                showSendFlow = true
             } label: {
                 Label("Send", systemImage: "paperplane.fill")
             }
@@ -93,10 +93,8 @@ struct WalletView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
         }
-        .alert("Coming soon", isPresented: $showSendComingSoon) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Sending money isn't built yet.")
+        .sheet(isPresented: $showSendFlow) {
+            TransferFlowView()
         }
     }
 }

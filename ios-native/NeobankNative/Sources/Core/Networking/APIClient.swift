@@ -28,7 +28,10 @@ final class APIClient: Sendable {
 
     private static let mutatingMethods: Set<HTTPMethod> = [.post, .put, .patch, .delete]
 
-    private static let decoder: JSONDecoder = {
+    /// Shared decoder config, exposed so callers that need to decode a
+    /// non-2xx body themselves (see `APIError.responseData`) stay consistent
+    /// with what `send` uses for successful responses.
+    static let jsonDecoder: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .iso8601
@@ -46,9 +49,10 @@ final class APIClient: Sendable {
         _ path: String,
         method: HTTPMethod = .get,
         query: [String: String?]? = nil,
-        body: [String: Any?]? = nil
+        body: [String: Any?]? = nil,
+        idempotencyKey: String? = nil
     ) async throws -> Response {
-        try await send(path, method: method, query: query, body: body, isRetryAfterRefresh: false)
+        try await send(path, method: method, query: query, body: body, idempotencyKey: idempotencyKey, isRetryAfterRefresh: false)
     }
 
     private func send<Response: Decodable>(
@@ -56,9 +60,10 @@ final class APIClient: Sendable {
         method: HTTPMethod,
         query: [String: String?]?,
         body: [String: Any?]?,
+        idempotencyKey: String?,
         isRetryAfterRefresh: Bool
     ) async throws -> Response {
-        let request = try makeRequest(path: path, method: method, query: query, body: body)
+        let request = try makeRequest(path: path, method: method, query: query, body: body, idempotencyKey: idempotencyKey)
 
         let data: Data
         let httpResponse: HTTPURLResponse
@@ -83,7 +88,7 @@ final class APIClient: Sendable {
                 await auth.onSessionExpired()
                 throw APIError.unauthenticated()
             }
-            return try await send(path, method: method, query: query, body: body, isRetryAfterRefresh: true)
+            return try await send(path, method: method, query: query, body: body, idempotencyKey: idempotencyKey, isRetryAfterRefresh: true)
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
@@ -95,7 +100,7 @@ final class APIClient: Sendable {
         }
 
         do {
-            return try Self.decoder.decode(Response.self, from: data)
+            return try Self.jsonDecoder.decode(Response.self, from: data)
         } catch {
             throw APIError.decoding()
         }
@@ -105,7 +110,8 @@ final class APIClient: Sendable {
         path: String,
         method: HTTPMethod,
         query: [String: String?]?,
-        body: [String: Any?]?
+        body: [String: Any?]?,
+        idempotencyKey: String?
     ) throws -> URLRequest {
         var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         if let query {
@@ -118,7 +124,7 @@ final class APIClient: Sendable {
         request.setValue(UUID().uuidString, forHTTPHeaderField: "X-Correlation-Id")
 
         if Self.mutatingMethods.contains(method) {
-            request.setValue(UUID().uuidString, forHTTPHeaderField: "Idempotency-Key")
+            request.setValue(idempotencyKey ?? UUID().uuidString, forHTTPHeaderField: "Idempotency-Key")
         }
         if let body {
             let compacted = body.compactMapValues { $0 }
@@ -139,6 +145,6 @@ final class APIClient: Sendable {
             message = apiMessage
         }
         let correlationId = response.value(forHTTPHeaderField: "x-correlation-id")
-        return APIError(message: message, statusCode: statusCode, correlationId: correlationId)
+        return APIError(message: message, statusCode: statusCode, correlationId: correlationId, responseData: data)
     }
 }

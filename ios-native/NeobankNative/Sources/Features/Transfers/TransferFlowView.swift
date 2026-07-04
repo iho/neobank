@@ -162,7 +162,7 @@ struct TransferFlowView: View {
                     systemImage: "checkmark.circle.fill",
                     tint: .green,
                     title: "Sent!",
-                    message: "$\(Self.formattedAmount(transfer.amount ?? amount)) to \(recipient)",
+                    message: "$\(LedgerAmount.formatted(transfer.amount ?? amount)) to \(recipient)",
                     primaryLabel: "Done",
                     onPrimary: {
                         Task { await walletController.load() }
@@ -202,25 +202,6 @@ struct TransferFlowView: View {
                 memo: memo.trimmingCharacters(in: .whitespaces)
             )
         }
-    }
-
-    /// The ledger returns amounts at full stored precision (e.g.
-    /// "2.50000000"); render at 2 decimal places for display. Goes through
-    /// `Decimal`, not `Double`, so this can't introduce the binary-float
-    /// drift `WalletBalance`/`WalletTransaction` avoid by keeping amounts as
-    /// strings in the first place. Locale is pinned to `en_US_POSIX` — the
-    /// device's locale would otherwise substitute "," for the decimal point
-    /// (same class of bug as the Card expiry formatting fix: a "convenience"
-    /// API silently applying locale-aware formatting to something that's a
-    /// plain ASCII ledger value, not user-facing prose).
-    private static func formattedAmount(_ raw: String) -> String {
-        guard let decimal = Decimal(string: raw) else { return raw }
-        let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: decimal as NSDecimalNumber) ?? raw
     }
 }
 

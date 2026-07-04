@@ -39,7 +39,7 @@ struct CardDetailView: View {
                     )
 
                     if let dailyLimit = card.dailyLimit {
-                        Text("Daily limit: \(dailyLimit)")
+                        Text("Daily limit: $\(LedgerAmount.formatted(dailyLimit))")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }

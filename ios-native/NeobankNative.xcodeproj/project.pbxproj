@@ -47,6 +47,7 @@
 		E6CA85AE4D57BE3548D929C9 /* TransferRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B520898E04D9BCEC888E3F7 /* TransferRepository.swift */; };
 		EE7B91C3115C0AC59E525441 /* TransferSubmitController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDEC902625BE9EE62FE35F27 /* TransferSubmitController.swift */; };
 		EED689661ABABA021839BB6A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 350F481851788C4488DA1036 /* LoginView.swift */; };
+		F069F4B82EC664B69B4975D4 /* LedgerAmount.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8AAD98003632805C6E938EB /* LedgerAmount.swift */; };
 		F618584B914A88CBA547CA63 /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC0E0D79AB870D26852319 /* AuthModels.swift */; };
 		FB0896E97DDBF479BE3F40F3 /* NotificationsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED7BE0EC026BDD2C8AF5600 /* NotificationsController.swift */; };
 /* End PBXBuildFile section */
@@ -106,6 +107,7 @@
 		E702064BE10C871910F04B43 /* AuthController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthController.swift; sourceTree = "<group>"; };
 		E7E074B533C39E8127A7CD1A /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		EDEC902625BE9EE62FE35F27 /* TransferSubmitController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferSubmitController.swift; sourceTree = "<group>"; };
+		F8AAD98003632805C6E938EB /* LedgerAmount.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerAmount.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -209,6 +211,7 @@
 				DCC5AA40C2F3865FE49470BF /* Auth */,
 				93C5D909C42B8B25D1EF5DC0 /* Config */,
 				C9CEE4F37CA939CFC55869DC /* Design */,
+				D6E01A30815FC3AD1BF93984 /* Formatting */,
 				5BD940650E824AF5D108BC3B /* Networking */,
 				E035742CAB940FA2410A30AA /* Storage */,
 			);
@@ -231,6 +234,14 @@
 				821114136117CE8F1E767DF6 /* Theme.swift */,
 			);
 			path = Design;
+			sourceTree = "<group>";
+		};
+		D6E01A30815FC3AD1BF93984 /* Formatting */ = {
+			isa = PBXGroup;
+			children = (
+				F8AAD98003632805C6E938EB /* LedgerAmount.swift */,
+			);
+			path = Formatting;
 			sourceTree = "<group>";
 		};
 		DB15691B43F24B89F8F3C1B0 /* Auth */ = {
@@ -403,6 +414,7 @@
 				50D7F4E37E243482ED1B3810 /* KycModels.swift in Sources */,
 				866149CD941C14AEEF1EAA12 /* KycPendingView.swift in Sources */,
 				797922BBF741D714FFE4E109 /* KycRepository.swift in Sources */,
+				F069F4B82EC664B69B4975D4 /* LedgerAmount.swift in Sources */,
 				EED689661ABABA021839BB6A /* LoginView.swift in Sources */,
 				30CBE1651462AD57967D220C /* MainTabsView.swift in Sources */,
 				5497B9A883AE46A0B05C31B2 /* NeobankNativeApp.swift in Sources */,

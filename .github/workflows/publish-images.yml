@@ -74,6 +74,18 @@ jobs:
           - service: notification
             dockerfile: deployments/Dockerfile.service
             build_args: SERVICE=notification
+          - service: rails
+            dockerfile: deployments/Dockerfile.service
+            build_args: SERVICE=simulators/rails
+          - service: cardproc
+            dockerfile: deployments/Dockerfile.service
+            build_args: SERVICE=simulators/cardproc
+          - service: kyc
+            dockerfile: deployments/Dockerfile.service
+            build_args: SERVICE=simulators/kyc
+          - service: fx
+            dockerfile: deployments/Dockerfile.service
+            build_args: SERVICE=simulators/fx
           - service: migrate
             dockerfile: deployments/Dockerfile.migrate
             build_args: ""
@@ -137,7 +149,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [gateway, user, payment, card, notification, migrate, jobs, ops-metrics, outbox-archiver, goledger]
+        service: [gateway, user, payment, card, notification, rails, cardproc, kyc, fx, migrate, jobs, ops-metrics, outbox-archiver, goledger]
     steps:
       - uses: docker/login-action@v3
         with:
@@ -192,7 +204,7 @@ jobs:
             -f deployments/docker-compose.services.yml \
             -f deployments/docker-compose.images.yml \
             up -d --no-build --pull always --wait --wait-timeout 300 \
-            postgres redis redpanda vault otel-collector migrate user notification payment card gateway
+            postgres redis redpanda vault otel-collector migrate rails cardproc kyc fx user notification payment card gateway
 
       - name: Gateway health
         run: curl -fsS http://localhost:8080/health

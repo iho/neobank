@@ -21,6 +21,22 @@ services:
     <<: *image-defaults
     image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}notification:${IMAGE_TAG:-latest}
 
+  rails:
+    <<: *image-defaults
+    image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}rails:${IMAGE_TAG:-latest}
+
+  cardproc:
+    <<: *image-defaults
+    image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}cardproc:${IMAGE_TAG:-latest}
+
+  kyc:
+    <<: *image-defaults
+    image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}kyc:${IMAGE_TAG:-latest}
+
+  fx:
+    <<: *image-defaults
+    image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}fx:${IMAGE_TAG:-latest}
+
   payment:
     <<: *image-defaults
     image: ${NEOBANK_IMAGE_REGISTRY:-ghcr.io/iho/neobank/}payment:${IMAGE_TAG:-latest}

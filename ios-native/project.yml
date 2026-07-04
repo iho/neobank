@@ -1,0 +1,56 @@
+name: NeobankNative
+options:
+  bundleIdPrefix: dev.horobets
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+targets:
+  NeobankNative:
+    type: application
+    platform: iOS
+    sources:
+      - NeobankNative/Sources
+      - path: NeobankNative/Resources
+        buildPhase: resources
+        excludes:
+          - "Info.plist"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.horobets.neobankNative
+        SWIFT_VERSION: "6.0"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
+        INFOPLIST_KEY_CFBundleDisplayName: "Neobank"
+    info:
+      path: NeobankNative/Resources/Info.plist
+      properties:
+        UILaunchScreen: {}
+
+  NeobankNativeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - NeobankNativeTests
+    dependencies:
+      - target: NeobankNative
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.horobets.neobankNative.tests
+        SWIFT_VERSION: "6.0"
+
+schemes:
+  NeobankNative:
+    build:
+      targets:
+        NeobankNative: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - NeobankNativeTests

@@ -43,6 +43,8 @@ type Harness struct {
 	PaymentURL      string
 	CardURL         string
 	NotificationURL string
+	KYCURL          string
+	CardProcURL     string
 
 	SettlementAccountID string
 	TreasuryAccountID   string
@@ -164,6 +166,8 @@ func (h *Harness) runMigrations() {
 		{filepath.Join(root, "services/payment/migrations"), "payment"},
 		{filepath.Join(root, "services/card/migrations"), "card"},
 		{filepath.Join(root, "services/notification/migrations"), "notification"},
+		{filepath.Join(root, "services/simulators/kyc/migrations"), "kyc"},
+		{filepath.Join(root, "services/simulators/cardproc/migrations"), "cardproc"},
 	}
 	for _, svc := range services {
 		if err := dbmigrate.Up(h.DatabaseURL, svc.dir, dbmigrate.Config{SchemaName: svc.schema}); err != nil {
@@ -209,6 +213,8 @@ func (h *Harness) buildServiceBinaries() {
 		"user":         "./services/user/cmd/server",
 		"payment":      "./services/payment/cmd/server",
 		"card":         "./services/card/cmd/server",
+		"kyc":          "./services/simulators/kyc/cmd/server",
+		"cardproc":     "./services/simulators/cardproc/cmd/server",
 	}
 	for name, pkg := range services {
 		out := filepath.Join(dir, name)
@@ -229,24 +235,39 @@ func (h *Harness) startServiceProcesses() {
 	paymentGrpcPort := mustFreePort(h.t)
 	cardPort := mustFreePort(h.t)
 	cardGrpcPort := mustFreePort(h.t)
+	kycPort := mustFreePort(h.t)
+	cardProcPort := mustFreePort(h.t)
 
 	h.NotificationURL = fmt.Sprintf("http://127.0.0.1:%s", notifPort)
 	h.UserURL = fmt.Sprintf("http://127.0.0.1:%s", userPort)
 	h.UserGRPCAddr = fmt.Sprintf("127.0.0.1:%s", userGrpcPort)
 	h.PaymentURL = fmt.Sprintf("http://127.0.0.1:%s", paymentPort)
 	h.CardURL = fmt.Sprintf("http://127.0.0.1:%s", cardPort)
+	h.KYCURL = fmt.Sprintf("http://127.0.0.1:%s", kycPort)
+	h.CardProcURL = fmt.Sprintf("http://127.0.0.1:%s", cardProcPort)
 
 	notificationIngest := h.NotificationURL + "/api/v1/internal/events"
 
+	// kyc must be up before user: user's SubmitKYC calls out to it
+	// synchronously, and it needs user's webhook URL to deliver verdicts
+	// back to (see submit_kyc.go / kyc_handlers.go).
+	h.startProcess("kyc", map[string]string{
+		"DATABASE_URL":            h.DatabaseURL,
+		"HTTP_PORT":               kycPort,
+		"USER_SERVICE_EVENTS_URL": h.UserURL + "/webhooks/kyc/events",
+	})
+	waitForHTTP200(h.t, h.KYCURL+"/health")
+
 	h.startProcess("user", map[string]string{
-		"DATABASE_URL":                    h.DatabaseURL,
-		"REDIS_URL":                       h.RedisURL,
-		"LEDGER_GRPC_ADDR":                h.LedgerAddr,
-		"HTTP_PORT":                       userPort,
-		"GRPC_PORT":                       userGrpcPort,
-		"JWT_SECRET":                      jwtSecret,
-		"NOTIFICATION_SERVICE_URL":        notificationIngest,
+		"DATABASE_URL":                     h.DatabaseURL,
+		"REDIS_URL":                        h.RedisURL,
+		"LEDGER_GRPC_ADDR":                 h.LedgerAddr,
+		"HTTP_PORT":                        userPort,
+		"GRPC_PORT":                        userGrpcPort,
+		"JWT_SECRET":                       jwtSecret,
+		"NOTIFICATION_SERVICE_URL":         notificationIngest,
 		"DEPOSIT_SOURCE_LEDGER_ACCOUNT_ID": h.TreasuryAccountID,
+		"KYC_VENDOR_SERVICE_URL":           h.KYCURL,
 	})
 	waitForHTTP200(h.t, h.UserURL+"/health")
 
@@ -266,6 +287,18 @@ func (h *Harness) startServiceProcesses() {
 		"USER_GRPC_ADDR":           h.UserGRPCAddr,
 		"NOTIFICATION_SERVICE_URL": notificationIngest,
 	})
+	// cardproc must be up before card: card's IssueCardUseCase calls out to
+	// it synchronously for every virtual card, with no direct-call fallback
+	// (unlike authorize/capture, which still hit card's own endpoints
+	// directly — see docs/vendor-simulators-plan.md Phase 2a "kept as-is").
+	h.startProcess("cardproc", map[string]string{
+		"DATABASE_URL":               h.DatabaseURL,
+		"HTTP_PORT":                  cardProcPort,
+		"CARD_SERVICE_AUTHORIZE_URL": h.CardURL + "/webhooks/cardproc/authorize",
+		"CARD_SERVICE_EVENTS_URL":    h.CardURL + "/webhooks/cardproc/events",
+	})
+	waitForHTTP200(h.t, h.CardProcURL+"/health")
+
 	h.startProcess("card", map[string]string{
 		"DATABASE_URL":                 h.DatabaseURL,
 		"REDIS_URL":                    h.RedisURL,
@@ -276,6 +309,7 @@ func (h *Harness) startServiceProcesses() {
 		"USER_GRPC_ADDR":               h.UserGRPCAddr,
 		"NOTIFICATION_SERVICE_URL":     notificationIngest,
 		"SETTLEMENT_LEDGER_ACCOUNT_ID": h.SettlementAccountID,
+		"CARDPROC_SERVICE_URL":         h.CardProcURL,
 	})
 
 	waitForHTTP200(h.t, h.NotificationURL+"/health")

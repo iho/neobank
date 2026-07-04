@@ -35,9 +35,13 @@ func TestKYCRejectionAndResubmit(t *testing.T) {
 	})
 
 	approved := h.submitKYCWithName(t, user.UserID, "Clean User", "US")
-	if approved.Status != "approved" {
-		t.Fatalf("resubmit kyc status = %q", approved.Status)
+	if approved.Status != "pending" {
+		t.Fatalf("resubmit kyc status = %q, want pending (vendor call is async)", approved.Status)
 	}
+
+	waitUntil(t, waitTimeout, func() bool {
+		return h.getKYCStatus(t, user.UserID).Status == "approved"
+	})
 }
 
 func TestNotificationPreferencesMuteTransfers(t *testing.T) {

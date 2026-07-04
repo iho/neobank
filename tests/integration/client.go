@@ -86,12 +86,12 @@ type internalWalletResponse struct {
 }
 
 type transferResponse struct {
-	ID              string  `json:"id"`
-	Status          string  `json:"status"`
-	SenderUserID    string  `json:"sender_user_id"`
-	RecipientUserID string  `json:"recipient_user_id"`
-	Amount          string  `json:"amount"`
-	Currency        string  `json:"currency"`
+	ID               string  `json:"id"`
+	Status           string  `json:"status"`
+	SenderUserID     string  `json:"sender_user_id"`
+	RecipientUserID  string  `json:"recipient_user_id"`
+	Amount           string  `json:"amount"`
+	Currency         string  `json:"currency"`
 	LedgerTransferID *string `json:"ledger_transfer_id,omitempty"`
 }
 
@@ -150,13 +150,49 @@ func (h *Harness) registerUser(t *testing.T, email, phone string) registerRespon
 	return out
 }
 
+// submitKYC submits and waits for the kyc simulator's async approval
+// verdict — the vendor call in submit_kyc.go answers "pending", not a
+// final status, so callers that need an approved wallet must wait for
+// ProcessKYCVerdictUseCase to land the webhook (delivered on a ~1s tick by
+// pkg/vendorsim.Dispatcher, not synchronously with submission).
 func (h *Harness) submitKYC(t *testing.T, userID string) submitKYCResponse {
 	t.Helper()
 	out := h.submitKYCWithName(t, userID, "Test User", "US")
-	if out.Status != "approved" {
-		t.Fatalf("kyc status = %q", out.Status)
+
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		status := h.getKYCStatus(t, userID)
+		if status.Status == "approved" {
+			out.Status = status.Status
+			break
+		}
+		if status.Status == "rejected" || status.Status == "manual_review" {
+			t.Fatalf("kyc status = %q, want approved", status.Status)
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("kyc status never reached approved, last was %q", status.Status)
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
-	return out
+
+	// ProcessKYCVerdictUseCase provisions the wallet right after marking the
+	// case approved, in the same webhook request — but as two separate DB
+	// calls, so there's a brief window where a concurrent status read can
+	// see "approved" before the wallet row exists. Retry rather than assume.
+	path := fmt.Sprintf("/api/v1/internal/wallets?user_id=%s&currency=USD", userID)
+	deadline = time.Now().Add(5 * time.Second)
+	for {
+		var wallet internalWalletResponse
+		status := (&httpClient{base: h.UserURL}).do(t, http.MethodGet, path, "", "", nil, &wallet)
+		if status == http.StatusOK && wallet.ID != "" {
+			out.WalletID = wallet.ID
+			return out
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("wallet not provisioned after kyc approval for user %s", userID)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func (h *Harness) submitKYCWithName(t *testing.T, userID, fullName, country string) submitKYCResponse {

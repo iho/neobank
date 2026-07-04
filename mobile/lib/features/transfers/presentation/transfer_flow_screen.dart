@@ -64,11 +64,13 @@ class _TransferFlowScreenState extends ConsumerState<TransferFlowScreen> {
                 recipientType: _recipientType,
                 controller: _recipientController,
                 onTypeChanged: (t) => setState(() => _recipientType = t),
+                onChanged: () => setState(() {}),
                 onNext: _recipientValid ? () => setState(() => _step = 1) : null,
               ),
             1 => _AmountStep(
                 amountController: _amountController,
                 memoController: _memoController,
+                onChanged: () => setState(() {}),
                 onBack: () => setState(() => _step = 0),
                 onNext: _amountValid ? () => setState(() => _step = 2) : null,
               ),
@@ -93,12 +95,14 @@ class _RecipientStep extends StatelessWidget {
     required this.recipientType,
     required this.controller,
     required this.onTypeChanged,
+    required this.onChanged,
     required this.onNext,
   });
 
   final _RecipientType recipientType;
   final TextEditingController controller;
   final ValueChanged<_RecipientType> onTypeChanged;
+  final VoidCallback onChanged;
   final VoidCallback? onNext;
 
   @override
@@ -122,6 +126,7 @@ class _RecipientStep extends StatelessWidget {
           keyboardType: recipientType == _RecipientType.phone
               ? TextInputType.phone
               : TextInputType.emailAddress,
+          onChanged: (_) => onChanged(),
           decoration: InputDecoration(
             labelText: recipientType == _RecipientType.phone ? 'Recipient phone' : 'Recipient email',
           ),
@@ -137,12 +142,14 @@ class _AmountStep extends StatelessWidget {
   const _AmountStep({
     required this.amountController,
     required this.memoController,
+    required this.onChanged,
     required this.onBack,
     required this.onNext,
   });
 
   final TextEditingController amountController;
   final TextEditingController memoController;
+  final VoidCallback onChanged;
   final VoidCallback onBack;
   final VoidCallback? onNext;
 
@@ -156,6 +163,7 @@ class _AmountStep extends StatelessWidget {
         TextField(
           controller: amountController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          onChanged: (_) => onChanged(),
           decoration: const InputDecoration(labelText: 'Amount (USD)', prefixText: '\$'),
         ),
         const SizedBox(height: 16),

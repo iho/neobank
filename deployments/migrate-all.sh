@@ -21,4 +21,7 @@ cd /svc/card && /usr/local/bin/migrate-card
 echo "==> rails simulator migrations"
 cd /svc/rails && /usr/local/bin/migrate-rails
 
+echo "==> cardproc simulator migrations"
+cd /svc/cardproc && /usr/local/bin/migrate-cardproc
+
 echo "all service migrations applied"

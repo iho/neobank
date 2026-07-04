@@ -139,6 +139,14 @@ func Catalog() []CatalogEntry {
 			Topics:        []string{"card.events"},
 			PayloadFields: []string{"authorization_id", "card_id", "user_id", "amount", "currency", "ledger_transfer_id"},
 		},
+		{
+			EventType:     TypeCardAuthVoided,
+			EventVersion:  1,
+			AggregateType: "authorization",
+			Description:   "Authorization hold released without capture (reversal or expiry)",
+			Topics:        []string{"card.events"},
+			PayloadFields: []string{"authorization_id", "card_id", "user_id", "amount", "currency"},
+		},
 	}
 }
 
@@ -201,6 +209,10 @@ func RegisteredEvents() []Event {
 		CardAuthCaptured{
 			AuthorizationID: "auth-1", CardID: "card-1", UserID: "user-1",
 			Amount: "25.00", Currency: "USD", LedgerTransferID: "ltx-2",
+		},
+		CardAuthVoided{
+			AuthorizationID: "auth-2", CardID: "card-1", UserID: "user-1",
+			Amount: "15.00", Currency: "USD",
 		},
 	}
 }

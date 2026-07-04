@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -19,6 +20,7 @@ type Querier interface {
 	GetAuthorizationByCardAndIdempotencyKey(ctx context.Context, arg GetAuthorizationByCardAndIdempotencyKeyParams) (GetAuthorizationByCardAndIdempotencyKeyRow, error)
 	GetAuthorizationByID(ctx context.Context, id uuid.UUID) (GetAuthorizationByIDRow, error)
 	GetCardByID(ctx context.Context, id uuid.UUID) (GetCardByIDRow, error)
+	GetCardByProcessorRef(ctx context.Context, processorRef pgtype.Text) (GetCardByProcessorRefRow, error)
 	GetCardByUserAndIdempotencyKey(ctx context.Context, arg GetCardByUserAndIdempotencyKeyParams) (GetCardByUserAndIdempotencyKeyRow, error)
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
@@ -33,6 +35,7 @@ type Querier interface {
 	MarkAuthorizationCaptured(ctx context.Context, arg MarkAuthorizationCapturedParams) error
 	MarkAuthorizationFailed(ctx context.Context, arg MarkAuthorizationFailedParams) error
 	MarkAuthorizationHold(ctx context.Context, arg MarkAuthorizationHoldParams) error
+	MarkAuthorizationVoided(ctx context.Context, arg MarkAuthorizationVoidedParams) error
 	MarkCardCancelled(ctx context.Context, id uuid.UUID) error
 	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
 	ResolveReconciliationBreak(ctx context.Context, arg ResolveReconciliationBreakParams) (int64, error)

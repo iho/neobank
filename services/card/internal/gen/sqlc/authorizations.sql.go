@@ -271,6 +271,22 @@ func (q *Queries) MarkAuthorizationHold(ctx context.Context, arg MarkAuthorizati
 	return err
 }
 
+const markAuthorizationVoided = `-- name: MarkAuthorizationVoided :exec
+UPDATE card.authorizations
+SET status = 'voided', failure_reason = $2
+WHERE id = $1
+`
+
+type MarkAuthorizationVoidedParams struct {
+	ID            uuid.UUID
+	FailureReason pgtype.Text
+}
+
+func (q *Queries) MarkAuthorizationVoided(ctx context.Context, arg MarkAuthorizationVoidedParams) error {
+	_, err := q.db.Exec(ctx, markAuthorizationVoided, arg.ID, arg.FailureReason)
+	return err
+}
+
 const sumAuthorizationsTodayForCard = `-- name: SumAuthorizationsTodayForCard :one
 SELECT COALESCE(SUM(amount), 0)::text AS total
 FROM card.authorizations

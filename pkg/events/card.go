@@ -19,6 +19,7 @@ const (
 	TypeCardUnfrozen     = "card.unfrozen"
 	TypeCardAuthApproved = "card.auth.approved"
 	TypeCardAuthCaptured = "card.auth.captured"
+	TypeCardAuthVoided   = "card.auth.voided"
 )
 
 type CardIssued struct {
@@ -83,3 +84,18 @@ func (e CardAuthCaptured) EventType() string     { return TypeCardAuthCaptured }
 func (e CardAuthCaptured) AggregateType() string { return "authorization" }
 func (e CardAuthCaptured) AggregateID() string   { return e.AuthorizationID }
 func (e CardAuthCaptured) Version() int          { return 1 }
+
+// CardAuthVoided is published when a hold is released without ever being
+// captured (the cardproc simulator's "reverse" flow, or an expired hold).
+type CardAuthVoided struct {
+	AuthorizationID string `json:"authorization_id"`
+	CardID          string `json:"card_id"`
+	UserID          string `json:"user_id"`
+	Amount          string `json:"amount"`
+	Currency        string `json:"currency"`
+}
+
+func (e CardAuthVoided) EventType() string     { return TypeCardAuthVoided }
+func (e CardAuthVoided) AggregateType() string { return "authorization" }
+func (e CardAuthVoided) AggregateID() string   { return e.AuthorizationID }
+func (e CardAuthVoided) Version() int          { return 1 }

@@ -22,6 +22,13 @@ SELECT id, user_id, wallet_id, COALESCE(processor_ref, '') AS processor_ref,
 FROM card.cards
 WHERE user_id = $1 AND idempotency_key = $2;
 
+-- name: GetCardByProcessorRef :one
+SELECT id, user_id, wallet_id, COALESCE(processor_ref, '') AS processor_ref,
+       pan_token, last_four, expiry_month, expiry_year, status, idempotency_key,
+       COALESCE(daily_limit::text, '') AS daily_limit, online_only, created_at
+FROM card.cards
+WHERE processor_ref = $1;
+
 -- name: ListCardsByUser :many
 SELECT id, user_id, wallet_id, COALESCE(processor_ref, '') AS processor_ref,
        pan_token, last_four, expiry_month, expiry_year, status, idempotency_key,

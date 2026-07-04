@@ -113,3 +113,24 @@ func TestApplyCardAuthLifecycle(t *testing.T) {
 		t.Fatalf("capture update = %+v", update)
 	}
 }
+
+func TestApplyCardAuthVoided(t *testing.T) {
+	payload, _ := json.Marshal(events.CardAuthVoided{
+		AuthorizationID: "a1", CardID: "c1", UserID: "u1", Amount: "5.00", Currency: "USD",
+	})
+
+	rows, update, err := Apply(events.Envelope{
+		EventID: "e5", EventType: events.TypeCardAuthVoided, Payload: payload,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if rows != nil {
+		t.Fatal("expected no new rows for a void")
+	}
+
+	if update == nil || update.Type != "card_hold_released" || update.Status != "voided" {
+		t.Fatalf("void update = %+v", update)
+	}
+}

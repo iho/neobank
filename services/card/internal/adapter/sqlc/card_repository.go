@@ -56,8 +56,8 @@ func (r *CardRepository) Create(ctx context.Context, c domain.Card) error {
 		ExpiryYear:     int16(c.ExpiryYear),
 		Status:         string(c.Status),
 		IdempotencyKey: c.IdempotencyKey,
-		DailyLimit: dailyLimit,
-		OnlineOnly: pgtype.Bool{Bool: c.OnlineOnly, Valid: true},
+		DailyLimit:     dailyLimit,
+		OnlineOnly:     pgtype.Bool{Bool: c.OnlineOnly, Valid: true},
 	})
 }
 
@@ -86,6 +86,18 @@ func (r *CardRepository) GetByUserAndIdempotencyKey(ctx context.Context, userID,
 		UserID:         uid,
 		IdempotencyKey: key,
 	})
+	if err != nil {
+		return nil, err
+	}
+	return mapCardRow(
+		row.ID, row.UserID, row.WalletID, row.ProcessorRef, row.PanToken,
+		row.LastFour, row.ExpiryMonth, row.ExpiryYear, row.Status,
+		row.IdempotencyKey, dailyLimitString(row.DailyLimit), row.OnlineOnly, row.CreatedAt,
+	), nil
+}
+
+func (r *CardRepository) GetByProcessorRef(ctx context.Context, processorRef string) (*domain.Card, error) {
+	row, err := r.q.GetCardByProcessorRef(ctx, pgutil.Text(processorRef))
 	if err != nil {
 		return nil, err
 	}

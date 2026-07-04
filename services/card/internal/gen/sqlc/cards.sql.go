@@ -101,6 +101,51 @@ func (q *Queries) GetCardByID(ctx context.Context, id uuid.UUID) (GetCardByIDRow
 	return i, err
 }
 
+const getCardByProcessorRef = `-- name: GetCardByProcessorRef :one
+SELECT id, user_id, wallet_id, COALESCE(processor_ref, '') AS processor_ref,
+       pan_token, last_four, expiry_month, expiry_year, status, idempotency_key,
+       COALESCE(daily_limit::text, '') AS daily_limit, online_only, created_at
+FROM card.cards
+WHERE processor_ref = $1
+`
+
+type GetCardByProcessorRefRow struct {
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	WalletID       uuid.UUID
+	ProcessorRef   string
+	PanToken       string
+	LastFour       string
+	ExpiryMonth    int16
+	ExpiryYear     int16
+	Status         string
+	IdempotencyKey string
+	DailyLimit     interface{}
+	OnlineOnly     bool
+	CreatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) GetCardByProcessorRef(ctx context.Context, processorRef pgtype.Text) (GetCardByProcessorRefRow, error) {
+	row := q.db.QueryRow(ctx, getCardByProcessorRef, processorRef)
+	var i GetCardByProcessorRefRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.WalletID,
+		&i.ProcessorRef,
+		&i.PanToken,
+		&i.LastFour,
+		&i.ExpiryMonth,
+		&i.ExpiryYear,
+		&i.Status,
+		&i.IdempotencyKey,
+		&i.DailyLimit,
+		&i.OnlineOnly,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getCardByUserAndIdempotencyKey = `-- name: GetCardByUserAndIdempotencyKey :one
 SELECT id, user_id, wallet_id, COALESCE(processor_ref, '') AS processor_ref,
        pan_token, last_four, expiry_month, expiry_year, status, idempotency_key,

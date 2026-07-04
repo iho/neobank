@@ -148,6 +148,17 @@ func (r *AuthorizationRepository) MarkCaptured(ctx context.Context, id, transfer
 	})
 }
 
+func (r *AuthorizationRepository) MarkVoided(ctx context.Context, id, reason string) error {
+	uid, err := pgutil.ParseUUID(id)
+	if err != nil {
+		return err
+	}
+	return r.q.MarkAuthorizationVoided(ctx, sqlc.MarkAuthorizationVoidedParams{
+		ID:            uid,
+		FailureReason: pgutil.Text(reason),
+	})
+}
+
 func mapAuthorizationByIDRow(row sqlc.GetAuthorizationByIDRow) *domain.Authorization {
 	return mapAuthorization(
 		row.ID, row.CardID, row.UserID, row.IdempotencyKey, row.MerchantName, row.MerchantCategoryCode,
@@ -184,12 +195,12 @@ func mapAuthorization(
 		IdempotencyKey:       idempotencyKey,
 		MerchantName:         merchantName,
 		MerchantCategoryCode: merchantCategoryCode,
-		Amount:           amount,
-		Currency:         currency,
-		Status:           domain.AuthStatus(status),
-		LedgerHoldID:     ledgerHoldID,
-		LedgerTransferID: ledgerTransferID,
-		FailureReason:    failureReason,
+		Amount:               amount,
+		Currency:             currency,
+		Status:               domain.AuthStatus(status),
+		LedgerHoldID:         ledgerHoldID,
+		LedgerTransferID:     ledgerTransferID,
+		FailureReason:        failureReason,
 	}
 	if createdAt.Valid {
 		a.CreatedAt = createdAt.Time.UTC()

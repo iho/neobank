@@ -14,17 +14,18 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/iho/neobank/pkg/fraud"
+	neobankv1 "github.com/iho/neobank/pkg/gen/neobank/v1"
+	"github.com/iho/neobank/pkg/grpcutil"
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
 	"github.com/iho/neobank/pkg/metrics"
-	neobankv1 "github.com/iho/neobank/pkg/gen/neobank/v1"
-	"github.com/iho/neobank/pkg/grpcutil"
 	"github.com/iho/neobank/pkg/otel"
 	"github.com/iho/neobank/pkg/outbox"
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/reqctx"
 	"github.com/iho/neobank/pkg/sloghttp"
 	"github.com/iho/neobank/pkg/userclient"
+	"github.com/iho/neobank/pkg/vendorsim"
 	apiadapter "github.com/iho/neobank/services/card/internal/adapter/api"
 	grpcadapter "github.com/iho/neobank/services/card/internal/adapter/grpc"
 	"github.com/iho/neobank/services/card/internal/adapter/processor"
@@ -82,7 +83,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer users.Close()
-	proc := processor.NewMock()
+	proc := processor.NewHTTPClient(cfg.CardProcURL)
 	fraudChecker := fraud.NewChecker()
 
 	txRunner := pgutil.NewTxRunner(pool)
@@ -92,10 +93,12 @@ func main() {
 	updateControlsUC := usecase.NewUpdateCardControlsUseCase(cardRepo)
 	authorizeUC := usecase.NewAuthorizeTransactionUseCase(cardRepo, authRepo, users, ledger, fraudChecker, fraudRepo, outboxRepo, auditRepo, sagaStore, txRunner)
 	captureUC := usecase.NewCaptureAuthorizationUseCase(authRepo, ledger, outboxRepo, auditRepo, cfg.SettlementLedgerAcctID, txRunner)
+	reverseUC := usecase.NewReverseAuthorizationUseCase(authRepo, ledger, outboxRepo, auditRepo, txRunner)
 	listAuthsUC := usecase.NewListAuthorizationsUseCase(authRepo)
 
 	strictServer := apiadapter.NewServer(issueUC, freezeUC, unfreezeUC, updateControlsUC, authorizeUC, captureUC, listAuthsUC)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
+	cardProcHandlers := apiadapter.NewCardProcHandlers(authorizeUC, captureUC, reverseUC, cfg.CardProcWebhookSecret)
 
 	producer := outbox.NewProducer(outbox.ProducerConfig{
 		KafkaBrokers:    cfg.KafkaBrokers,
@@ -119,6 +122,22 @@ func main() {
 	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("card")))
 	metrics.Mount(r)
 	genapi.HandlerFromMux(strictHandler, r)
+
+	// Webhook routes are mounted on a bare root router (no Idempotency-Key
+	// middleware, which webhook deliveries don't carry) rather than r above:
+	// the sync auth call verifies its own signature inline (HandleAuthorize),
+	// and the async events route uses vendorsim.VerifyWebhook (signature +
+	// replay de-dup) applied inline via .With — same pattern as payment's
+	// rails webhook, minus the extra router nesting.
+	root := chi.NewRouter()
+	root.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	root.Use(sloghttp.AccessLog(logger, sloghttp.WithService("card")))
+	root.Post("/webhooks/cardproc/authorize", cardProcHandlers.HandleAuthorize(cardRepo))
+	root.With(vendorsim.VerifyWebhook(vendorsim.VerifyWebhookConfig{
+		Secret: []byte(cfg.CardProcWebhookSecret),
+		Nonces: vendorsim.NewMemoryNonceStore(),
+	})).Post("/webhooks/cardproc/events", cardProcHandlers.HandleEvents)
+	root.Mount("/", r)
 
 	grpcServer, err := grpcutil.NewServer()
 	if err != nil {
@@ -144,7 +163,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%s", cfg.HTTPPort),
-		Handler:           r,
+		Handler:           root,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

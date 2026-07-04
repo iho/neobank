@@ -13,6 +13,8 @@ type Config struct {
 	KafkaBrokers           string
 	SettlementLedgerAcctID string
 	NotificationURL        string
+	CardProcURL            string
+	CardProcWebhookSecret  string
 }
 
 func Load() Config {
@@ -27,6 +29,8 @@ func Load() Config {
 		KafkaBrokers:           env("KAFKA_BROKERS", ""),
 		SettlementLedgerAcctID: env("SETTLEMENT_LEDGER_ACCOUNT_ID", ""),
 		NotificationURL:        env("NOTIFICATION_SERVICE_URL", "http://localhost:8083/api/v1/internal/events"),
+		CardProcURL:            env("CARDPROC_SERVICE_URL", "http://localhost:8091"),
+		CardProcWebhookSecret:  env("CARDPROC_WEBHOOK_SECRET", "dev-cardproc-webhook-secret"),
 	}
 }
 

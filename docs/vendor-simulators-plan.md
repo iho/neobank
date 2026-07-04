@@ -167,41 +167,98 @@ in an automated integration test (today only unit-tested with fakes).
 
 ## Phase 2 — Card processor simulator (`services/simulators/cardproc`)
 
-Inverts the current flow: today our API calls authorize/capture directly; with the
-simulator, an "external processor" originates those events — which is how Marqeta/
-Visa actually behave.
+Inverts the previous flow: card service used to call its own authorize/capture
+logic directly (via the public gateway/mobile API — see "kept as-is" below); with
+the simulator, an "external processor" originates those events instead, which is
+how Marqeta/Visa actually behave. Split into 2a (issuance + real-time auth +
+capture + reversal, **done**) and 2b (auth expiry, chargebacks, partial/multi
+capture, **not yet built**).
 
-**Simulator responsibilities**
-- `POST /v1/cards` — card service calls this during issuance; simulator returns
-  processor card ID, PAN token, expiry.
-- Admin API to simulate merchant activity: `POST /sim/transactions` (card token,
-  amount, MCC, merchant name, type: auth / auth+capture / refund). Simulator then
-  drives the lifecycle via webhooks to the card service:
-  `card.authorization.requested` (expects sync approve/decline response — the
-  real-time auth flow), then `card.captured`, `card.auth.reversed`,
-  `card.auth.expired` (if not captured within TTL), `card.chargeback.opened`.
-- Magic values: amount `.13` → force our decline path exercised, MCC `7995`
-  (gambling) → tests card controls, merchant `CHARGEBACK` → chargeback 1 simulated
-  day after capture.
-- Partial captures and multi-capture support (airline/hotel patterns).
+**Phase 2a — done.** Implemented and wired end-to-end:
 
-**Neobank-side changes**
-- Card service: issuance saga calls the simulator; new webhook endpoint
-  (`POST /webhooks/cardproc`). Existing `authorize_transaction.go` /
-  `capture_authorization.go` usecases become the handlers behind the webhook
-  consumer instead of being exposed on our public API. The real-time auth webhook
-  must respond within a deadline (e.g. 2s) with approve/decline — fraud rules and
-  card controls run inside that window; timeout = decline (stand-in processing is
-  a later phase).
-- New flows to implement: auth expiry (release hold), chargeback (provisional
-  credit ledger flow + dispute record).
-- Ledger: card settlement account per currency (`cardproc:USD`); captures move
-  money wallet → card settlement.
+- `services/simulators/cardproc`: a standalone HTTP service (plain `chi`
+  handlers, same rationale as rails) with:
+  - `POST /v1/cards` — issues a virtual card (PAN token, last four, expiry);
+    called by the card service during issuance.
+  - `POST /v1/cards/{ref}/cancel` — card service's issuance-saga compensation
+    step calls this on failure.
+  - `POST /sim/transactions` — admin endpoint that simulates a merchant charge:
+    creates a transaction record, then **synchronously** calls the card
+    service's real-time auth webhook and waits for approve/decline (this is
+    the one place in the vendor-simulator design that isn't fire-and-forget —
+    matching how a real network's stand-in authorization actually works). If
+    approved with `capture: true`, schedules a `card.captured` webhook via
+    `pkg/vendorsim.Dispatcher`.
+  - `POST /sim/transactions/{id}/capture` and `.../reverse` — settle or void
+    an auth-only transaction later, async webhook either way.
+  - `GET /sim/deliveries[/{id}]` — admin visibility into async delivery state.
+  - Its own Postgres schema (`cardproc.cards`, `cardproc.transactions`,
+    `cardproc.webhook_deliveries`) and a Postgres-backed `vendorsim.DeliveryStore`,
+    same pattern as rails.
+- Card service:
+  - `internal/adapter/processor/httpclient.go` implements the existing
+    `Processor` interface via HTTP to the simulator, swapped in for
+    `processor.NewMock()` in `cmd/server/main.go` — the interface didn't need
+    to change, only the wiring. `MockProcessor` is left in place, unused by
+    default, in case tests want it later.
+  - `POST /webhooks/cardproc/authorize` — the synchronous auth endpoint. It
+    verifies the request signature inline (not via `vendorsim.VerifyWebhook`,
+    since that middleware's replay de-dup doesn't apply to a call-and-response),
+    resolves the card by the simulator's `card_ref` (new
+    `CardRepository.GetByProcessorRef`), and runs the *existing*
+    `AuthorizeTransactionUseCase` unchanged — the fraud check, card-active/
+    controls/daily-limit checks, and ledger hold are the same code path the
+    old public endpoint used. Mounted outside the global `Idempotency-Key`
+    middleware (a bare root router, since the handler already verifies its
+    own signature and the use case is already idempotent on the simulator's
+    transaction ID).
+  - `POST /webhooks/cardproc/events` — the async consumer for
+    `card.captured` (calls the existing `CaptureAuthorizationUseCase`) and
+    `card.auth.reversed` (calls the new `ReverseAuthorizationUseCase`, which
+    voids the ledger hold and marks the authorization `voided`). Mounted
+    behind `vendorsim.VerifyWebhook`.
+  - New usecase `ReverseAuthorizationUseCase` and event
+    `card.auth.voided`, registered in `pkg/events` and projected into wallet
+    tx history by reusing the existing `CaptureUpdate` mechanism in
+    `pkg/walletprojection` (an upsert keyed on the same authorization ID as
+    the original hold row — no new query needed).
+  - Magic value: amount ending in `.13` forces a deterministic decline inside
+    `HandleAuthorize`, per the `pkg/vendorsim` convention, for tests that
+    don't want to engineer a real decline condition.
+- `deployments/docker-compose.services.yml` runs `cardproc` alongside the
+  other services; card depends on it being healthy.
 
-**Done when**: `POST /sim/transactions` end-to-end produces correct holds,
-settlements, and history entries; auth expiry releases holds; a chargeback
-produces provisional credit postings; declines happen for frozen cards, controls
-violations, and insufficient funds.
+**Deliberately not done in 2a**:
+- The public gateway/mobile `authorizeTransaction` / `captureAuthorization`
+  endpoints are untouched (same call as `deposit_wallet.go` in Phase 1a) —
+  they're still a convenient way to simulate a purchase without the cardproc
+  simulator running, and nothing required removing them.
+- No integration test in `tests/integration` yet driving the simulator's
+  admin API end-to-end (unit tests with fakes and a real `httptest` server
+  cover the sync-auth path in both services).
+
+**Phase 2b — not yet built.**
+- Auth expiry: a background sweep in the simulator that finds un-captured,
+  un-reversed transactions past a TTL and fires `card.auth.expired` (the card
+  service side can reuse `ReverseAuthorizationUseCase` for this — the event
+  name is the only new thing needed).
+- Chargebacks: `POST /sim/transactions/{id}/chargeback`, landing on the card
+  service as a new event requiring a provisional-credit ledger flow and a
+  dispute record — genuinely new state, not a reuse of existing usecases.
+- Partial/multi-capture (airline/hotel patterns).
+- MCC-based magic values (e.g. `7995` gambling) for exercising card controls
+  — deferred because `AuthorizeTransactionUseCase` doesn't currently branch
+  on MCC at all; adding that decline path is orthogonal to the simulator work.
+
+**Done when** (2a, met): `POST /sim/transactions` end-to-end produces a real
+ledger hold via the existing saga, `capture: true` settles it, and
+`.../capture` / `.../reverse` drive the same outcomes for auth-only
+transactions — all through the synchronous-auth-plus-async-webhook path
+rather than the old direct-call shortcut.
+**Done when** (2b, not yet met): auth expiry releases holds automatically; a
+chargeback produces provisional-credit postings and a dispute record;
+declines happen for MCC-restricted categories, not just frozen
+cards/limits/funds.
 
 ## Phase 3 — KYC vendor simulator (`services/simulators/kyc`)
 

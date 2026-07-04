@@ -49,6 +49,9 @@ func Apply(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {
 	case events.TypeCardAuthCaptured:
 		update, err := applyCardAuthCaptured(envelope)
 		return nil, update, err
+	case events.TypeCardAuthVoided:
+		update, err := applyCardAuthVoided(envelope)
+		return nil, update, err
 
 	default:
 		return nil, nil, nil
@@ -175,6 +178,29 @@ func applyCardAuthApproved(envelope events.Envelope) ([]Row, *CaptureUpdate, err
 		Counterparty:  payload.MerchantName,
 		CreatedAt:     createdAt,
 	}}, nil, nil
+}
+
+func applyCardAuthVoided(envelope events.Envelope) (*CaptureUpdate, error) {
+	var payload events.CardAuthVoided
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return nil, fmt.Errorf("parse card auth voided: %w", err)
+	}
+
+	createdAt := envelope.OccurredAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	return &CaptureUpdate{
+		UserID:        payload.UserID,
+		ID:            payload.AuthorizationID,
+		SourceEventID: envelope.EventID,
+		Type:          "card_hold_released",
+		Amount:        payload.Amount,
+		Currency:      payload.Currency,
+		Status:        "voided",
+		CreatedAt:     createdAt,
+	}, nil
 }
 
 func applyCardAuthCaptured(envelope events.Envelope) (*CaptureUpdate, error) {

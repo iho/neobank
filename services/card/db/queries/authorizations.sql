@@ -53,6 +53,11 @@ UPDATE card.authorizations
 SET status = 'captured', ledger_transfer_id = $2, captured_at = now()
 WHERE id = $1;
 
+-- name: MarkAuthorizationVoided :exec
+UPDATE card.authorizations
+SET status = 'voided', failure_reason = $2
+WHERE id = $1;
+
 -- name: SumAuthorizationsTodayForCard :one
 SELECT COALESCE(SUM(amount), 0)::text AS total
 FROM card.authorizations

@@ -175,6 +175,31 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  cardproc:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.service
+      args:
+        <<: *build-args
+        SERVICE: simulators/cardproc
+    environment:
+      DATABASE_URL: postgres://neobank:neobank@postgres:5432/neobank?sslmode=disable
+      HTTP_PORT: "8091"
+      CARD_SERVICE_AUTHORIZE_URL: http://card:8084/webhooks/cardproc/authorize
+      CARD_SERVICE_EVENTS_URL: http://card:8084/webhooks/cardproc/events
+      CARDPROC_WEBHOOK_SECRET: dev-cardproc-webhook-secret
+    ports:
+      - "8091:8091"
+    healthcheck:
+      <<: *http-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8091/health >/dev/null"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   card:
     build:
       context: ..
@@ -189,6 +214,8 @@ services:
       USER_SERVICE_URL: http://user:8081
       USER_GRPC_ADDR: user:50052
       NOTIFICATION_SERVICE_URL: http://notification:8083/api/v1/internal/events
+      CARDPROC_SERVICE_URL: http://cardproc:8091
+      CARDPROC_WEBHOOK_SECRET: dev-cardproc-webhook-secret
     ports:
       - "8084:8084"
       - "50054:50054"
@@ -207,6 +234,8 @@ services:
       user:
         condition: service_healthy
       notification:
+        condition: service_healthy
+      cardproc:
         condition: service_healthy
     restart: unless-stopped
 

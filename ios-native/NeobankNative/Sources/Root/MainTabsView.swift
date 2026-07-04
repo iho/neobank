@@ -3,7 +3,7 @@ import SwiftUI
 struct MainTabsView: View {
     var body: some View {
         TabView {
-            HomeView()
+            WalletView()
                 .tabItem { Label("Wallet", systemImage: "wallet.pass") }
             ComingSoonView(title: "Cards", systemImage: "creditcard")
                 .tabItem { Label("Cards", systemImage: "creditcard") }

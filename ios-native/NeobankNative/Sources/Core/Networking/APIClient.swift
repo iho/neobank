@@ -45,18 +45,20 @@ final class APIClient: Sendable {
     func send<Response: Decodable>(
         _ path: String,
         method: HTTPMethod = .get,
+        query: [String: String?]? = nil,
         body: [String: Any?]? = nil
     ) async throws -> Response {
-        try await send(path, method: method, body: body, isRetryAfterRefresh: false)
+        try await send(path, method: method, query: query, body: body, isRetryAfterRefresh: false)
     }
 
     private func send<Response: Decodable>(
         _ path: String,
         method: HTTPMethod,
+        query: [String: String?]?,
         body: [String: Any?]?,
         isRetryAfterRefresh: Bool
     ) async throws -> Response {
-        let request = try makeRequest(path: path, method: method, body: body)
+        let request = try makeRequest(path: path, method: method, query: query, body: body)
 
         let data: Data
         let httpResponse: HTTPURLResponse
@@ -81,7 +83,7 @@ final class APIClient: Sendable {
                 await auth.onSessionExpired()
                 throw APIError.unauthenticated()
             }
-            return try await send(path, method: method, body: body, isRetryAfterRefresh: true)
+            return try await send(path, method: method, query: query, body: body, isRetryAfterRefresh: true)
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
@@ -99,8 +101,18 @@ final class APIClient: Sendable {
         }
     }
 
-    private func makeRequest(path: String, method: HTTPMethod, body: [String: Any?]?) throws -> URLRequest {
-        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+    private func makeRequest(
+        path: String,
+        method: HTTPMethod,
+        query: [String: String?]?,
+        body: [String: Any?]?
+    ) throws -> URLRequest {
+        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if let query {
+            let items = query.compactMapValues { $0 }.map { URLQueryItem(name: $0.key, value: $0.value) }
+            if !items.isEmpty { components.queryItems = items }
+        }
+        var request = URLRequest(url: components.url!)
         request.httpMethod = method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(UUID().uuidString, forHTTPHeaderField: "X-Correlation-Id")

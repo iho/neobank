@@ -7,29 +7,8 @@ struct MainTabsView: View {
                 .tabItem { Label("Wallet", systemImage: "wallet.pass") }
             CardsListView()
                 .tabItem { Label("Cards", systemImage: "creditcard") }
-            ComingSoonView(title: "Alerts", systemImage: "bell")
+            NotificationsListView()
                 .tabItem { Label("Alerts", systemImage: "bell") }
-        }
-    }
-}
-
-struct ComingSoonView: View {
-    let title: String
-    let systemImage: String
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                BrandBackground()
-                VStack(spacing: 16) {
-                    GlowIcon(systemName: systemImage, diameter: 72, iconSize: 32)
-                    Text(title).font(.title2.bold())
-                    Text("Coming soon.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .navigationTitle(title)
         }
     }
 }

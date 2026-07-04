@@ -13,6 +13,7 @@ struct NeobankNativeApp: App {
                 .environment(environment.kycController)
                 .environment(environment.walletController)
                 .environment(environment.cardsController)
+                .environment(environment.notificationsController)
                 .preferredColorScheme(appearance.colorScheme)
         }
     }

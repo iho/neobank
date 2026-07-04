@@ -12,9 +12,11 @@
 		104C9530004530D535C7FBE2 /* CardRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DDFE072232951B57B098F34 /* CardRepository.swift */; };
 		11053D5CBEADEDACDA7826D2 /* CardDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C33439AEE441BD032529B4 /* CardDetailView.swift */; };
 		12AD3D8A70EC42C279B35E6F /* WalletView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97EFD9B5573E90B86F4CBC56 /* WalletView.swift */; };
+		14292EF9A0B97B80CF39B461 /* NotificationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FCF4BEC9E6E5C0015896A6F /* NotificationRepository.swift */; };
 		18340DF0A277A2A4BABE728D /* AuthController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E702064BE10C871910F04B43 /* AuthController.swift */; };
 		19176421DCEB7F8A6DA93260 /* NeobankNativeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29809FF8318033A59B0C9A23 /* NeobankNativeTests.swift */; };
 		1C88EB7E6B25AA9DEDE94035 /* KycController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8140870966A15D171A6E8DD1 /* KycController.swift */; };
+		23A9E3D6CAAE821994F80F51 /* NotificationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6436F59E235DB2F867753A /* NotificationModels.swift */; };
 		24979A4B925DFE4D10268214 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A6ED23D23D588AC0F47FAAF /* APIClient.swift */; };
 		30CBE1651462AD57967D220C /* MainTabsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D35F772A45936FB9ED444A5 /* MainTabsView.swift */; };
 		34C861C4534F8F10EC0C8B4A /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07A5AA344C675821569D9EA4 /* AppConfig.swift */; };
@@ -39,8 +41,10 @@
 		AD18CF44DE934BEE014DD7C4 /* AuthRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B12B7A5A5BEA1F27E35095F /* AuthRepository.swift */; };
 		BA17F0F4F844124C018D5447 /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6342844747E75F84D4DB1A /* RegisterView.swift */; };
 		CEEBC8445B6A49DD8B78F2E4 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821114136117CE8F1E767DF6 /* Theme.swift */; };
+		D889EA543D240D6BE7A18CBF /* NotificationsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF59A04CFDFA1A0D2A2875CA /* NotificationsListView.swift */; };
 		EED689661ABABA021839BB6A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 350F481851788C4488DA1036 /* LoginView.swift */; };
 		F618584B914A88CBA547CA63 /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC0E0D79AB870D26852319 /* AuthModels.swift */; };
+		FB0896E97DDBF479BE3F40F3 /* NotificationsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED7BE0EC026BDD2C8AF5600 /* NotificationsController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +61,7 @@
 		03AC0F151E02E3D597C7BB9F /* CardsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardsListView.swift; sourceTree = "<group>"; };
 		07A5AA344C675821569D9EA4 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		14E9770AAECEC2BAE9DCC5F4 /* KycPendingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KycPendingView.swift; sourceTree = "<group>"; };
+		1ED7BE0EC026BDD2C8AF5600 /* NotificationsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsController.swift; sourceTree = "<group>"; };
 		29809FF8318033A59B0C9A23 /* NeobankNativeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeobankNativeTests.swift; sourceTree = "<group>"; };
 		2B12B7A5A5BEA1F27E35095F /* AuthRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthRepository.swift; sourceTree = "<group>"; };
 		2DD380AD84A6F259BB3BF7A0 /* WalletModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletModels.swift; sourceTree = "<group>"; };
@@ -67,6 +72,7 @@
 		42C33439AEE441BD032529B4 /* CardDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDetailView.swift; sourceTree = "<group>"; };
 		4443AC3058135D53A36F25B2 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		4A6342844747E75F84D4DB1A /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
+		4FCF4BEC9E6E5C0015896A6F /* NotificationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationRepository.swift; sourceTree = "<group>"; };
 		5D35F772A45936FB9ED444A5 /* MainTabsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabsView.swift; sourceTree = "<group>"; };
 		6607B3679DBEC971E1CB8CA6 /* NeobankNativeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeobankNativeApp.swift; sourceTree = "<group>"; };
 		6963E2DA9122D255B252643F /* NeobankNative.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NeobankNative.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -87,12 +93,25 @@
 		D1DC0E0D79AB870D26852319 /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
 		D7E5DE93BE596EB591262A81 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		DA4168B7715633CCB472CC75 /* HomeGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeGateView.swift; sourceTree = "<group>"; };
+		DD6436F59E235DB2F867753A /* NotificationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationModels.swift; sourceTree = "<group>"; };
+		DF59A04CFDFA1A0D2A2875CA /* NotificationsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsListView.swift; sourceTree = "<group>"; };
 		E035D4D5448DBD8BF1DD1676 /* KycFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KycFormView.swift; sourceTree = "<group>"; };
 		E702064BE10C871910F04B43 /* AuthController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthController.swift; sourceTree = "<group>"; };
 		E7E074B533C39E8127A7CD1A /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		0BF6BF96AE7595F5979851C9 /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				DD6436F59E235DB2F867753A /* NotificationModels.swift */,
+				4FCF4BEC9E6E5C0015896A6F /* NotificationRepository.swift */,
+				1ED7BE0EC026BDD2C8AF5600 /* NotificationsController.swift */,
+				DF59A04CFDFA1A0D2A2875CA /* NotificationsListView.swift */,
+			);
+			path = Notifications;
+			sourceTree = "<group>";
+		};
 		35C3CC1EA421D405BD2C0821 /* NeobankNative */ = {
 			isa = PBXGroup;
 			children = (
@@ -118,6 +137,7 @@
 				DB15691B43F24B89F8F3C1B0 /* Auth */,
 				DD423AAE8EFC727A5AF54BC0 /* Cards */,
 				5A92F080B1AABD4E7D80C680 /* Kyc */,
+				0BF6BF96AE7595F5979851C9 /* Notifications */,
 				F4BD09D2CB2E3D94FE9A9EC0 /* Wallet */,
 			);
 			path = Features;
@@ -366,6 +386,10 @@
 				EED689661ABABA021839BB6A /* LoginView.swift in Sources */,
 				30CBE1651462AD57967D220C /* MainTabsView.swift in Sources */,
 				5497B9A883AE46A0B05C31B2 /* NeobankNativeApp.swift in Sources */,
+				23A9E3D6CAAE821994F80F51 /* NotificationModels.swift in Sources */,
+				14292EF9A0B97B80CF39B461 /* NotificationRepository.swift in Sources */,
+				FB0896E97DDBF479BE3F40F3 /* NotificationsController.swift in Sources */,
+				D889EA543D240D6BE7A18CBF /* NotificationsListView.swift in Sources */,
 				857DA4381BCE34BA4CA5BC4C /* RefreshCoordinator.swift in Sources */,
 				BA17F0F4F844124C018D5447 /* RegisterView.swift in Sources */,
 				4CE724308C3B10C4C846D214 /* RootView.swift in Sources */,

@@ -76,6 +76,21 @@ type PaymentBankTransfer struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
+type PaymentBankTransferOrder struct {
+	ID               uuid.UUID
+	RailsPaymentID   string
+	UserID           uuid.UUID
+	Amount           pgtype.Numeric
+	Currency         string
+	CounterpartyIban string
+	Reference        string
+	LedgerTransferID string
+	ReturnTransferID pgtype.Text
+	Status           string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
 type PaymentFraudDecision struct {
 	ID              uuid.UUID
 	EntityType      string

@@ -15,6 +15,19 @@ WHERE status IN ('completed', 'failed') AND ledger_transfer_id IS NOT NULL
 ORDER BY created_at DESC
 LIMIT $1;
 
+-- name: ListBankTransfersForReconciliation :many
+SELECT id, ledger_transfer_id, status
+FROM payment.bank_transfers
+ORDER BY created_at DESC
+LIMIT $1;
+
+-- name: ListBankTransferOrdersForReconciliation :many
+SELECT id, ledger_transfer_id, COALESCE(return_transfer_id, '') AS return_transfer_id, status
+FROM payment.bank_transfer_orders
+WHERE status IN ('settled', 'returned', 'failed')
+ORDER BY created_at DESC
+LIMIT $1;
+
 -- name: UpsertReconciliationBreak :exec
 INSERT INTO payment.reconciliation_breaks (
     id, run_id, entity_type, entity_id, reason, local_status, ledger_ref, status, created_at, updated_at

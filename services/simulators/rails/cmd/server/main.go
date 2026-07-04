@@ -38,6 +38,7 @@ func main() {
 	queries := sqlc.New(pool)
 	accountRepo := sqlcrepo.NewAccountRepository(queries)
 	transferRepo := sqlcrepo.NewInboundTransferRepository(queries)
+	paymentRepo := sqlcrepo.NewOutboundPaymentRepository(queries)
 	deliveryStore := deliverystore.NewPostgres(queries)
 
 	dispatcher := vendorsim.NewDispatcher(deliveryStore, []byte(cfg.WebhookSecret), logger)
@@ -50,9 +51,10 @@ func main() {
 
 	issueAccountUC := usecase.NewIssueAccountUseCase(accountRepo, cfg.IBANCountry, cfg.IBANBankCode)
 	injectTransferUC := usecase.NewInjectInboundTransferUseCase(accountRepo, transferRepo, dispatcher, cfg.WebhookURL)
-	statementUC := usecase.NewGetStatementUseCase(transferRepo)
+	initiatePaymentUC := usecase.NewInitiateOutboundPaymentUseCase(accountRepo, paymentRepo, dispatcher, cfg.WebhookURL)
+	statementUC := usecase.NewGetStatementUseCase(transferRepo, paymentRepo)
 
-	server := apiadapter.NewServer(issueAccountUC, injectTransferUC, statementUC, accountRepo, deliveryStore)
+	server := apiadapter.NewServer(issueAccountUC, injectTransferUC, initiatePaymentUC, statementUC, accountRepo, deliveryStore)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))

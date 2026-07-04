@@ -89,7 +89,7 @@ Also in this phase:
 
 Simulates a SEPA/ACH-style sponsor-bank connection. Biggest realism gain: removes
 the "mint money out of thin air" deposit. Split into 1a (inbound, **done**) and
-1b (outbound + reconciliation, **not yet built**) — see below for why.
+1b (outbound + reconciliation, **done**) — see below for why.
 
 **Phase 1a — done.** Implemented and wired end-to-end:
 
@@ -139,31 +139,70 @@ rather than half-build everything):
 - No integration test in `tests/integration` yet driving the simulator's admin
   API end-to-end (unit tests with fakes cover the usecases in both services).
 
-**Phase 1b — not yet built.**
-- Accept outbound payment orders: `POST /v1/payments` → `accepted`, then async
-  `rails.payment.settled` or `rails.payment.returned` webhook (magic values:
-  reference `RETURN` bounces after settlement, amount `.99` fails validation
-  asynchronously). `pkg/vendorsim.ContainsToken` / `AmountEndsInCents` are
-  ready for this; the simulator just doesn't have the endpoint yet.
-- Payment service outbound saga: user request → fraud screen → debit wallet →
-  `POST /v1/payments` to simulator → on `settled`: no further action (funds
-  already moved); on `returned`: reverse the ledger transfer back to the
-  wallet — the "money bounced after it looked done" case is the interesting
-  saga this unlocks.
-- Reconciliation: extend the existing recon job to compare the simulator's
-  `GET /v1/statements/{date}` against `payment.bank_transfers` /
-  `RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID` ledger entries, feeding breaks into the
-  existing break-resolution tooling.
+**Phase 1b — done.** Implemented and wired end-to-end:
+
+- `services/simulators/rails`:
+  - `POST /v1/payments` — accepts an outbound payment order (`rails.
+    outbound_payments`, status `accepted`), then schedules its outcome via
+    `vendorsim.Dispatcher.EnqueueAfter`: amount ending `.99` → only
+    `rails.payment.failed` (async validation failure, no settle first);
+    reference containing `RETURN` → `rails.payment.settled` at +2s then
+    `rails.payment.returned` at +10s (the "money bounced after it looked
+    done" case); anything else → `rails.payment.settled` only. `EnqueueAfter`
+    is a new `Dispatcher` method (`minDelay` parameter) added specifically so
+    settle-then-return ordering is deterministic rather than left to chaos
+    randomness.
+  - `GET /v1/statements/{date}` now also returns `outbound_payments` alongside
+    `inbound_transfers`.
+- Payment service:
+  - `POST /api/v1/payments/bank-transfers` — `SendBankTransferUseCase`:
+    resolves the wallet, debits `wallet → RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID`
+    via `ledgerclient`, calls the simulator's `POST /v1/payments`, then in one
+    DB tx records a `payment.bank_transfer_orders` row (status `processing`),
+    publishes `events.BankTransferSent`, and records an audit entry.
+  - `POST /webhooks/rails` now also handles `rails.payment.settled` /
+    `.returned` / `.failed`. `ProcessOutboundPaymentWebhookUseCase`:
+    `Settled` is a no-op beyond marking the row (funds already moved at send
+    time); `ReturnedOrFailed` reverses the debit
+    (`settlement account → wallet`, `IdempotencyKey = paymentID+":return"`)
+    and publishes `events.BankTransferReturned`. Both methods are idempotent
+    on order status (a redelivered webhook after the terminal state is a
+    no-op), on top of the outer `vendorsim.VerifyWebhook` signature/replay
+    check.
+  - New events `payment.bank_transfer.sent` / `payment.bank_transfer.returned`,
+    projected by `pkg/walletprojection` — "sent" creates a `bank_transfer_out`
+    wallet-history row (status `processing`); "returned" is a `CaptureUpdate`
+    that reuses the *same* row ID and flips it to `returned` rather than
+    creating a second row (the ledger reversal already fixed the balance;
+    this only needs to reflect that the transfer didn't go through).
+  - Reconciliation (`cmd/reconcile`) now checks three entity types per run,
+    not just P2P transfers: `bank_transfer` (inbound credit vs ledger),
+    `bank_transfer_order` (outbound debit vs ledger, and — for
+    returned/failed orders — the return transfer vs ledger too). Breaks
+    still land in the same `payment.reconciliation_breaks` table, keyed by
+    `(entity_type, entity_id, reason)`.
+
+**Deliberately not done in 1b** (same reasoning as 1a — small honest slice):
+- No idempotency key on the *outbound* debit transfer in
+  `SendBankTransferUseCase` (a retried `POST /api/v1/payments/bank-transfers`
+  today would double-debit) — the inbound and return paths are idempotent,
+  the initial send is not yet. Worth fixing before this is anything but a
+  demo of the happy/bounce paths.
+- No fraud/AML screening on the outbound path (mirrors the 1a gap on
+  inbound).
 - An integration test exercising chaos (duplicate/out-of-order webhook
-  delivery via `RAILS_CHAOS_*` env vars) against a real Postgres.
+  delivery via `RAILS_CHAOS_*` env vars) against a real Postgres — still
+  unit-tested with fakes only, same as 1a.
 
 **Done when** (1a, met): an injected inbound transfer lands in a wallet with a
 ledger transfer, an audit entry, and a wallet-history row, and a redelivered
 webhook does not double-credit.
-**Done when** (1b, not yet met): an outbound payment settles or bounces
-correctly; recon over a day of simulated traffic reports zero breaks;
-duplicate/out-of-order webhook delivery under chaos causes no double-credit
-in an automated integration test (today only unit-tested with fakes).
+**Done when** (1b, met): an outbound payment settles or bounces correctly
+(unit-tested via magic values); reconciliation checks bank transfers and
+bank transfer orders (including return legs) against the ledger, not just
+P2P transfers. Not yet met: an automated chaos integration test against real
+Postgres (still only unit-tested with fakes), and idempotency on the initial
+outbound debit.
 
 ## Phase 2 — Card processor simulator (`services/simulators/cardproc`)
 

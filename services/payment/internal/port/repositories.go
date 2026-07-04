@@ -73,3 +73,14 @@ type FXConversionRepository interface {
 	GetByQuoteID(ctx context.Context, quoteID string) (*domain.FXConversion, error)
 	WithTx(tx pgx.Tx) FXConversionRepository
 }
+
+// BankTransferOrderRepository records outbound bank transfers initiated by
+// the neobank, keyed by the rails simulator's payment ID so a redelivered
+// settle/return webhook is a no-op.
+type BankTransferOrderRepository interface {
+	Create(ctx context.Context, o domain.BankTransferOrder) (domain.BankTransferOrder, error)
+	GetByRailsPaymentID(ctx context.Context, railsPaymentID string) (*domain.BankTransferOrder, error)
+	MarkSettled(ctx context.Context, railsPaymentID string) error
+	MarkReturned(ctx context.Context, railsPaymentID, status, returnTransferID string) error
+	WithTx(tx pgx.Tx) BankTransferOrderRepository
+}

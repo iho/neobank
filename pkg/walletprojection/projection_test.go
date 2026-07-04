@@ -120,6 +120,46 @@ func TestApplyFXConversionCompleted(t *testing.T) {
 	}
 }
 
+func TestApplyBankTransferSentAndReturned(t *testing.T) {
+	sentPayload, _ := json.Marshal(events.BankTransferSent{
+		OrderID: "bto1", UserID: "u1", LedgerTransferID: "ltx1",
+		Amount: "75.00", Currency: "USD", CounterpartyIBAN: "DE00OTHER", Reference: "invoice",
+	})
+
+	rows, update, err := Apply(events.Envelope{
+		EventID: "e6", EventType: events.TypeBankTransferSent, Payload: sentPayload,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if update != nil {
+		t.Fatal("expected no capture update for sent")
+	}
+
+	if len(rows) != 1 || rows[0].Type != "bank_transfer_out" || rows[0].Direction != "debit" ||
+		rows[0].Status != "processing" || rows[0].Amount != "75.00" {
+		t.Fatalf("sent row = %+v", rows)
+	}
+
+	returnedPayload, _ := json.Marshal(events.BankTransferReturned{
+		OrderID: "bto1", UserID: "u1", Amount: "75.00", Currency: "USD",
+		ReturnTransferID: "ltx2", Reason: "returned",
+	})
+
+	_, returnUpdate, err := Apply(events.Envelope{
+		EventID: "e7", EventType: events.TypeBankTransferReturned, Payload: returnedPayload,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if returnUpdate == nil || returnUpdate.ID != "bto1" || returnUpdate.Status != "returned" ||
+		returnUpdate.Amount != "75.00" || returnUpdate.Currency != "USD" {
+		t.Fatalf("return update = %+v", returnUpdate)
+	}
+}
+
 func TestApplyCardAuthLifecycle(t *testing.T) {
 	approvedPayload, _ := json.Marshal(events.CardAuthApproved{
 		AuthorizationID: "a1", UserID: "u1", Amount: "5.00", Currency: "USD", MerchantName: "Coffee",

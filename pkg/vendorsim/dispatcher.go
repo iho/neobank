@@ -71,13 +71,22 @@ func NewDispatcher(store DeliveryStore, secret []byte, logger *slog.Logger) *Dis
 // Enqueue schedules a webhook delivery, applying the configured chaos delay.
 // Returns the delivery ID.
 func (d *Dispatcher) Enqueue(ctx context.Context, url, eventType string, payload any) (string, error) {
+	return d.EnqueueAfter(ctx, url, eventType, payload, 0)
+}
+
+// EnqueueAfter schedules a webhook delivery no earlier than minDelay from
+// now, plus the configured chaos delay on top — for simulators that need a
+// deterministic minimum gap between related events (e.g. a "settled"
+// webhook followed by a later "returned" webhook for the same payment),
+// not just chaos jitter.
+func (d *Dispatcher) EnqueueAfter(ctx context.Context, url, eventType string, payload any, minDelay time.Duration) (string, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return "", fmt.Errorf("vendorsim: marshal payload: %w", err)
 	}
 
 	delivery := NewDelivery(url, eventType, body)
-	delivery.NextAttemptAt = delivery.NextAttemptAt.Add(d.Chaos.Delay())
+	delivery.NextAttemptAt = delivery.NextAttemptAt.Add(minDelay).Add(d.Chaos.Delay())
 
 	if err := d.Store.Enqueue(ctx, delivery); err != nil {
 		return "", err

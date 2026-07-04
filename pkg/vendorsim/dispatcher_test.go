@@ -188,3 +188,31 @@ func TestDispatcherChaosDuplicateSendsTwice(t *testing.T) {
 		t.Fatalf("expected 2 delivery attempts with DuplicateProb=1, got %d", calls)
 	}
 }
+
+func TestDispatcherEnqueueAfterRespectsMinDelay(t *testing.T) {
+	store := NewMemoryDeliveryStore()
+	d := NewDispatcher(store, []byte("test-secret"), nil)
+
+	id, err := d.EnqueueAfter(context.Background(), "http://example.invalid", "evt", payload{Amount: "1.00"}, time.Hour)
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	due, err := store.ClaimDue(context.Background(), time.Now().UTC(), 0)
+	if err != nil {
+		t.Fatalf("claim due: %v", err)
+	}
+
+	if len(due) != 0 {
+		t.Fatal("expected delivery not due immediately with a 1h min delay")
+	}
+
+	stored, err := store.Get(context.Background(), id)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	if !stored.NextAttemptAt.After(time.Now().UTC().Add(50 * time.Minute)) {
+		t.Fatalf("expected next attempt roughly 1h out, got %v", stored.NextAttemptAt)
+	}
+}

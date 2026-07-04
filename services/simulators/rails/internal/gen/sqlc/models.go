@@ -28,6 +28,18 @@ type RailsInboundTransfer struct {
 	CreatedAt  pgtype.Timestamptz
 }
 
+type RailsOutboundPayment struct {
+	ID               uuid.UUID
+	AccountID        uuid.UUID
+	Amount           pgtype.Numeric
+	Currency         string
+	CounterpartyIban string
+	Reference        string
+	Status           string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
 type RailsWebhookDelivery struct {
 	ID            uuid.UUID
 	Url           string

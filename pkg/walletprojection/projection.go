@@ -46,6 +46,11 @@ func Apply(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {
 		return applyBankTransferReceived(envelope)
 	case events.TypeFXConversionCompleted:
 		return applyFXConversionCompleted(envelope)
+	case events.TypeBankTransferSent:
+		return applyBankTransferSent(envelope)
+	case events.TypeBankTransferReturned:
+		update, err := applyBankTransferReturned(envelope)
+		return nil, update, err
 	case events.TypeCardAuthApproved:
 		return applyCardAuthApproved(envelope)
 	case events.TypeCardAuthCaptured:
@@ -154,6 +159,59 @@ func applyBankTransferReceived(envelope events.Envelope) ([]Row, *CaptureUpdate,
 		Memo:          payload.Reference,
 		CreatedAt:     createdAt,
 	}}, nil, nil
+}
+
+func applyBankTransferSent(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {
+	var payload events.BankTransferSent
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return nil, nil, fmt.Errorf("parse bank transfer sent: %w", err)
+	}
+
+	createdAt := envelope.OccurredAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	return []Row{{
+		UserID:        payload.UserID,
+		ID:            payload.OrderID,
+		SourceEventID: envelope.EventID,
+		Type:          "bank_transfer_out",
+		Amount:        payload.Amount,
+		Currency:      payload.Currency,
+		Direction:     "debit",
+		Status:        "processing",
+		Counterparty:  payload.CounterpartyIBAN,
+		Memo:          payload.Reference,
+		CreatedAt:     createdAt,
+	}}, nil, nil
+}
+
+// applyBankTransferReturned updates the row applyBankTransferSent created
+// (same ID) rather than adding a new one — the ledger transfer already
+// reversed the debit, so the wallet balance is correct; this just reflects
+// that the transfer didn't go through.
+func applyBankTransferReturned(envelope events.Envelope) (*CaptureUpdate, error) {
+	var payload events.BankTransferReturned
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return nil, fmt.Errorf("parse bank transfer returned: %w", err)
+	}
+
+	createdAt := envelope.OccurredAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	return &CaptureUpdate{
+		UserID:        payload.UserID,
+		ID:            payload.OrderID,
+		SourceEventID: envelope.EventID,
+		Type:          "bank_transfer_out",
+		Amount:        payload.Amount,
+		Currency:      payload.Currency,
+		Status:        "returned",
+		CreatedAt:     createdAt,
+	}, nil
 }
 
 func applyFXConversionCompleted(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {

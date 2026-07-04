@@ -96,13 +96,16 @@ func main() {
 
 	bankAccountRepo := sqlcrepo.NewBankAccountRepository(queries)
 	bankTransferRepo := sqlcrepo.NewBankTransferRepository(queries)
+	bankTransferOrderRepo := sqlcrepo.NewBankTransferOrderRepository(queries)
 	rails := railsclient.New(railsclient.Config{BaseURL: cfg.RailsURL})
 	getOrCreateBankAccountUC := usecase.NewGetOrCreateBankAccountUseCase(bankAccountRepo, rails)
 	if cfg.RailsSettlementLedgerAcctID == "" {
-		logger.Warn("RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID not set (inbound bank transfers will fail)")
+		logger.Warn("RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID not set (bank transfers will fail)")
 	}
 	processInboundTransferUC := usecase.NewProcessInboundTransferUseCase(bankTransferRepo, users, ledger, outboxRepo, auditRepo, cfg.RailsSettlementLedgerAcctID, txRunner)
-	railsHandlers := apiadapter.NewRailsHandlers(getOrCreateBankAccountUC, processInboundTransferUC)
+	sendBankTransferUC := usecase.NewSendBankTransferUseCase(bankTransferOrderRepo, getOrCreateBankAccountUC, users, ledger, rails, outboxRepo, auditRepo, cfg.RailsSettlementLedgerAcctID, txRunner)
+	processOutboundWebhookUC := usecase.NewProcessOutboundPaymentWebhookUseCase(bankTransferOrderRepo, users, ledger, outboxRepo, auditRepo, cfg.RailsSettlementLedgerAcctID, txRunner)
+	railsHandlers := apiadapter.NewRailsHandlers(getOrCreateBankAccountUC, processInboundTransferUC, sendBankTransferUC, processOutboundWebhookUC)
 
 	fxConversionRepo := sqlcrepo.NewFXConversionRepository(queries)
 	fx := fxclient.New(fxclient.Config{BaseURL: cfg.FXURL})
@@ -136,6 +139,7 @@ func main() {
 	metrics.Mount(r)
 	genapi.HandlerFromMux(strictHandler, r)
 	r.Get("/api/v1/payments/bank-accounts", railsHandlers.GetBankAccount)
+	r.Post("/api/v1/payments/bank-transfers", railsHandlers.SendBankTransfer)
 	r.Post("/api/v1/payments/fx/quotes", fxHandlers.CreateQuote)
 	r.Post("/api/v1/payments/fx/quotes/{id}/execute", fxHandlers.ExecuteQuote)
 

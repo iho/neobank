@@ -16,6 +16,7 @@ type Querier interface {
 	CountVelocityEventsLastHour(ctx context.Context, arg CountVelocityEventsLastHourParams) (int32, error)
 	CreateBankAccount(ctx context.Context, arg CreateBankAccountParams) (PaymentBankAccount, error)
 	CreateBankTransfer(ctx context.Context, arg CreateBankTransferParams) (CreateBankTransferRow, error)
+	CreateBankTransferOrder(ctx context.Context, arg CreateBankTransferOrderParams) (CreateBankTransferOrderRow, error)
 	CreateFXConversion(ctx context.Context, arg CreateFXConversionParams) (CreateFXConversionRow, error)
 	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
 	CreateTransfer(ctx context.Context, arg CreateTransferParams) error
@@ -23,6 +24,7 @@ type Querier interface {
 	FinishReconciliationRun(ctx context.Context, arg FinishReconciliationRunParams) error
 	GetBankAccountByUserAndCurrency(ctx context.Context, arg GetBankAccountByUserAndCurrencyParams) (PaymentBankAccount, error)
 	GetBankTransferByRailsTransferID(ctx context.Context, railsTransferID string) (GetBankTransferByRailsTransferIDRow, error)
+	GetBankTransferOrderByRailsPaymentID(ctx context.Context, railsPaymentID string) (GetBankTransferOrderByRailsPaymentIDRow, error)
 	GetFXConversionByQuoteID(ctx context.Context, quoteID string) (GetFXConversionByQuoteIDRow, error)
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
 	GetTransferByID(ctx context.Context, id uuid.UUID) (GetTransferByIDRow, error)
@@ -35,11 +37,15 @@ type Querier interface {
 	InsertScreeningCheck(ctx context.Context, arg InsertScreeningCheckParams) error
 	InsertVelocityEvent(ctx context.Context, arg InsertVelocityEventParams) error
 	ListAuditLogByEntity(ctx context.Context, arg ListAuditLogByEntityParams) ([]ListAuditLogByEntityRow, error)
+	ListBankTransferOrdersForReconciliation(ctx context.Context, limit int32) ([]ListBankTransferOrdersForReconciliationRow, error)
+	ListBankTransfersForReconciliation(ctx context.Context, limit int32) ([]ListBankTransfersForReconciliationRow, error)
 	ListFraudDecisionsByEntity(ctx context.Context, arg ListFraudDecisionsByEntityParams) ([]ListFraudDecisionsByEntityRow, error)
 	ListOpenAMLCasesForExport(ctx context.Context, dollar_1 []string) ([]ListOpenAMLCasesForExportRow, error)
 	ListOpenReconciliationBreaks(ctx context.Context, limit int32) ([]ListOpenReconciliationBreaksRow, error)
 	ListTransfersByUser(ctx context.Context, arg ListTransfersByUserParams) ([]ListTransfersByUserRow, error)
 	ListTransfersForReconciliation(ctx context.Context, limit int32) ([]ListTransfersForReconciliationRow, error)
+	MarkBankTransferOrderReturned(ctx context.Context, arg MarkBankTransferOrderReturnedParams) error
+	MarkBankTransferOrderSettled(ctx context.Context, railsPaymentID string) error
 	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
 	MarkTransferCompleted(ctx context.Context, arg MarkTransferCompletedParams) error
 	MarkTransferFailed(ctx context.Context, arg MarkTransferFailedParams) error

@@ -13,26 +13,29 @@ import (
 )
 
 type Server struct {
-	issueAccount   *usecase.IssueAccountUseCase
-	injectTransfer *usecase.InjectInboundTransferUseCase
-	statements     *usecase.GetStatementUseCase
-	accounts       port.AccountRepository
-	deliveries     vendorsim.DeliveryStore
+	issueAccount    *usecase.IssueAccountUseCase
+	injectTransfer  *usecase.InjectInboundTransferUseCase
+	initiatePayment *usecase.InitiateOutboundPaymentUseCase
+	statements      *usecase.GetStatementUseCase
+	accounts        port.AccountRepository
+	deliveries      vendorsim.DeliveryStore
 }
 
 func NewServer(
 	issueAccount *usecase.IssueAccountUseCase,
 	injectTransfer *usecase.InjectInboundTransferUseCase,
+	initiatePayment *usecase.InitiateOutboundPaymentUseCase,
 	statements *usecase.GetStatementUseCase,
 	accounts port.AccountRepository,
 	deliveries vendorsim.DeliveryStore,
 ) *Server {
 	return &Server{
-		issueAccount:   issueAccount,
-		injectTransfer: injectTransfer,
-		statements:     statements,
-		accounts:       accounts,
-		deliveries:     deliveries,
+		issueAccount:    issueAccount,
+		injectTransfer:  injectTransfer,
+		initiatePayment: initiatePayment,
+		statements:      statements,
+		accounts:        accounts,
+		deliveries:      deliveries,
 	}
 }
 
@@ -40,6 +43,7 @@ func (s *Server) Mount(r chi.Router) {
 	r.Get("/health", s.health)
 	r.Post("/v1/accounts", s.createAccount)
 	r.Get("/v1/accounts/{id}", s.getAccount)
+	r.Post("/v1/payments", s.createPayment)
 	r.Get("/v1/statements/{date}", s.getStatement)
 	r.Post("/sim/inbound-transfers", s.injectInboundTransfer)
 	r.Get("/sim/deliveries", s.listDeliveries)
@@ -138,21 +142,70 @@ func (s *Server) injectInboundTransfer(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, toInboundTransferResponse(transfer))
 }
 
-func (s *Server) getStatement(w http.ResponseWriter, r *http.Request) {
-	date := chi.URLParam(r, "date")
+type createPaymentRequest struct {
+	AccountID        string `json:"account_id"`
+	Amount           string `json:"amount"`
+	Currency         string `json:"currency"`
+	CounterpartyIBAN string `json:"counterparty_iban"`
+	Reference        string `json:"reference"`
+}
 
-	transfers, err := s.statements.Execute(r.Context(), date)
+type outboundPaymentResponse struct {
+	ID               string `json:"id"`
+	AccountID        string `json:"account_id"`
+	Amount           string `json:"amount"`
+	Currency         string `json:"currency"`
+	CounterpartyIBAN string `json:"counterparty_iban"`
+	Reference        string `json:"reference"`
+	Status           string `json:"status"`
+}
+
+func (s *Server) createPayment(w http.ResponseWriter, r *http.Request) {
+	var req createPaymentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	payment, err := s.initiatePayment.Execute(r.Context(), usecase.InitiateOutboundPaymentInput{
+		AccountID:        req.AccountID,
+		Amount:           req.Amount,
+		Currency:         req.Currency,
+		CounterpartyIBAN: req.CounterpartyIBAN,
+		Reference:        req.Reference,
+	})
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	entries := make([]inboundTransferResponse, 0, len(transfers))
-	for _, t := range transfers {
-		entries = append(entries, toInboundTransferResponse(t))
+	writeJSON(w, http.StatusCreated, toOutboundPaymentResponse(payment))
+}
+
+func (s *Server) getStatement(w http.ResponseWriter, r *http.Request) {
+	date := chi.URLParam(r, "date")
+
+	statement, err := s.statements.Execute(r.Context(), date)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{"date": date, "inbound_transfers": entries})
+	inbound := make([]inboundTransferResponse, 0, len(statement.InboundTransfers))
+	for _, t := range statement.InboundTransfers {
+		inbound = append(inbound, toInboundTransferResponse(t))
+	}
+
+	outbound := make([]outboundPaymentResponse, 0, len(statement.OutboundPayments))
+	for _, p := range statement.OutboundPayments {
+		outbound = append(outbound, toOutboundPaymentResponse(p))
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"date":              date,
+		"inbound_transfers": inbound,
+		"outbound_payments": outbound,
+	})
 }
 
 func (s *Server) listDeliveries(w http.ResponseWriter, r *http.Request) {
@@ -186,6 +239,18 @@ func (s *Server) getDelivery(w http.ResponseWriter, r *http.Request) {
 
 func toAccountResponse(a domain.Account) accountResponse {
 	return accountResponse{ID: a.ID, ExternalRef: a.ExternalRef, Currency: a.Currency, IBAN: a.IBAN}
+}
+
+func toOutboundPaymentResponse(p domain.OutboundPayment) outboundPaymentResponse {
+	return outboundPaymentResponse{
+		ID:               p.ID,
+		AccountID:        p.AccountID,
+		Amount:           p.Amount,
+		Currency:         p.Currency,
+		CounterpartyIBAN: p.CounterpartyIBAN,
+		Reference:        p.Reference,
+		Status:           p.Status,
+	}
 }
 
 func toInboundTransferResponse(t domain.InboundTransfer) inboundTransferResponse {

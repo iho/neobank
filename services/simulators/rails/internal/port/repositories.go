@@ -17,3 +17,10 @@ type InboundTransferRepository interface {
 	Create(ctx context.Context, accountID, amount, currency, senderName, reference string) (domain.InboundTransfer, error)
 	ListInRange(ctx context.Context, from, to time.Time) ([]domain.InboundTransfer, error)
 }
+
+type OutboundPaymentRepository interface {
+	Create(ctx context.Context, accountID, amount, currency, counterpartyIBAN, reference string) (domain.OutboundPayment, error)
+	GetByID(ctx context.Context, id string) (*domain.OutboundPayment, error)
+	SetStatus(ctx context.Context, id, status string) error
+	ListInRange(ctx context.Context, from, to time.Time) ([]domain.OutboundPayment, error)
+}

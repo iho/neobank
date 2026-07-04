@@ -22,7 +22,8 @@ import (
 )
 
 type reconciliationBreak struct {
-	TransferID       string `json:"transfer_id"`
+	EntityType       string `json:"entity_type"`
+	EntityID         string `json:"entity_id"`
 	LedgerTransferID string `json:"ledger_transfer_id"`
 	LocalStatus      string `json:"local_status"`
 	Reason           string `json:"reason"`
@@ -67,7 +68,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	bankTransfers, err := queries.ListBankTransfersForReconciliation(ctx, batchSize)
+	if err != nil {
+		logger.Error("list bank transfers failed", "error", err)
+		os.Exit(1)
+	}
+
+	bankTransferOrders, err := queries.ListBankTransferOrdersForReconciliation(ctx, batchSize)
+	if err != nil {
+		logger.Error("list bank transfer orders failed", "error", err)
+		os.Exit(1)
+	}
+
+	checkedCount := len(transfers) + len(bankTransfers) + len(bankTransferOrders)
 	breaks := []reconciliationBreak{}
+
 	for _, t := range transfers {
 		if !t.LedgerTransferID.Valid || t.LedgerTransferID.String == "" {
 			continue
@@ -79,11 +94,71 @@ func main() {
 		}
 		if t.Status == "completed" && ledgerTransfer == nil {
 			breaks = append(breaks, reconciliationBreak{
-				TransferID:       t.ID.String(),
+				EntityType:       "transfer",
+				EntityID:         t.ID.String(),
 				LedgerTransferID: t.LedgerTransferID.String,
 				LocalStatus:      t.Status,
 				Reason:           "completed_locally_but_missing_in_ledger",
 			})
+		}
+	}
+
+	// Every rails inbound transfer we've credited must have a matching
+	// ledger transfer — the statement the simulator exposes at
+	// GET /v1/statements/{date} is the source of truth this doesn't yet
+	// cross-check (see docs/vendor-simulators-plan.md Phase 1b).
+	for _, bt := range bankTransfers {
+		if bt.LedgerTransferID == "" {
+			continue
+		}
+		ledgerTransfer, err := ledger.GetTransfer(ctx, bt.LedgerTransferID)
+		if err != nil {
+			logger.Warn("ledger lookup failed, skipping", "bank_transfer_id", bt.ID, "error", err)
+			continue
+		}
+		if ledgerTransfer == nil {
+			breaks = append(breaks, reconciliationBreak{
+				EntityType:       "bank_transfer",
+				EntityID:         bt.ID.String(),
+				LedgerTransferID: bt.LedgerTransferID,
+				LocalStatus:      bt.Status,
+				Reason:           "completed_locally_but_missing_in_ledger",
+			})
+		}
+	}
+
+	// Every settled/returned/failed outbound order must have its debit
+	// transfer in the ledger; returned/failed orders must also have their
+	// return transfer.
+	for _, o := range bankTransferOrders {
+		if o.LedgerTransferID != "" {
+			ledgerTransfer, err := ledger.GetTransfer(ctx, o.LedgerTransferID)
+			if err != nil {
+				logger.Warn("ledger lookup failed, skipping", "bank_transfer_order_id", o.ID, "error", err)
+			} else if ledgerTransfer == nil {
+				breaks = append(breaks, reconciliationBreak{
+					EntityType:       "bank_transfer_order",
+					EntityID:         o.ID.String(),
+					LedgerTransferID: o.LedgerTransferID,
+					LocalStatus:      o.Status,
+					Reason:           "debit_completed_locally_but_missing_in_ledger",
+				})
+			}
+		}
+
+		if (o.Status == "returned" || o.Status == "failed") && o.ReturnTransferID != "" {
+			returnTransfer, err := ledger.GetTransfer(ctx, o.ReturnTransferID)
+			if err != nil {
+				logger.Warn("ledger lookup failed, skipping", "bank_transfer_order_id", o.ID, "error", err)
+			} else if returnTransfer == nil {
+				breaks = append(breaks, reconciliationBreak{
+					EntityType:       "bank_transfer_order",
+					EntityID:         o.ID.String(),
+					LedgerTransferID: o.ReturnTransferID,
+					LocalStatus:      o.Status,
+					Reason:           "return_completed_locally_but_missing_in_ledger",
+				})
+			}
 		}
 	}
 
@@ -92,14 +167,14 @@ func main() {
 		if err := queries.UpsertReconciliationBreak(ctx, sqlc.UpsertReconciliationBreakParams{
 			ID:          uuid.New(),
 			RunID:       runID,
-			EntityType:  "transfer",
-			EntityID:    b.TransferID,
+			EntityType:  b.EntityType,
+			EntityID:    b.EntityID,
 			Reason:      b.Reason,
 			CreatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
 			LocalStatus: pgtype.Text{String: b.LocalStatus, Valid: b.LocalStatus != ""},
 			LedgerRef:   pgtype.Text{String: b.LedgerTransferID, Valid: b.LedgerTransferID != ""},
 		}); err != nil {
-			logger.Error("persist reconciliation break failed", "transfer_id", b.TransferID, "error", err)
+			logger.Error("persist reconciliation break failed", "entity_type", b.EntityType, "entity_id", b.EntityID, "error", err)
 			os.Exit(1)
 		}
 	}
@@ -117,7 +192,7 @@ func main() {
 	if err := queries.FinishReconciliationRun(ctx, sqlc.FinishReconciliationRunParams{
 		ID:           runID,
 		FinishedAt:   pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
-		CheckedCount: int32(len(transfers)),
+		CheckedCount: int32(checkedCount),
 		BreakCount:   int32(len(breaks)),
 		Breaks:       breaksJSON,
 		Status:       status,
@@ -126,10 +201,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Info("reconciliation complete", "run_id", runID, "checked", len(transfers), "breaks", len(breaks))
+	logger.Info("reconciliation complete", "run_id", runID, "checked", checkedCount, "breaks", len(breaks))
 	if len(breaks) > 0 {
 		for _, b := range breaks {
-			logger.Warn("reconciliation break", "transfer_id", b.TransferID, "reason", b.Reason)
+			logger.Warn("reconciliation break", "entity_type", b.EntityType, "entity_id", b.EntityID, "reason", b.Reason)
 		}
 		fmt.Fprintf(os.Stderr, "reconciliation found %d break(s), see payment.reconciliation_runs (id=%s) and payment.reconciliation_breaks\n", len(breaks), runID)
 		os.Exit(1)

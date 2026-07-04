@@ -43,7 +43,11 @@ type fakeDispatcher struct {
 	}
 }
 
-func (d *fakeDispatcher) Enqueue(_ context.Context, url, eventType string, payload any) (string, error) {
+func (d *fakeDispatcher) Enqueue(ctx context.Context, url, eventType string, payload any) (string, error) {
+	return d.EnqueueAfter(ctx, url, eventType, payload, 0)
+}
+
+func (d *fakeDispatcher) EnqueueAfter(_ context.Context, url, eventType string, payload any, _ time.Duration) (string, error) {
 	d.calls = append(d.calls, struct {
 		url       string
 		eventType string

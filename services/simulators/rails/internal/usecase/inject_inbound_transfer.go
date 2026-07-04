@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/iho/neobank/pkg/vendorsim"
 	"github.com/iho/neobank/services/simulators/rails/internal/domain"
@@ -16,6 +17,7 @@ const EventTransferReceived = "rails.transfer.received"
 // pkg/vendorsim.Dispatcher.
 type WebhookDispatcher interface {
 	Enqueue(ctx context.Context, url, eventType string, payload any) (string, error)
+	EnqueueAfter(ctx context.Context, url, eventType string, payload any, minDelay time.Duration) (string, error)
 }
 
 // TransferReceivedPayload is the webhook body delivered on EventTransferReceived.

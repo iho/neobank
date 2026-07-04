@@ -73,3 +73,42 @@ func (e FXConversionCompleted) EventType() string     { return TypeFXConversionC
 func (e FXConversionCompleted) AggregateType() string { return "fx_conversion" }
 func (e FXConversionCompleted) AggregateID() string   { return e.ConversionID }
 func (e FXConversionCompleted) Version() int          { return 1 }
+
+const TypeBankTransferSent = "payment.bank_transfer.sent"
+
+// BankTransferSent is published when a user sends money out over the rails
+// simulator: the wallet is debited immediately, before the rail confirms
+// settlement.
+type BankTransferSent struct {
+	OrderID          string `json:"order_id"`
+	UserID           string `json:"user_id"`
+	LedgerTransferID string `json:"ledger_transfer_id"`
+	Amount           string `json:"amount"`
+	Currency         string `json:"currency"`
+	CounterpartyIBAN string `json:"counterparty_iban"`
+	Reference        string `json:"reference,omitempty"`
+}
+
+func (e BankTransferSent) EventType() string     { return TypeBankTransferSent }
+func (e BankTransferSent) AggregateType() string { return "bank_transfer_order" }
+func (e BankTransferSent) AggregateID() string   { return e.OrderID }
+func (e BankTransferSent) Version() int          { return 1 }
+
+const TypeBankTransferReturned = "payment.bank_transfer.returned"
+
+// BankTransferReturned is published when an outbound payment that already
+// looked settled bounces back (or fails validation at the rail); the
+// ledger transfer that originally debited the wallet has been reversed.
+type BankTransferReturned struct {
+	OrderID          string `json:"order_id"`
+	UserID           string `json:"user_id"`
+	Amount           string `json:"amount"`
+	Currency         string `json:"currency"`
+	ReturnTransferID string `json:"return_transfer_id"`
+	Reason           string `json:"reason,omitempty"`
+}
+
+func (e BankTransferReturned) EventType() string     { return TypeBankTransferReturned }
+func (e BankTransferReturned) AggregateType() string { return "bank_transfer_order" }
+func (e BankTransferReturned) AggregateID() string   { return e.OrderID }
+func (e BankTransferReturned) Version() int          { return 1 }

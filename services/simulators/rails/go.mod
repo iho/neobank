@@ -9,6 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/iho/neobank/pkg v0.0.0
 	github.com/jackc/pgx/v5 v5.10.0
+	github.com/shopspring/decimal v1.4.0
 )
 
 require (

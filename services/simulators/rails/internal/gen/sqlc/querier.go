@@ -14,15 +14,19 @@ type Querier interface {
 	ClaimDueDeliveries(ctx context.Context, arg ClaimDueDeliveriesParams) ([]RailsWebhookDelivery, error)
 	CreateAccount(ctx context.Context, arg CreateAccountParams) (RailsAccount, error)
 	CreateInboundTransfer(ctx context.Context, arg CreateInboundTransferParams) (CreateInboundTransferRow, error)
+	CreateOutboundPayment(ctx context.Context, arg CreateOutboundPaymentParams) (CreateOutboundPaymentRow, error)
 	EnqueueDelivery(ctx context.Context, arg EnqueueDeliveryParams) error
 	GetAccountByExternalRefAndCurrency(ctx context.Context, arg GetAccountByExternalRefAndCurrencyParams) (RailsAccount, error)
 	GetAccountByID(ctx context.Context, id uuid.UUID) (RailsAccount, error)
 	GetDelivery(ctx context.Context, id uuid.UUID) (RailsWebhookDelivery, error)
 	GetInboundTransferByID(ctx context.Context, id uuid.UUID) (GetInboundTransferByIDRow, error)
+	GetOutboundPaymentByID(ctx context.Context, id uuid.UUID) (GetOutboundPaymentByIDRow, error)
 	ListDeliveries(ctx context.Context, limitVal int32) ([]RailsWebhookDelivery, error)
 	ListInboundTransfersInRange(ctx context.Context, arg ListInboundTransfersInRangeParams) ([]ListInboundTransfersInRangeRow, error)
+	ListOutboundPaymentsInRange(ctx context.Context, arg ListOutboundPaymentsInRangeParams) ([]ListOutboundPaymentsInRangeRow, error)
 	MarkDeliveryDelivered(ctx context.Context, arg MarkDeliveryDeliveredParams) error
 	MarkDeliveryFailed(ctx context.Context, arg MarkDeliveryFailedParams) error
+	SetOutboundPaymentStatus(ctx context.Context, arg SetOutboundPaymentStatusParams) error
 }
 
 var _ Querier = (*Queries)(nil)

@@ -31,7 +31,7 @@ Designed for **auditability**: correlation IDs end-to-end, append-only evidence 
 | KYC + wallet provisioning saga | Done — async vendor verdict via `services/simulators/kyc` (approve/reject/manual-review), not auto-approve; see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md) |
 | Wallet balance (ledger `GetAccount`) | Done |
 | P2P transfers (saga: fraud → ledger → outbox) | Done |
-| Bank transfer top-up (rails simulator: virtual IBAN + inbound webhook → ledger credit) | Done (`services/simulators/rails`; outbound transfers/recon not yet wired — see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md)) |
+| Bank transfer top-up + outbound send (rails simulator: virtual IBAN, inbound/outbound webhooks, ledger credit/debit, recon) | Done (`services/simulators/rails`; see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md)) |
 | Virtual cards (issue, freeze, unfreeze) | Done |
 | Card authorization + capture (hold → settle) | Done, driven by cardproc simulator webhooks (`services/simulators/cardproc`); see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md) |
 | Multi-currency wallets + FX conversion (fx simulator: quote → execute → two-leg ledger posting) | Done (`services/simulators/fx`; fee-income separation and recon not yet wired — see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md)) |
@@ -462,8 +462,8 @@ Contract source: [pkg/events/catalog.go](pkg/events/catalog.go). Export with `ma
 | `SETTLEMENT_LEDGER_ACCOUNT_ID` | _(empty)_ | card (capture) |
 | `RAILS_SERVICE_URL` | `http://localhost:8090` | payment (issues virtual IBANs) |
 | `RAILS_WEBHOOK_SECRET` | `dev-rails-webhook-secret` | payment, rails simulator (shared HMAC secret) |
-| `RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID` | _(empty)_ | payment (inbound bank transfer credit); see [docker-compose.rails-override.yml](deployments/docker-compose.rails-override.yml) |
-| `PAYMENT_WEBHOOK_URL` | `http://localhost:8082/webhooks/rails` | rails simulator |
+| `RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID` | _(empty)_ | payment (inbound bank transfer credit + outbound bank transfer debit/return); see [docker-compose.rails-override.yml](deployments/docker-compose.rails-override.yml) |
+| `PAYMENT_WEBHOOK_URL` | `http://localhost:8082/webhooks/rails` | rails simulator (also used for `rails.payment.settled`/`.returned`/`.failed`) |
 | `CARDPROC_SERVICE_URL` | `http://localhost:8091` | card (issues virtual cards) |
 | `CARDPROC_WEBHOOK_SECRET` | `dev-cardproc-webhook-secret` | card, cardproc simulator (shared HMAC secret) |
 | `CARD_SERVICE_AUTHORIZE_URL` | `http://localhost:8084/webhooks/cardproc/authorize` | cardproc simulator (synchronous auth decision) |

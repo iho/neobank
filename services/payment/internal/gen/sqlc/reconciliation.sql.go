@@ -39,6 +39,79 @@ func (q *Queries) FinishReconciliationRun(ctx context.Context, arg FinishReconci
 	return err
 }
 
+const listBankTransferOrdersForReconciliation = `-- name: ListBankTransferOrdersForReconciliation :many
+SELECT id, ledger_transfer_id, COALESCE(return_transfer_id, '') AS return_transfer_id, status
+FROM payment.bank_transfer_orders
+WHERE status IN ('settled', 'returned', 'failed')
+ORDER BY created_at DESC
+LIMIT $1
+`
+
+type ListBankTransferOrdersForReconciliationRow struct {
+	ID               uuid.UUID
+	LedgerTransferID string
+	ReturnTransferID string
+	Status           string
+}
+
+func (q *Queries) ListBankTransferOrdersForReconciliation(ctx context.Context, limit int32) ([]ListBankTransferOrdersForReconciliationRow, error) {
+	rows, err := q.db.Query(ctx, listBankTransferOrdersForReconciliation, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBankTransferOrdersForReconciliationRow{}
+	for rows.Next() {
+		var i ListBankTransferOrdersForReconciliationRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.LedgerTransferID,
+			&i.ReturnTransferID,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBankTransfersForReconciliation = `-- name: ListBankTransfersForReconciliation :many
+SELECT id, ledger_transfer_id, status
+FROM payment.bank_transfers
+ORDER BY created_at DESC
+LIMIT $1
+`
+
+type ListBankTransfersForReconciliationRow struct {
+	ID               uuid.UUID
+	LedgerTransferID string
+	Status           string
+}
+
+func (q *Queries) ListBankTransfersForReconciliation(ctx context.Context, limit int32) ([]ListBankTransfersForReconciliationRow, error) {
+	rows, err := q.db.Query(ctx, listBankTransfersForReconciliation, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBankTransfersForReconciliationRow{}
+	for rows.Next() {
+		var i ListBankTransfersForReconciliationRow
+		if err := rows.Scan(&i.ID, &i.LedgerTransferID, &i.Status); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOpenReconciliationBreaks = `-- name: ListOpenReconciliationBreaks :many
 SELECT id, run_id, entity_type, entity_id, reason, local_status, ledger_ref, status,
        COALESCE(resolved_by, '') AS resolved_by, COALESCE(notes, '') AS notes,

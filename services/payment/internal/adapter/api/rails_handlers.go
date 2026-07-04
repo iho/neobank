@@ -17,15 +17,21 @@ import (
 type RailsHandlers struct {
 	getOrCreateBankAccount *usecase.GetOrCreateBankAccountUseCase
 	processInboundTransfer *usecase.ProcessInboundTransferUseCase
+	sendBankTransfer       *usecase.SendBankTransferUseCase
+	processOutboundWebhook *usecase.ProcessOutboundPaymentWebhookUseCase
 }
 
 func NewRailsHandlers(
 	getOrCreateBankAccount *usecase.GetOrCreateBankAccountUseCase,
 	processInboundTransfer *usecase.ProcessInboundTransferUseCase,
+	sendBankTransfer *usecase.SendBankTransferUseCase,
+	processOutboundWebhook *usecase.ProcessOutboundPaymentWebhookUseCase,
 ) *RailsHandlers {
 	return &RailsHandlers{
 		getOrCreateBankAccount: getOrCreateBankAccount,
 		processInboundTransfer: processInboundTransfer,
+		sendBankTransfer:       sendBankTransfer,
+		processOutboundWebhook: processOutboundWebhook,
 	}
 }
 
@@ -65,6 +71,54 @@ func (h *RailsHandlers) GetBankAccount(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type sendBankTransferRequest struct {
+	Amount           string `json:"amount"`
+	Currency         string `json:"currency"`
+	CounterpartyIBAN string `json:"counterparty_iban"`
+	Reference        string `json:"reference"`
+}
+
+type bankTransferOrderResponse struct {
+	ID               string `json:"id"`
+	UserID           string `json:"user_id"`
+	Amount           string `json:"amount"`
+	Currency         string `json:"currency"`
+	CounterpartyIBAN string `json:"counterparty_iban"`
+	Reference        string `json:"reference"`
+	LedgerTransferID string `json:"ledger_transfer_id"`
+	Status           string `json:"status"`
+}
+
+// SendBankTransfer handles POST /api/v1/payments/bank-transfers, sending
+// money out over the rails simulator.
+func (h *RailsHandlers) SendBankTransfer(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-User-Id")
+	if userID == "" {
+		writeAPIError(w, http.StatusUnauthorized, "missing X-User-Id")
+		return
+	}
+
+	var req sendBankTransferRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	order, err := h.sendBankTransfer.Execute(r.Context(), usecase.SendBankTransferInput{
+		UserID:           userID,
+		Amount:           req.Amount,
+		Currency:         req.Currency,
+		CounterpartyIBAN: req.CounterpartyIBAN,
+		Reference:        req.Reference,
+	})
+	if err != nil {
+		writeAPIError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+
+	writeAPIJSON(w, http.StatusCreated, toBankTransferOrderResponse(order))
+}
+
 // HandleRailsWebhook handles POST /webhooks/rails. It is mounted behind
 // vendorsim.VerifyWebhook, so the request is already authenticated and
 // de-duplicated by delivery ID by the time it reaches here; the use case
@@ -76,6 +130,12 @@ func (h *RailsHandlers) HandleRailsWebhook(w http.ResponseWriter, r *http.Reques
 	switch eventType {
 	case "rails.transfer.received":
 		h.handleTransferReceived(w, r)
+	case "rails.payment.settled":
+		h.handlePaymentSettled(w, r)
+	case "rails.payment.returned":
+		h.handlePaymentReturned(w, r)
+	case "rails.payment.failed":
+		h.handlePaymentFailed(w, r)
 	default:
 		writeAPIError(w, http.StatusBadRequest, "unknown event type: "+eventType)
 	}
@@ -97,6 +157,46 @@ func (h *RailsHandlers) handleTransferReceived(w http.ResponseWriter, r *http.Re
 	writeAPIJSON(w, http.StatusOK, toBankTransferResponse(transfer))
 }
 
+func (h *RailsHandlers) handlePaymentSettled(w http.ResponseWriter, r *http.Request) {
+	var payload usecase.OutboundPaymentWebhookPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	order, err := h.processOutboundWebhook.Settled(r.Context(), payload)
+	if err != nil {
+		writeAPIError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+
+	writeAPIJSON(w, http.StatusOK, toBankTransferOrderResponse(order))
+}
+
+func (h *RailsHandlers) handlePaymentReturned(w http.ResponseWriter, r *http.Request) {
+	h.handlePaymentReversal(w, r, domain.BankTransferOrderStatusReturned, "returned")
+}
+
+func (h *RailsHandlers) handlePaymentFailed(w http.ResponseWriter, r *http.Request) {
+	h.handlePaymentReversal(w, r, domain.BankTransferOrderStatusFailed, "failed")
+}
+
+func (h *RailsHandlers) handlePaymentReversal(w http.ResponseWriter, r *http.Request, status, reason string) {
+	var payload usecase.OutboundPaymentWebhookPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	order, err := h.processOutboundWebhook.ReturnedOrFailed(r.Context(), payload, status, reason)
+	if err != nil {
+		writeAPIError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+
+	writeAPIJSON(w, http.StatusOK, toBankTransferOrderResponse(order))
+}
+
 type bankTransferResponse struct {
 	ID               string `json:"id"`
 	RailsTransferID  string `json:"rails_transfer_id"`
@@ -105,6 +205,19 @@ type bankTransferResponse struct {
 	Currency         string `json:"currency"`
 	LedgerTransferID string `json:"ledger_transfer_id"`
 	Status           string `json:"status"`
+}
+
+func toBankTransferOrderResponse(o domain.BankTransferOrder) bankTransferOrderResponse {
+	return bankTransferOrderResponse{
+		ID:               o.ID,
+		UserID:           o.UserID,
+		Amount:           o.Amount,
+		Currency:         o.Currency,
+		CounterpartyIBAN: o.CounterpartyIBAN,
+		Reference:        o.Reference,
+		LedgerTransferID: o.LedgerTransferID,
+		Status:           o.Status,
+	}
 }
 
 func toBankTransferResponse(t domain.BankTransfer) bankTransferResponse {

@@ -51,3 +51,25 @@ func (e BankTransferReceived) EventType() string     { return TypeBankTransferRe
 func (e BankTransferReceived) AggregateType() string { return "bank_transfer" }
 func (e BankTransferReceived) AggregateID() string   { return e.TransferID }
 func (e BankTransferReceived) Version() int          { return 1 }
+
+const TypeFXConversionCompleted = "payment.fx_conversion.completed"
+
+// FXConversionCompleted is published when a user converts between two
+// currency wallets via the fx rates simulator.
+type FXConversionCompleted struct {
+	ConversionID         string `json:"conversion_id"`
+	UserID               string `json:"user_id"`
+	QuoteID              string `json:"quote_id"`
+	FromCurrency         string `json:"from_currency"`
+	ToCurrency           string `json:"to_currency"`
+	Amount               string `json:"amount"`
+	ConvertedAmount      string `json:"converted_amount"`
+	Rate                 string `json:"rate"`
+	FromLedgerTransferID string `json:"from_ledger_transfer_id"`
+	ToLedgerTransferID   string `json:"to_ledger_transfer_id"`
+}
+
+func (e FXConversionCompleted) EventType() string     { return TypeFXConversionCompleted }
+func (e FXConversionCompleted) AggregateType() string { return "fx_conversion" }
+func (e FXConversionCompleted) AggregateID() string   { return e.ConversionID }
+func (e FXConversionCompleted) Version() int          { return 1 }

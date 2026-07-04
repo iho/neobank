@@ -16,12 +16,14 @@ type Querier interface {
 	CountVelocityEventsLastHour(ctx context.Context, arg CountVelocityEventsLastHourParams) (int32, error)
 	CreateBankAccount(ctx context.Context, arg CreateBankAccountParams) (PaymentBankAccount, error)
 	CreateBankTransfer(ctx context.Context, arg CreateBankTransferParams) (CreateBankTransferRow, error)
+	CreateFXConversion(ctx context.Context, arg CreateFXConversionParams) (CreateFXConversionRow, error)
 	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
 	CreateTransfer(ctx context.Context, arg CreateTransferParams) error
 	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error)
 	FinishReconciliationRun(ctx context.Context, arg FinishReconciliationRunParams) error
 	GetBankAccountByUserAndCurrency(ctx context.Context, arg GetBankAccountByUserAndCurrencyParams) (PaymentBankAccount, error)
 	GetBankTransferByRailsTransferID(ctx context.Context, railsTransferID string) (GetBankTransferByRailsTransferIDRow, error)
+	GetFXConversionByQuoteID(ctx context.Context, quoteID string) (GetFXConversionByQuoteIDRow, error)
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
 	GetTransferByID(ctx context.Context, id uuid.UUID) (GetTransferByIDRow, error)
 	GetTransferBySenderAndIdempotencyKey(ctx context.Context, arg GetTransferBySenderAndIdempotencyKeyParams) (GetTransferBySenderAndIdempotencyKeyRow, error)

@@ -34,6 +34,7 @@ Designed for **auditability**: correlation IDs end-to-end, append-only evidence 
 | Bank transfer top-up (rails simulator: virtual IBAN + inbound webhook → ledger credit) | Done (`services/simulators/rails`; outbound transfers/recon not yet wired — see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md)) |
 | Virtual cards (issue, freeze, unfreeze) | Done |
 | Card authorization + capture (hold → settle) | Done, driven by cardproc simulator webhooks (`services/simulators/cardproc`); see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md) |
+| Multi-currency wallets + FX conversion (fx simulator: quote → execute → two-leg ledger posting) | Done (`services/simulators/fx`; fee-income separation and recon not yet wired — see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md)) |
 | Unified wallet tx history (CQRS projection) | Done |
 | Notifications (HTTP ingest + optional Kafka) | Done |
 | API Gateway BFF with JWT auth | Done |
@@ -302,6 +303,7 @@ P2P transfers need a funded sender ledger account and a second registered user; 
 | Rails simulator | 8090 | Simulated payment rail: virtual IBANs, inbound transfer webhooks (see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md)) |
 | Cardproc simulator | 8091 | Simulated card network: issues virtual cards, drives real-time auth + capture/reversal webhooks into Card |
 | KYC simulator | 8092 | Simulated identity vendor: async approve/reject/manual-review verdicts into User |
+| FX simulator | 8093 | Simulated rates vendor: quote → execute, no webhooks (synchronous only) |
 | Vault (local dev) | 8200 | Optional Transit encryption for PII |
 | goledger (external) | 50051 | Double-entry ledger |
 
@@ -469,6 +471,8 @@ Contract source: [pkg/events/catalog.go](pkg/events/catalog.go). Export with `ma
 | `KYC_VENDOR_SERVICE_URL` | `http://localhost:8092` | user (submits applicants) |
 | `KYC_WEBHOOK_SECRET` | `dev-kyc-webhook-secret` | user, kyc simulator (shared HMAC secret) |
 | `USER_SERVICE_EVENTS_URL` | `http://localhost:8081/webhooks/kyc/events` | kyc simulator (async verdict) |
+| `FX_SERVICE_URL` | `http://localhost:8093` | payment (quotes and executes conversions) |
+| `FX_POSITION_ACCOUNT_EUR` / `_USD` / `_GBP` | _(empty)_ | payment (FX desk inventory per currency); see [docker-compose.fx-override.yml](deployments/docker-compose.fx-override.yml) |
 | `APP_ENV` | `development` | gateway (dev-auth gate) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | _(empty)_ | all services (tracing off if unset) |
 | `VAULT_ADDR` | _(empty)_ | user (noop encryption if unset) |

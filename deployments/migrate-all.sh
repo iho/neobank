@@ -27,4 +27,7 @@ cd /svc/cardproc && /usr/local/bin/migrate-cardproc
 echo "==> kyc simulator migrations"
 cd /svc/kyc && /usr/local/bin/migrate-kyc
 
+echo "==> fx simulator migrations"
+cd /svc/fx && /usr/local/bin/migrate-fx
+
 echo "all service migrations applied"

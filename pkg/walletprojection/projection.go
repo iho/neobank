@@ -44,6 +44,8 @@ func Apply(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {
 		return applyTransferCompleted(envelope)
 	case events.TypeBankTransferReceived:
 		return applyBankTransferReceived(envelope)
+	case events.TypeFXConversionCompleted:
+		return applyFXConversionCompleted(envelope)
 	case events.TypeCardAuthApproved:
 		return applyCardAuthApproved(envelope)
 	case events.TypeCardAuthCaptured:
@@ -152,6 +154,51 @@ func applyBankTransferReceived(envelope events.Envelope) ([]Row, *CaptureUpdate,
 		Memo:          payload.Reference,
 		CreatedAt:     createdAt,
 	}}, nil, nil
+}
+
+func applyFXConversionCompleted(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {
+	var payload events.FXConversionCompleted
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return nil, nil, fmt.Errorf("parse fx conversion completed: %w", err)
+	}
+
+	createdAt := envelope.OccurredAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	// Both rows belong to the same user, so they need distinct IDs — the
+	// wallet_transactions table is unique on (user_id, id).
+	rows := []Row{
+		{
+			UserID:        payload.UserID,
+			ID:            payload.ConversionID + "-debit",
+			SourceEventID: envelope.EventID,
+			Type:          "fx_conversion_out",
+			Amount:        payload.Amount,
+			Currency:      payload.FromCurrency,
+			Direction:     "debit",
+			Status:        "completed",
+			Counterparty:  "FX conversion",
+			Memo:          fmt.Sprintf("Converted to %s at %s", payload.ToCurrency, payload.Rate),
+			CreatedAt:     createdAt,
+		},
+		{
+			UserID:        payload.UserID,
+			ID:            payload.ConversionID + "-credit",
+			SourceEventID: envelope.EventID,
+			Type:          "fx_conversion_in",
+			Amount:        payload.ConvertedAmount,
+			Currency:      payload.ToCurrency,
+			Direction:     "credit",
+			Status:        "completed",
+			Counterparty:  "FX conversion",
+			Memo:          fmt.Sprintf("Converted from %s at %s", payload.FromCurrency, payload.Rate),
+			CreatedAt:     createdAt,
+		},
+	}
+
+	return rows, nil, nil
 }
 
 func applyCardAuthApproved(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {

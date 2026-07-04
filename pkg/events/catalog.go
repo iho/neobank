@@ -100,6 +100,14 @@ func Catalog() []CatalogEntry {
 			PayloadFields: []string{"transfer_id", "user_id", "ledger_transfer_id", "amount", "currency", "sender_name", "reference"},
 		},
 		{
+			EventType:     TypeFXConversionCompleted,
+			EventVersion:  1,
+			AggregateType: "fx_conversion",
+			Description:   "Currency conversion executed via the fx rates simulator",
+			Topics:        []string{"payment.events"},
+			PayloadFields: []string{"conversion_id", "user_id", "quote_id", "from_currency", "to_currency", "amount", "converted_amount", "rate", "from_ledger_transfer_id", "to_ledger_transfer_id"},
+		},
+		{
 			EventType:     TypeCardIssued,
 			EventVersion:  1,
 			AggregateType: "card",
@@ -194,6 +202,11 @@ func RegisteredEvents() []Event {
 		BankTransferReceived{
 			TransferID: "bank-tx-1", UserID: "user-1", LedgerTransferID: "ltx-bank-1",
 			Amount: "250.00", Currency: "USD", SenderName: "Jane Doe", Reference: "rent",
+		},
+		FXConversionCompleted{
+			ConversionID: "fxc-1", UserID: "user-1", QuoteID: "quote-1",
+			FromCurrency: "EUR", ToCurrency: "USD", Amount: "100.00", ConvertedAmount: "107.46",
+			Rate: "1.0746", FromLedgerTransferID: "ltx-fx-1", ToLedgerTransferID: "ltx-fx-2",
 		},
 		CardIssued{
 			CardID: "card-1", UserID: "user-1", WalletID: "wallet-1",

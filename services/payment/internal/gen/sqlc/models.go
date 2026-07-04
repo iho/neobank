@@ -92,6 +92,21 @@ type PaymentFraudDecision struct {
 	CreatedAt       pgtype.Timestamptz
 }
 
+type PaymentFxConversion struct {
+	ID                   uuid.UUID
+	QuoteID              string
+	UserID               uuid.UUID
+	FromCurrency         string
+	ToCurrency           string
+	Amount               pgtype.Numeric
+	ConvertedAmount      pgtype.Numeric
+	Rate                 pgtype.Numeric
+	FromLedgerTransferID string
+	ToLedgerTransferID   string
+	Status               string
+	CreatedAt            pgtype.Timestamptz
+}
+
 type PaymentOutboxEvent struct {
 	ID            uuid.UUID
 	AggregateType string

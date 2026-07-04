@@ -15,7 +15,17 @@ type Config struct {
 	RailsURL                    string
 	RailsWebhookSecret          string
 	RailsSettlementLedgerAcctID string
+	FXURL                       string
+	// FXPositionLedgerAccts maps a currency code to the ledger account that
+	// absorbs the FX desk's inventory in that currency (see
+	// ExecuteFXConversionUseCase). Only currencies with an account
+	// configured can be converted into or out of.
+	FXPositionLedgerAccts map[string]string
 }
+
+// fxSupportedCurrencies mirrors the pairs services/simulators/fx knows rates
+// for.
+var fxSupportedCurrencies = []string{"EUR", "USD", "GBP"}
 
 func Load() Config {
 	return Config{
@@ -31,7 +41,21 @@ func Load() Config {
 		RailsURL:                    env("RAILS_SERVICE_URL", "http://localhost:8090"),
 		RailsWebhookSecret:          env("RAILS_WEBHOOK_SECRET", "dev-rails-webhook-secret"),
 		RailsSettlementLedgerAcctID: env("RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID", ""),
+		FXURL:                       env("FX_SERVICE_URL", "http://localhost:8093"),
+		FXPositionLedgerAccts:       loadFXPositionAccounts(),
 	}
+}
+
+func loadFXPositionAccounts() map[string]string {
+	accounts := make(map[string]string)
+
+	for _, ccy := range fxSupportedCurrencies {
+		if id := os.Getenv("FX_POSITION_ACCOUNT_" + ccy); id != "" {
+			accounts[ccy] = id
+		}
+	}
+
+	return accounts
 }
 
 func env(key, fallback string) string {

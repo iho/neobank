@@ -82,6 +82,44 @@ func TestApplyBankTransferReceived(t *testing.T) {
 	}
 }
 
+func TestApplyFXConversionCompleted(t *testing.T) {
+	payload, _ := json.Marshal(events.FXConversionCompleted{
+		ConversionID: "fxc1", UserID: "u1", QuoteID: "q1",
+		FromCurrency: "EUR", ToCurrency: "USD", Amount: "100.00", ConvertedAmount: "107.46",
+		Rate: "1.0746", FromLedgerTransferID: "ltx1", ToLedgerTransferID: "ltx2",
+	})
+	occurred := time.Date(2026, time.January, 2, 10, 0, 0, 0, time.UTC)
+
+	rows, update, err := Apply(events.Envelope{
+		EventID: "e5", EventType: events.TypeFXConversionCompleted, OccurredAt: occurred, Payload: payload,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if update != nil {
+		t.Fatal("expected no capture update")
+	}
+
+	if len(rows) != 2 {
+		t.Fatalf("rows = %d, want 2", len(rows))
+	}
+
+	if rows[0].ID == rows[1].ID {
+		t.Fatalf("expected distinct row IDs for same-user rows, got %q twice", rows[0].ID)
+	}
+
+	if rows[0].Type != "fx_conversion_out" || rows[0].UserID != "u1" || rows[0].Direction != "debit" ||
+		rows[0].Currency != "EUR" || rows[0].Amount != "100.00" {
+		t.Fatalf("debit row = %+v", rows[0])
+	}
+
+	if rows[1].Type != "fx_conversion_in" || rows[1].UserID != "u1" || rows[1].Direction != "credit" ||
+		rows[1].Currency != "USD" || rows[1].Amount != "107.46" {
+		t.Fatalf("credit row = %+v", rows[1])
+	}
+}
+
 func TestApplyCardAuthLifecycle(t *testing.T) {
 	approvedPayload, _ := json.Marshal(events.CardAuthApproved{
 		AuthorizationID: "a1", UserID: "u1", Amount: "5.00", Currency: "USD", MerchantName: "Coffee",

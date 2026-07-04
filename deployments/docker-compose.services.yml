@@ -164,6 +164,28 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  fx:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.service
+      args:
+        <<: *build-args
+        SERVICE: simulators/fx
+    environment:
+      DATABASE_URL: postgres://neobank:neobank@postgres:5432/neobank?sslmode=disable
+      HTTP_PORT: "8093"
+    ports:
+      - "8093:8093"
+    healthcheck:
+      <<: *http-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8093/health >/dev/null"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   payment:
     build:
       context: ..
@@ -180,6 +202,7 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification:8083/api/v1/internal/events
       RAILS_SERVICE_URL: http://rails:8090
       RAILS_WEBHOOK_SECRET: dev-rails-webhook-secret
+      FX_SERVICE_URL: http://fx:8093
     ports:
       - "8082:8082"
       - "50053:50053"
@@ -200,6 +223,8 @@ services:
       notification:
         condition: service_healthy
       rails:
+        condition: service_healthy
+      fx:
         condition: service_healthy
     restart: unless-stopped
 

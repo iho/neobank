@@ -1,0 +1,10 @@
+services:
+  payment:
+    environment:
+      # Create one ledger account per currency the FX desk holds inventory
+      # in (see goledger-cli or the ledger's CreateAccount RPC, with
+      # AllowNegativeBalance=true since a single conversion temporarily
+      # unbalances one side), then paste their IDs here. Only currencies
+      # with an account configured can be converted into or out of.
+      FX_POSITION_ACCOUNT_EUR: "<ledger-account-uuid>"
+      FX_POSITION_ACCOUNT_USD: "<ledger-account-uuid>"

@@ -1,4 +1,4 @@
-.PHONY: deps build test test-integration lint proto sqlc oapi generate mobile-generate up down up-all down-all up-ledger down-ledger up-all-ledger down-all-ledger up-ghcr down-ghcr up-ghcr-ledger down-ghcr-ledger up-observability up-obs-all down-obs up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card migrate-rails migrate-cardproc migrate-kyc vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs helm-lint helm-template helm-lint-platform helm-template-platform
+.PHONY: deps build test test-integration lint proto sqlc oapi generate mobile-generate up down up-all down-all up-ledger down-ledger up-all-ledger down-all-ledger up-ghcr down-ghcr up-ghcr-ledger down-ghcr-ledger up-observability up-obs-all down-obs up-jobs down-jobs migrate migrate-user migrate-payment migrate-notification migrate-card migrate-rails migrate-cardproc migrate-kyc migrate-fx vault-init tools reconcile-payment reconcile-card list-payment-breaks list-card-breaks saga-watchdog list-saga-alerts aml-export event-catalog grpc-mtls-certs helm-lint helm-template helm-lint-platform helm-template-platform
 
 HELM_CHART := deploy/helm/neobank
 HELM_PLATFORM := deploy/helm/platform
@@ -31,6 +31,7 @@ deps:
 	cd services/simulators/rails && go mod tidy
 	cd services/simulators/cardproc && go mod tidy
 	cd services/simulators/kyc && go mod tidy
+	cd services/simulators/fx && go mod tidy
 
 proto:
 	cd proto && buf dep update && buf generate
@@ -43,6 +44,7 @@ sqlc:
 	cd services/simulators/rails && $(SQLC) generate
 	cd services/simulators/cardproc && $(SQLC) generate
 	cd services/simulators/kyc && $(SQLC) generate
+	cd services/simulators/fx && $(SQLC) generate
 
 oapi:
 	cd services/user && $(OAPI_CODEGEN) -config api/oapi-codegen.yaml api/openapi.yaml
@@ -82,6 +84,7 @@ build: generate
 	go build -o bin/rails-simulator ./services/simulators/rails/cmd/server
 	go build -o bin/cardproc-simulator ./services/simulators/cardproc/cmd/server
 	go build -o bin/kyc-simulator ./services/simulators/kyc/cmd/server
+	go build -o bin/fx-simulator ./services/simulators/fx/cmd/server
 
 test:
 	cd pkg && go test ./...
@@ -96,6 +99,7 @@ test-integration:
 	cd services/simulators/rails && go test ./...
 	cd services/simulators/cardproc && go test ./...
 	cd services/simulators/kyc && go test ./...
+	cd services/simulators/fx && go test ./...
 
 lint:
 	cd pkg && golangci-lint run --config=../.golangci.yml ./...
@@ -107,6 +111,7 @@ lint:
 	cd services/simulators/rails && golangci-lint run --config=../../../.golangci.yml ./...
 	cd services/simulators/cardproc && golangci-lint run --config=../../../.golangci.yml ./...
 	cd services/simulators/kyc && golangci-lint run --config=../../../.golangci.yml ./...
+	cd services/simulators/fx && golangci-lint run --config=../../../.golangci.yml ./...
 	cd tests/integration && golangci-lint run --config=../../.golangci.yml ./...
 	cd tools/saga-watchdog && golangci-lint run --config=../../.golangci.yml ./...
 	cd tools/event-catalog && golangci-lint run --config=../../.golangci.yml ./...
@@ -162,7 +167,7 @@ up-jobs:
 down-jobs:
 	$(COMPOSE_JOBS) stop reconcile-jobs
 
-migrate: migrate-user migrate-payment migrate-notification migrate-card migrate-rails migrate-cardproc migrate-kyc
+migrate: migrate-user migrate-payment migrate-notification migrate-card migrate-rails migrate-cardproc migrate-kyc migrate-fx
 
 migrate-user:
 	cd services/user && go run ./cmd/migrate
@@ -184,6 +189,9 @@ migrate-cardproc:
 
 migrate-kyc:
 	cd services/simulators/kyc && go run ./cmd/migrate
+
+migrate-fx:
+	cd services/simulators/fx && go run ./cmd/migrate
 
 vault-init:
 	./deployments/vault-init.sh

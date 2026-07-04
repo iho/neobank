@@ -65,3 +65,11 @@ type BankTransferRepository interface {
 	GetByRailsTransferID(ctx context.Context, railsTransferID string) (*domain.BankTransfer, error)
 	WithTx(tx pgx.Tx) BankTransferRepository
 }
+
+// FXConversionRepository records executed currency conversions, keyed by
+// the fx simulator's quote ID so re-executing the same quote is a no-op.
+type FXConversionRepository interface {
+	Create(ctx context.Context, c domain.FXConversion) (domain.FXConversion, error)
+	GetByQuoteID(ctx context.Context, quoteID string) (*domain.FXConversion, error)
+	WithTx(tx pgx.Tx) FXConversionRepository
+}

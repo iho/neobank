@@ -29,6 +29,7 @@ import (
 	"github.com/iho/neobank/pkg/userclient"
 	"github.com/iho/neobank/pkg/vendorsim"
 	apiadapter "github.com/iho/neobank/services/payment/internal/adapter/api"
+	"github.com/iho/neobank/services/payment/internal/adapter/fxclient"
 	grpcadapter "github.com/iho/neobank/services/payment/internal/adapter/grpc"
 	"github.com/iho/neobank/services/payment/internal/adapter/railsclient"
 	sqlcrepo "github.com/iho/neobank/services/payment/internal/adapter/sqlc"
@@ -103,6 +104,15 @@ func main() {
 	processInboundTransferUC := usecase.NewProcessInboundTransferUseCase(bankTransferRepo, users, ledger, outboxRepo, auditRepo, cfg.RailsSettlementLedgerAcctID, txRunner)
 	railsHandlers := apiadapter.NewRailsHandlers(getOrCreateBankAccountUC, processInboundTransferUC)
 
+	fxConversionRepo := sqlcrepo.NewFXConversionRepository(queries)
+	fx := fxclient.New(fxclient.Config{BaseURL: cfg.FXURL})
+	getFXQuoteUC := usecase.NewGetFXQuoteUseCase(fx)
+	if len(cfg.FXPositionLedgerAccts) == 0 {
+		logger.Warn("no FX_POSITION_ACCOUNT_* configured (conversions will fail)")
+	}
+	executeFXConversionUC := usecase.NewExecuteFXConversionUseCase(fxConversionRepo, users, ledger, fx, outboxRepo, auditRepo, cfg.FXPositionLedgerAccts, txRunner)
+	fxHandlers := apiadapter.NewFXHandlers(getFXQuoteUC, executeFXConversionUC)
+
 	producer := outbox.NewProducer(outbox.ProducerConfig{
 		KafkaBrokers:    cfg.KafkaBrokers,
 		NotificationURL: cfg.NotificationURL,
@@ -126,6 +136,8 @@ func main() {
 	metrics.Mount(r)
 	genapi.HandlerFromMux(strictHandler, r)
 	r.Get("/api/v1/payments/bank-accounts", railsHandlers.GetBankAccount)
+	r.Post("/api/v1/payments/fx/quotes", fxHandlers.CreateQuote)
+	r.Post("/api/v1/payments/fx/quotes/{id}/execute", fxHandlers.ExecuteQuote)
 
 	// Webhook deliveries from the rails simulator carry their own
 	// signature/replay verification (vendorsim.VerifyWebhook), not an

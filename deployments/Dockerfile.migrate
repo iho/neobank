@@ -12,6 +12,7 @@ COPY services/card ./services/card
 COPY services/simulators/rails ./services/simulators/rails
 COPY services/simulators/cardproc ./services/simulators/cardproc
 COPY services/simulators/kyc ./services/simulators/kyc
+COPY services/simulators/fx ./services/simulators/fx
 
 ENV CGO_ENABLED=0 GOOS=linux
 RUN printf '%s\n' 'go 1.25.0' '' 'use (' \
@@ -23,6 +24,7 @@ RUN printf '%s\n' 'go 1.25.0' '' 'use (' \
     '	./services/simulators/rails' \
     '	./services/simulators/cardproc' \
     '	./services/simulators/kyc' \
+    '	./services/simulators/fx' \
     ')' > go.work
 RUN cd services/user && go build -trimpath -ldflags="-s -w" -o /out/migrate-user ./cmd/migrate
 RUN cd services/payment && go build -trimpath -ldflags="-s -w" -o /out/migrate-payment ./cmd/migrate
@@ -31,11 +33,12 @@ RUN cd services/card && go build -trimpath -ldflags="-s -w" -o /out/migrate-card
 RUN cd services/simulators/rails && go build -trimpath -ldflags="-s -w" -o /out/migrate-rails ./cmd/migrate
 RUN cd services/simulators/cardproc && go build -trimpath -ldflags="-s -w" -o /out/migrate-cardproc ./cmd/migrate
 RUN cd services/simulators/kyc && go build -trimpath -ldflags="-s -w" -o /out/migrate-kyc ./cmd/migrate
+RUN cd services/simulators/fx && go build -trimpath -ldflags="-s -w" -o /out/migrate-fx ./cmd/migrate
 
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates
 
-COPY --from=build /out/migrate-user /out/migrate-payment /out/migrate-notification /out/migrate-card /out/migrate-rails /out/migrate-cardproc /out/migrate-kyc /usr/local/bin/
+COPY --from=build /out/migrate-user /out/migrate-payment /out/migrate-notification /out/migrate-card /out/migrate-rails /out/migrate-cardproc /out/migrate-kyc /out/migrate-fx /usr/local/bin/
 COPY services/user/migrations /svc/user/migrations
 COPY services/payment/migrations /svc/payment/migrations
 COPY services/notification/migrations /svc/notification/migrations
@@ -43,6 +46,7 @@ COPY services/card/migrations /svc/card/migrations
 COPY services/simulators/rails/migrations /svc/rails/migrations
 COPY services/simulators/cardproc/migrations /svc/cardproc/migrations
 COPY services/simulators/kyc/migrations /svc/kyc/migrations
+COPY services/simulators/fx/migrations /svc/fx/migrations
 COPY deployments/migrate-all.sh /migrate-all.sh
 RUN chmod +x /migrate-all.sh
 

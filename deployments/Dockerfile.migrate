@@ -9,6 +9,7 @@ COPY services/user ./services/user
 COPY services/payment ./services/payment
 COPY services/notification ./services/notification
 COPY services/card ./services/card
+COPY services/simulators/rails ./services/simulators/rails
 
 ENV CGO_ENABLED=0 GOOS=linux
 RUN printf '%s\n' 'go 1.25.0' '' 'use (' \
@@ -17,20 +18,23 @@ RUN printf '%s\n' 'go 1.25.0' '' 'use (' \
     '	./services/payment' \
     '	./services/notification' \
     '	./services/card' \
+    '	./services/simulators/rails' \
     ')' > go.work
 RUN cd services/user && go build -trimpath -ldflags="-s -w" -o /out/migrate-user ./cmd/migrate
 RUN cd services/payment && go build -trimpath -ldflags="-s -w" -o /out/migrate-payment ./cmd/migrate
 RUN cd services/notification && go build -trimpath -ldflags="-s -w" -o /out/migrate-notification ./cmd/migrate
 RUN cd services/card && go build -trimpath -ldflags="-s -w" -o /out/migrate-card ./cmd/migrate
+RUN cd services/simulators/rails && go build -trimpath -ldflags="-s -w" -o /out/migrate-rails ./cmd/migrate
 
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates
 
-COPY --from=build /out/migrate-user /out/migrate-payment /out/migrate-notification /out/migrate-card /usr/local/bin/
+COPY --from=build /out/migrate-user /out/migrate-payment /out/migrate-notification /out/migrate-card /out/migrate-rails /usr/local/bin/
 COPY services/user/migrations /svc/user/migrations
 COPY services/payment/migrations /svc/payment/migrations
 COPY services/notification/migrations /svc/notification/migrations
 COPY services/card/migrations /svc/card/migrations
+COPY services/simulators/rails/migrations /svc/rails/migrations
 COPY deployments/migrate-all.sh /migrate-all.sh
 RUN chmod +x /migrate-all.sh
 

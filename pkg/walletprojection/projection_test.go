@@ -53,6 +53,35 @@ func TestApplyTransferCompleted(t *testing.T) {
 	}
 }
 
+func TestApplyBankTransferReceived(t *testing.T) {
+	payload, _ := json.Marshal(events.BankTransferReceived{
+		TransferID: "bt1", UserID: "u1", LedgerTransferID: "ltx1",
+		Amount: "250.00", Currency: "USD", SenderName: "Jane Doe", Reference: "rent",
+	})
+	occurred := time.Date(2026, time.January, 2, 10, 0, 0, 0, time.UTC)
+
+	rows, update, err := Apply(events.Envelope{
+		EventID: "e4", EventType: events.TypeBankTransferReceived, OccurredAt: occurred, Payload: payload,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if update != nil {
+		t.Fatal("expected no capture update")
+	}
+
+	if len(rows) != 1 {
+		t.Fatalf("rows = %d, want 1", len(rows))
+	}
+
+	row := rows[0]
+	if row.Type != "bank_transfer_in" || row.UserID != "u1" || row.Direction != "credit" ||
+		row.Counterparty != "Jane Doe" || row.Memo != "rent" || row.Amount != "250.00" {
+		t.Fatalf("bank transfer row = %+v", row)
+	}
+}
+
 func TestApplyCardAuthLifecycle(t *testing.T) {
 	approvedPayload, _ := json.Marshal(events.CardAuthApproved{
 		AuthorizationID: "a1", UserID: "u1", Amount: "5.00", Currency: "USD", MerchantName: "Coffee",

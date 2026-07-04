@@ -56,17 +56,13 @@ lint-clean):
   the documented convention (REJECT/REVIEW/RETURN tokens, `.13`/`.99` cent
   suffixes) every simulator and integration test should reuse.
 
-**Not yet done** (deferred to when the first simulator needs them, to avoid
-building against a guessed shape):
-
-- `deployments/docker-compose.simulators.yml` — held back until Phase 1
-  (rails) exists; an empty compose file has nothing to run.
-- Per-simulator service skeletons (`cmd/server`, `internal/{config,domain,
-  usecase,adapter,port}`, `db/`, `sqlc.yaml`) — each phase creates its own,
-  following the existing `services/card` layout, wired to `pkg/vendorsim`.
-- Postgres-backed `DeliveryStore` — first simulator to need cross-restart
-  durability implements it against its own schema (see Principle 1: no shared
-  DB), reusing the `MemoryDeliveryStore` tests as a spec.
+Postgres-backed `DeliveryStore` and per-simulator service skeletons were
+deferred out of Phase 0 itself and built as part of Phase 1 below, once there
+was a real simulator to shape them against
+(`services/simulators/rails/internal/adapter/deliverystore`). A dedicated
+`docker-compose.simulators.yml` was skipped in favor of adding each simulator
+directly to `deployments/docker-compose.services.yml` — one compose file per
+environment turned out simpler than one per simulator-vs-service split.
 
 The rest of this phase's original scope (below) still describes intent for
 what each simulator will build on top of the package above.
@@ -92,42 +88,82 @@ Also in this phase:
 ## Phase 1 — Payment rails simulator (`services/simulators/rails`)
 
 Simulates a SEPA/ACH-style sponsor-bank connection. Biggest realism gain: removes
-the "mint money out of thin air" deposit.
+the "mint money out of thin air" deposit. Split into 1a (inbound, **done**) and
+1b (outbound + reconciliation, **not yet built**) — see below for why.
 
-**Simulator responsibilities**
-- Issue a virtual IBAN per wallet on request (`POST /v1/accounts` → IBAN).
-- Admin API to inject an inbound transfer: `POST /sim/inbound-transfers`
-  (IBAN, amount, currency, sender name, reference). Delivers
-  `rails.transfer.received` webhook after a configurable delay.
+**Phase 1a — done.** Implemented and wired end-to-end:
+
+- `services/simulators/rails`: a standalone HTTP service (plain `chi` handlers,
+  not oapi-codegen — this simulator has no mobile-facing contract to keep in
+  sync, so the extra generation step wasn't worth it) with:
+  - `POST /v1/accounts` — get-or-create a virtual IBAN for `(external_ref,
+    currency)`, idempotent.
+  - `POST /sim/inbound-transfers` — admin endpoint that records a transfer and
+    schedules a `rails.transfer.received` webhook via `pkg/vendorsim.Dispatcher`.
+  - `GET /v1/statements/{date}` — everything that arrived that day, independent
+    of webhook delivery outcome (the recon source of truth Phase 1b will use).
+  - `GET /sim/deliveries[/{id}]` — admin visibility into webhook delivery state.
+  - Its own Postgres schema (`rails.accounts`, `rails.inbound_transfers`,
+    `rails.webhook_deliveries`) and a Postgres-backed `vendorsim.DeliveryStore`
+    (`internal/adapter/deliverystore`), so delivery retries survive restarts.
+- Payment service:
+  - `GET /api/v1/payments/bank-accounts?currency=USD` — user-facing endpoint
+    that calls the simulator to mint/fetch a virtual IBAN and caches the
+    mapping in `payment.bank_accounts`.
+  - `POST /webhooks/rails` — the webhook consumer, mounted on a **separate**
+    chi router (`root.Mount("/webhooks", webhookRouter)` in `cmd/server/main.go`)
+    so it sits behind `vendorsim.VerifyWebhook` instead of the global
+    `Idempotency-Key` middleware, which webhook deliveries don't carry.
+  - `ProcessInboundTransferUseCase`: idempotent on the rail's transfer ID
+    (`payment.bank_transfers.rails_transfer_id UNIQUE`) — a redelivered or
+    chaos-duplicated webhook is a no-op, not a double credit. Moves funds
+    `RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID → user wallet` via the existing
+    `ledgerclient`, then publishes `events.BankTransferReceived` in the same
+    DB transaction as the local record and audit entry.
+  - New event `payment.bank_transfer.received`, registered in `pkg/events`
+    catalog and projected into wallet tx history by
+    `pkg/walletprojection.applyBankTransferReceived` (shows up as
+    `bank_transfer_in` alongside `p2p_in`/`p2p_out`).
+- `deployments/docker-compose.services.yml` runs `rails` alongside the other
+  services; `deployments/docker-compose.rails-override.yml` is where
+  `RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID` gets filled in after creating that
+  ledger account (same pattern as the existing deposit-override file).
+
+**Deliberately not done in 1a** (kept the vertical slice small and honest
+rather than half-build everything):
+- User service's `deposit_wallet.go` demo endpoint is untouched — it's still
+  useful for seeding dev/test data, and nothing required removing it.
+- No fraud/AML screening on the inbound-credit path yet (P2P transfers screen
+  the counterparty; bank transfers currently don't). Worth adding before this
+  is anything but a demo.
+- No integration test in `tests/integration` yet driving the simulator's admin
+  API end-to-end (unit tests with fakes cover the usecases in both services).
+
+**Phase 1b — not yet built.**
 - Accept outbound payment orders: `POST /v1/payments` → `accepted`, then async
   `rails.payment.settled` or `rails.payment.returned` webhook (magic values:
   reference `RETURN` bounces after settlement, amount `.99` fails validation
-  asynchronously).
-- End-of-day statement endpoint: `GET /v1/statements/{date}` listing all movements
-  — this is the reconciliation source of truth, feeding the existing recon jobs.
+  asynchronously). `pkg/vendorsim.ContainsToken` / `AmountEndsInCents` are
+  ready for this; the simulator just doesn't have the endpoint yet.
+- Payment service outbound saga: user request → fraud screen → debit wallet →
+  `POST /v1/payments` to simulator → on `settled`: no further action (funds
+  already moved); on `returned`: reverse the ledger transfer back to the
+  wallet — the "money bounced after it looked done" case is the interesting
+  saga this unlocks.
+- Reconciliation: extend the existing recon job to compare the simulator's
+  `GET /v1/statements/{date}` against `payment.bank_transfers` /
+  `RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID` ledger entries, feeding breaks into the
+  existing break-resolution tooling.
+- An integration test exercising chaos (duplicate/out-of-order webhook
+  delivery via `RAILS_CHAOS_*` env vars) against a real Postgres.
 
-**Neobank-side changes**
-- Payment service gains a webhook consumer (`POST /webhooks/rails`) and two new
-  sagas:
-  - *Inbound*: webhook → idempotency check → fraud/AML screen → ledger transfer
-    `rails settlement account → user wallet` → outbox event → notification.
-  - *Outbound*: user request → fraud screen → ledger hold on wallet →
-    `POST /v1/payments` to simulator → on `settled` webhook: capture hold into
-    settlement account; on `returned`: release hold (or reverse if already
-    captured — the return-after-settlement case is the interesting saga).
-- Ledger: one settlement account per rail/currency (e.g. `rails:sepa:EUR`),
-  created by bootstrap (see operator section). Existing
-  `SETTLEMENT_LEDGER_ACCOUNT_ID` generalizes to per-rail config.
-- User service: `deposit_wallet.go` demo endpoint becomes dev-only or is removed;
-  gateway exposes the user's virtual IBAN instead ("top up by bank transfer").
-- Reconciliation: extend existing recon to compare simulator statements against
-  ledger settlement-account entries; breaks flow into the existing break-resolution
-  tooling.
-
-**Done when**: an injected inbound transfer lands in a wallet with full audit
-trail; an outbound payment settles or bounces correctly; recon over a day of
-simulated traffic reports zero breaks; duplicate/out-of-order webhook delivery
-causes no double-credit (integration test with chaos knobs on).
+**Done when** (1a, met): an injected inbound transfer lands in a wallet with a
+ledger transfer, an audit entry, and a wallet-history row, and a redelivered
+webhook does not double-credit.
+**Done when** (1b, not yet met): an outbound payment settles or bounces
+correctly; recon over a day of simulated traffic reports zero breaks;
+duplicate/out-of-order webhook delivery under chaos causes no double-credit
+in an automated integration test (today only unit-tested with fakes).
 
 ## Phase 2 — Card processor simulator (`services/simulators/cardproc`)
 

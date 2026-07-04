@@ -42,6 +42,8 @@ func Apply(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {
 	switch envelope.EventType {
 	case events.TypeTransferCompleted:
 		return applyTransferCompleted(envelope)
+	case events.TypeBankTransferReceived:
+		return applyBankTransferReceived(envelope)
 	case events.TypeCardAuthApproved:
 		return applyCardAuthApproved(envelope)
 	case events.TypeCardAuthCaptured:
@@ -116,6 +118,37 @@ func applyTransferCompleted(envelope events.Envelope) ([]Row, *CaptureUpdate, er
 	}
 
 	return rows, nil, nil
+}
+
+func applyBankTransferReceived(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {
+	var payload events.BankTransferReceived
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return nil, nil, fmt.Errorf("parse bank transfer received: %w", err)
+	}
+
+	createdAt := envelope.OccurredAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	counterparty := payload.SenderName
+	if counterparty == "" {
+		counterparty = "Incoming bank transfer"
+	}
+
+	return []Row{{
+		UserID:        payload.UserID,
+		ID:            payload.TransferID,
+		SourceEventID: envelope.EventID,
+		Type:          "bank_transfer_in",
+		Amount:        payload.Amount,
+		Currency:      payload.Currency,
+		Direction:     "credit",
+		Status:        "completed",
+		Counterparty:  counterparty,
+		Memo:          payload.Reference,
+		CreatedAt:     createdAt,
+	}}, nil, nil
 }
 
 func applyCardAuthApproved(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {

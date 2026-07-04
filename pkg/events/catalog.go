@@ -92,6 +92,14 @@ func Catalog() []CatalogEntry {
 			PayloadFields: []string{"transfer_id", "ledger_transfer_id", "sender_user_id", "recipient_user_id", "amount", "currency"},
 		},
 		{
+			EventType:     TypeBankTransferReceived,
+			EventVersion:  1,
+			AggregateType: "bank_transfer",
+			Description:   "Inbound bank transfer (rails simulator or real rail) credited to a user wallet",
+			Topics:        []string{"payment.events"},
+			PayloadFields: []string{"transfer_id", "user_id", "ledger_transfer_id", "amount", "currency", "sender_name", "reference"},
+		},
+		{
 			EventType:     TypeCardIssued,
 			EventVersion:  1,
 			AggregateType: "card",
@@ -174,6 +182,10 @@ func RegisteredEvents() []Event {
 			TransferID: "tx-1", LedgerTransferID: "ltx-1",
 			SenderUserID: "user-1", RecipientUserID: "user-2",
 			Amount: "10.00", Currency: "USD",
+		},
+		BankTransferReceived{
+			TransferID: "bank-tx-1", UserID: "user-1", LedgerTransferID: "ltx-bank-1",
+			Amount: "250.00", Currency: "USD", SenderName: "Jane Doe", Reference: "rent",
 		},
 		CardIssued{
 			CardID: "card-1", UserID: "user-1", WalletID: "wallet-1",

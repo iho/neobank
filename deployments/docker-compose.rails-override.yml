@@ -1,0 +1,6 @@
+services:
+  payment:
+    environment:
+      # Create a ledger account for the rails settlement/nostro position (see
+      # goledger-cli or the ledger's CreateAccount RPC), then paste its ID here.
+      RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID: "<ledger-account-uuid>"

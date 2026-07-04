@@ -18,4 +18,7 @@ cd /svc/notification && /usr/local/bin/migrate-notification
 echo "==> card migrations"
 cd /svc/card && /usr/local/bin/migrate-card
 
+echo "==> rails simulator migrations"
+cd /svc/rails && /usr/local/bin/migrate-rails
+
 echo "all service migrations applied"

@@ -50,3 +50,18 @@ type AMLRepository interface {
 	RecordEvaluation(ctx context.Context, entityType, entityID, userID, transactionType, amount, currency string, result amlmonitor.Result) (evaluationID string, err error)
 	OpenCase(ctx context.Context, evaluationID, userID, entityType, entityID, caseType, reasonCode, correlationID string) error
 }
+
+// BankAccountRepository maps a user's wallet to the virtual IBAN the rails
+// simulator issued for it.
+type BankAccountRepository interface {
+	Create(ctx context.Context, userID, currency, railsAccountID, iban string) (domain.BankAccount, error)
+	GetByUserAndCurrency(ctx context.Context, userID, currency string) (*domain.BankAccount, error)
+}
+
+// BankTransferRepository records inbound rails transfers once credited,
+// keyed by the simulator's transfer ID so a redelivered webhook is a no-op.
+type BankTransferRepository interface {
+	Create(ctx context.Context, t domain.BankTransfer) (domain.BankTransfer, error)
+	GetByRailsTransferID(ctx context.Context, railsTransferID string) (*domain.BankTransfer, error)
+	WithTx(tx pgx.Tx) BankTransferRepository
+}

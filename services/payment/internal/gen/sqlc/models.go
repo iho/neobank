@@ -54,6 +54,28 @@ type PaymentAuditLog struct {
 	CreatedAt     pgtype.Timestamptz
 }
 
+type PaymentBankAccount struct {
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	Currency       string
+	RailsAccountID string
+	Iban           string
+	CreatedAt      pgtype.Timestamptz
+}
+
+type PaymentBankTransfer struct {
+	ID               uuid.UUID
+	RailsTransferID  string
+	UserID           uuid.UUID
+	Amount           pgtype.Numeric
+	Currency         string
+	SenderName       string
+	Reference        string
+	LedgerTransferID string
+	Status           string
+	CreatedAt        pgtype.Timestamptz
+}
+
 type PaymentFraudDecision struct {
 	ID              uuid.UUID
 	EntityType      string

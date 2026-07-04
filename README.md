@@ -31,6 +31,7 @@ Designed for **auditability**: correlation IDs end-to-end, append-only evidence 
 | KYC-lite (auto-approve) + wallet provisioning saga | Done |
 | Wallet balance (ledger `GetAccount`) | Done |
 | P2P transfers (saga: fraud → ledger → outbox) | Done |
+| Bank transfer top-up (rails simulator: virtual IBAN + inbound webhook → ledger credit) | Done (`services/simulators/rails`; outbound transfers/recon not yet wired — see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md)) |
 | Virtual cards (issue, freeze, unfreeze) | Done |
 | Card authorization + capture (hold → settle) | Done |
 | Unified wallet tx history (CQRS projection) | Done |
@@ -298,6 +299,7 @@ P2P transfers need a funded sender ledger account and a second registered user; 
 | Payment | 8082 | P2P transfers, AML export |
 | Notification | 8083 | Event ingest → notification inbox |
 | Card | 8084 | Virtual cards, authorizations, capture |
+| Rails simulator | 8090 | Simulated payment rail: virtual IBANs, inbound transfer webhooks (see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md)) |
 | Vault (local dev) | 8200 | Optional Transit encryption for PII |
 | goledger (external) | 50051 | Double-entry ledger |
 
@@ -454,6 +456,10 @@ Contract source: [pkg/events/catalog.go](pkg/events/catalog.go). Export with `ma
 | `NOTIFICATION_SERVICE_URL` | `http://localhost:8083` | gateway, outbox |
 | `KAFKA_BROKERS` | _(empty)_ | user, payment, card, notification; `localhost:19092` on host, `redpanda:9092` in compose |
 | `SETTLEMENT_LEDGER_ACCOUNT_ID` | _(empty)_ | card (capture) |
+| `RAILS_SERVICE_URL` | `http://localhost:8090` | payment (issues virtual IBANs) |
+| `RAILS_WEBHOOK_SECRET` | `dev-rails-webhook-secret` | payment, rails simulator (shared HMAC secret) |
+| `RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID` | _(empty)_ | payment (inbound bank transfer credit); see [docker-compose.rails-override.yml](deployments/docker-compose.rails-override.yml) |
+| `PAYMENT_WEBHOOK_URL` | `http://localhost:8082/webhooks/rails` | rails simulator |
 | `APP_ENV` | `development` | gateway (dev-auth gate) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | _(empty)_ | all services (tracing off if unset) |
 | `VAULT_ADDR` | _(empty)_ | user (noop encryption if unset) |

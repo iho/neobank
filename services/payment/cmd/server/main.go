@@ -15,20 +15,22 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/iho/neobank/pkg/amlmonitor"
 	"github.com/iho/neobank/pkg/fraud"
+	neobankv1 "github.com/iho/neobank/pkg/gen/neobank/v1"
+	"github.com/iho/neobank/pkg/grpcutil"
 	"github.com/iho/neobank/pkg/idempotency"
 	"github.com/iho/neobank/pkg/ledgerclient"
 	"github.com/iho/neobank/pkg/metrics"
-	neobankv1 "github.com/iho/neobank/pkg/gen/neobank/v1"
-	"github.com/iho/neobank/pkg/grpcutil"
 	"github.com/iho/neobank/pkg/otel"
 	"github.com/iho/neobank/pkg/outbox"
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/reqctx"
-	"github.com/iho/neobank/pkg/sloghttp"
 	"github.com/iho/neobank/pkg/screening"
+	"github.com/iho/neobank/pkg/sloghttp"
 	"github.com/iho/neobank/pkg/userclient"
+	"github.com/iho/neobank/pkg/vendorsim"
 	apiadapter "github.com/iho/neobank/services/payment/internal/adapter/api"
 	grpcadapter "github.com/iho/neobank/services/payment/internal/adapter/grpc"
+	"github.com/iho/neobank/services/payment/internal/adapter/railsclient"
 	sqlcrepo "github.com/iho/neobank/services/payment/internal/adapter/sqlc"
 	"github.com/iho/neobank/services/payment/internal/config"
 	genapi "github.com/iho/neobank/services/payment/internal/gen/api"
@@ -91,6 +93,16 @@ func main() {
 	strictServer := apiadapter.NewServer(p2pUC, limitsUC)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
 
+	bankAccountRepo := sqlcrepo.NewBankAccountRepository(queries)
+	bankTransferRepo := sqlcrepo.NewBankTransferRepository(queries)
+	rails := railsclient.New(railsclient.Config{BaseURL: cfg.RailsURL})
+	getOrCreateBankAccountUC := usecase.NewGetOrCreateBankAccountUseCase(bankAccountRepo, rails)
+	if cfg.RailsSettlementLedgerAcctID == "" {
+		logger.Warn("RAILS_SETTLEMENT_LEDGER_ACCOUNT_ID not set (inbound bank transfers will fail)")
+	}
+	processInboundTransferUC := usecase.NewProcessInboundTransferUseCase(bankTransferRepo, users, ledger, outboxRepo, auditRepo, cfg.RailsSettlementLedgerAcctID, txRunner)
+	railsHandlers := apiadapter.NewRailsHandlers(getOrCreateBankAccountUC, processInboundTransferUC)
+
 	producer := outbox.NewProducer(outbox.ProducerConfig{
 		KafkaBrokers:    cfg.KafkaBrokers,
 		NotificationURL: cfg.NotificationURL,
@@ -113,6 +125,24 @@ func main() {
 	r.Use(sloghttp.AccessLog(logger, sloghttp.WithService("payment")))
 	metrics.Mount(r)
 	genapi.HandlerFromMux(strictHandler, r)
+	r.Get("/api/v1/payments/bank-accounts", railsHandlers.GetBankAccount)
+
+	// Webhook deliveries from the rails simulator carry their own
+	// signature/replay verification (vendorsim.VerifyWebhook), not an
+	// Idempotency-Key header, so this route is mounted outside the router
+	// above rather than through r.Use(idempotency.Middleware(...)).
+	webhookRouter := chi.NewRouter()
+	webhookRouter.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	webhookRouter.Use(sloghttp.AccessLog(logger, sloghttp.WithService("payment")))
+	webhookRouter.Use(vendorsim.VerifyWebhook(vendorsim.VerifyWebhookConfig{
+		Secret: []byte(cfg.RailsWebhookSecret),
+		Nonces: vendorsim.NewMemoryNonceStore(),
+	}))
+	webhookRouter.Post("/rails", railsHandlers.HandleRailsWebhook)
+
+	root := chi.NewRouter()
+	root.Mount("/webhooks", webhookRouter)
+	root.Mount("/", r)
 
 	grpcServer, err := grpcutil.NewServer()
 	if err != nil {
@@ -138,7 +168,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%s", cfg.HTTPPort),
-		Handler:           r,
+		Handler:           root,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

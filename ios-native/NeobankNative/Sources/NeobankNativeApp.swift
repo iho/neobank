@@ -9,6 +9,7 @@ struct NeobankNativeApp: App {
             RootView()
                 .environment(environment.sessionStore)
                 .environment(environment.authController)
+                .environment(environment.kycController)
         }
     }
 }

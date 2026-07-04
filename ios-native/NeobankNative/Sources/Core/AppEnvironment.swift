@@ -6,6 +6,7 @@ import Foundation
 struct AppEnvironment {
     let sessionStore: SessionStore
     let authController: AuthController
+    let kycController: KycController
 
     init() {
         let tokenStorage = TokenStorage()
@@ -38,13 +39,15 @@ struct AppEnvironment {
             )
         )
 
-        let repository = AuthRepository(authClient: authClient, client: apiClient)
+        let authRepository = AuthRepository(authClient: authClient, client: apiClient)
+        let kycRepository = KycRepository(client: apiClient)
 
         self.sessionStore = sessionStore
         self.authController = AuthController(
-            repository: repository,
+            repository: authRepository,
             tokenStorage: tokenStorage,
             sessionStore: sessionStore
         )
+        self.kycController = KycController(repository: kycRepository)
     }
 }

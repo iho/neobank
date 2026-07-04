@@ -12,7 +12,7 @@ struct RootView: View {
             case .unauthenticated:
                 NavigationStack { LoginView() }
             case .authenticated:
-                HomeView()
+                HomeGateView()
             }
         }
         .task { authController.bootstrap() }

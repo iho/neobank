@@ -8,17 +8,24 @@
 
 /* Begin PBXBuildFile section */
 		030DEE9C80EFF0CF4C96E2C9 /* TokenStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF7B5FFFF7375445B62C0B82 /* TokenStorage.swift */; };
-		173F308FACCC00FE456BF90A /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10DE678D5873AF65360E1F71 /* AppEnvironment.swift */; };
 		18340DF0A277A2A4BABE728D /* AuthController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E702064BE10C871910F04B43 /* AuthController.swift */; };
 		19176421DCEB7F8A6DA93260 /* NeobankNativeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29809FF8318033A59B0C9A23 /* NeobankNativeTests.swift */; };
+		1C88EB7E6B25AA9DEDE94035 /* KycController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8140870966A15D171A6E8DD1 /* KycController.swift */; };
 		24979A4B925DFE4D10268214 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A6ED23D23D588AC0F47FAAF /* APIClient.swift */; };
+		30CBE1651462AD57967D220C /* MainTabsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D35F772A45936FB9ED444A5 /* MainTabsView.swift */; };
 		34C861C4534F8F10EC0C8B4A /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07A5AA344C675821569D9EA4 /* AppConfig.swift */; };
 		4CE724308C3B10C4C846D214 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E5DE93BE596EB591262A81 /* RootView.swift */; };
 		4D0B8A1BB4A67453CE5AF131 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCDA79C9A0F0757F1D594795 /* SessionStore.swift */; };
+		50D7F4E37E243482ED1B3810 /* KycModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993A09380701A44098666B1C /* KycModels.swift */; };
 		5497B9A883AE46A0B05C31B2 /* NeobankNativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6607B3679DBEC971E1CB8CA6 /* NeobankNativeApp.swift */; };
 		623DBB2BA44A834018E3DD08 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB3B3D55AC0F29A93164374 /* HomeView.swift */; };
+		67526C7A24DFC6AD4035AB11 /* HomeGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA4168B7715633CCB472CC75 /* HomeGateView.swift */; };
+		797922BBF741D714FFE4E109 /* KycRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB369E9CED643BA93DB5759 /* KycRepository.swift */; };
 		7B9E0C7C79769B98B1502EC3 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4443AC3058135D53A36F25B2 /* APIError.swift */; };
+		7CB336451E660BCC097ACD9B /* KycFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E035D4D5448DBD8BF1DD1676 /* KycFormView.swift */; };
+		82752FC0DD6D7ACE64270B8A /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E074B533C39E8127A7CD1A /* AppEnvironment.swift */; };
 		857DA4381BCE34BA4CA5BC4C /* RefreshCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 847E81692775099B1598EC25 /* RefreshCoordinator.swift */; };
+		866149CD941C14AEEF1EAA12 /* KycPendingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14E9770AAECEC2BAE9DCC5F4 /* KycPendingView.swift */; };
 		AD18CF44DE934BEE014DD7C4 /* AuthRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B12B7A5A5BEA1F27E35095F /* AuthRepository.swift */; };
 		BA17F0F4F844124C018D5447 /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6342844747E75F84D4DB1A /* RegisterView.swift */; };
 		EED689661ABABA021839BB6A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 350F481851788C4488DA1036 /* LoginView.swift */; };
@@ -37,23 +44,30 @@
 
 /* Begin PBXFileReference section */
 		07A5AA344C675821569D9EA4 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
-		10DE678D5873AF65360E1F71 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
+		14E9770AAECEC2BAE9DCC5F4 /* KycPendingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KycPendingView.swift; sourceTree = "<group>"; };
 		29809FF8318033A59B0C9A23 /* NeobankNativeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeobankNativeTests.swift; sourceTree = "<group>"; };
 		2B12B7A5A5BEA1F27E35095F /* AuthRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthRepository.swift; sourceTree = "<group>"; };
 		350F481851788C4488DA1036 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		3AB369E9CED643BA93DB5759 /* KycRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KycRepository.swift; sourceTree = "<group>"; };
 		3FE533EF902CB25E7275145C /* NeobankNativeTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = NeobankNativeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4443AC3058135D53A36F25B2 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		4A6342844747E75F84D4DB1A /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
+		5D35F772A45936FB9ED444A5 /* MainTabsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabsView.swift; sourceTree = "<group>"; };
 		6607B3679DBEC971E1CB8CA6 /* NeobankNativeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeobankNativeApp.swift; sourceTree = "<group>"; };
 		6963E2DA9122D255B252643F /* NeobankNative.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NeobankNative.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6DB3B3D55AC0F29A93164374 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		8140870966A15D171A6E8DD1 /* KycController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KycController.swift; sourceTree = "<group>"; };
 		847E81692775099B1598EC25 /* RefreshCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshCoordinator.swift; sourceTree = "<group>"; };
 		8A6ED23D23D588AC0F47FAAF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		993A09380701A44098666B1C /* KycModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KycModels.swift; sourceTree = "<group>"; };
 		AF7B5FFFF7375445B62C0B82 /* TokenStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStorage.swift; sourceTree = "<group>"; };
 		BCDA79C9A0F0757F1D594795 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		D1DC0E0D79AB870D26852319 /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
 		D7E5DE93BE596EB591262A81 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		DA4168B7715633CCB472CC75 /* HomeGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeGateView.swift; sourceTree = "<group>"; };
+		E035D4D5448DBD8BF1DD1676 /* KycFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KycFormView.swift; sourceTree = "<group>"; };
 		E702064BE10C871910F04B43 /* AuthController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthController.swift; sourceTree = "<group>"; };
+		E7E074B533C39E8127A7CD1A /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -69,6 +83,8 @@
 		396796042CDC7B7478A0F835 /* Root */ = {
 			isa = PBXGroup;
 			children = (
+				DA4168B7715633CCB472CC75 /* HomeGateView.swift */,
+				5D35F772A45936FB9ED444A5 /* MainTabsView.swift */,
 				D7E5DE93BE596EB591262A81 /* RootView.swift */,
 			);
 			path = Root;
@@ -79,6 +95,7 @@
 			children = (
 				DB15691B43F24B89F8F3C1B0 /* Auth */,
 				7F198F850CBA70B810F6067D /* Home */,
+				5A92F080B1AABD4E7D80C680 /* Kyc */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -90,6 +107,18 @@
 				3FE533EF902CB25E7275145C /* NeobankNativeTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		5A92F080B1AABD4E7D80C680 /* Kyc */ = {
+			isa = PBXGroup;
+			children = (
+				8140870966A15D171A6E8DD1 /* KycController.swift */,
+				E035D4D5448DBD8BF1DD1676 /* KycFormView.swift */,
+				993A09380701A44098666B1C /* KycModels.swift */,
+				14E9770AAECEC2BAE9DCC5F4 /* KycPendingView.swift */,
+				3AB369E9CED643BA93DB5759 /* KycRepository.swift */,
+			);
+			path = Kyc;
 			sourceTree = "<group>";
 		};
 		5BD940650E824AF5D108BC3B /* Networking */ = {
@@ -121,6 +150,7 @@
 		A81813F5B0A5EEBC01FBA79C /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				E7E074B533C39E8127A7CD1A /* AppEnvironment.swift */,
 				DCC5AA40C2F3865FE49470BF /* Auth */,
 				93C5D909C42B8B25D1EF5DC0 /* Config */,
 				5BD940650E824AF5D108BC3B /* Networking */,
@@ -153,7 +183,6 @@
 		DCC5AA40C2F3865FE49470BF /* Auth */ = {
 			isa = PBXGroup;
 			children = (
-				10DE678D5873AF65360E1F71 /* AppEnvironment.swift */,
 				BCDA79C9A0F0757F1D594795 /* SessionStore.swift */,
 			);
 			path = Auth;
@@ -268,12 +297,19 @@
 				24979A4B925DFE4D10268214 /* APIClient.swift in Sources */,
 				7B9E0C7C79769B98B1502EC3 /* APIError.swift in Sources */,
 				34C861C4534F8F10EC0C8B4A /* AppConfig.swift in Sources */,
-				173F308FACCC00FE456BF90A /* AppEnvironment.swift in Sources */,
+				82752FC0DD6D7ACE64270B8A /* AppEnvironment.swift in Sources */,
 				18340DF0A277A2A4BABE728D /* AuthController.swift in Sources */,
 				F618584B914A88CBA547CA63 /* AuthModels.swift in Sources */,
 				AD18CF44DE934BEE014DD7C4 /* AuthRepository.swift in Sources */,
+				67526C7A24DFC6AD4035AB11 /* HomeGateView.swift in Sources */,
 				623DBB2BA44A834018E3DD08 /* HomeView.swift in Sources */,
+				1C88EB7E6B25AA9DEDE94035 /* KycController.swift in Sources */,
+				7CB336451E660BCC097ACD9B /* KycFormView.swift in Sources */,
+				50D7F4E37E243482ED1B3810 /* KycModels.swift in Sources */,
+				866149CD941C14AEEF1EAA12 /* KycPendingView.swift in Sources */,
+				797922BBF741D714FFE4E109 /* KycRepository.swift in Sources */,
 				EED689661ABABA021839BB6A /* LoginView.swift in Sources */,
+				30CBE1651462AD57967D220C /* MainTabsView.swift in Sources */,
 				5497B9A883AE46A0B05C31B2 /* NeobankNativeApp.swift in Sources */,
 				857DA4381BCE34BA4CA5BC4C /* RefreshCoordinator.swift in Sources */,
 				BA17F0F4F844124C018D5447 /* RegisterView.swift in Sources */,

@@ -210,8 +210,8 @@ Inverts the previous flow: card service used to call its own authorize/capture
 logic directly (via the public gateway/mobile API — see "kept as-is" below); with
 the simulator, an "external processor" originates those events instead, which is
 how Marqeta/Visa actually behave. Split into 2a (issuance + real-time auth +
-capture + reversal, **done**) and 2b (auth expiry, chargebacks, partial/multi
-capture, **not yet built**).
+capture + reversal, **done**) and 2b (auth expiry + chargebacks, **done**;
+partial/multi capture and MCC magic values, **not yet built**).
 
 **Phase 2a — done.** Implemented and wired end-to-end:
 
@@ -276,28 +276,75 @@ capture, **not yet built**).
   admin API end-to-end (unit tests with fakes and a real `httptest` server
   cover the sync-auth path in both services).
 
-**Phase 2b — not yet built.**
-- Auth expiry: a background sweep in the simulator that finds un-captured,
-  un-reversed transactions past a TTL and fires `card.auth.expired` (the card
-  service side can reuse `ReverseAuthorizationUseCase` for this — the event
-  name is the only new thing needed).
-- Chargebacks: `POST /sim/transactions/{id}/chargeback`, landing on the card
-  service as a new event requiring a provisional-credit ledger flow and a
-  dispute record — genuinely new state, not a reuse of existing usecases.
-- Partial/multi-capture (airline/hotel patterns).
+**Phase 2b — done** (auth expiry and chargebacks). Implemented and wired
+end-to-end:
+
+- `services/simulators/cardproc`:
+  - A background sweep (`ExpireAuthorizationsUseCase`, run on a ticker from
+    `cmd/server/main.go`, interval `CARDPROC_AUTH_SWEEP_INTERVAL` default
+    30s) finds transactions still `approved` past `CARDPROC_AUTH_TTL`
+    (default 5m — real processors hold auths for days, this is short so the
+    expiry path is actually observable in a demo/test run) and fires
+    `card.auth.expired` per transaction, same webhook mechanism as capture/
+    reversal.
+  - `POST /sim/transactions/{id}/chargeback` — disputes a captured
+    transaction (`cardproc.chargebacks`, status `opened`), fires
+    `card.chargeback.opened`.
+  - `POST /sim/chargebacks/{id}/resolve` (body `{"outcome": "won"|"lost"}`)
+    — closes the dispute, fires `card.chargeback.won` or `.lost`.
+  - `GET /sim/chargebacks/{id}` — admin visibility.
+- Card service:
+  - `POST /webhooks/cardproc/events` handles `card.auth.expired` by calling
+    the *existing* `ReverseAuthorizationUseCase` with reason `"expired"` —
+    same ledger action (void the hold) as an explicit reversal, just a
+    distinct event type so audit/observability can tell "merchant voided"
+    apart from "hold aged out". No new domain status needed; `CardAuthVoided`
+    and its wallet-history projection already covered "reversal or expiry"
+    (see the doc comment on that event, written during 2a).
+  - New `ProcessChargebackWebhookUseCase` (genuinely new state, as
+    anticipated): `Opened` looks up the captured authorization, issues an
+    immediate provisional credit (`settlement account → wallet`, via
+    `ledgerclient.CreateTransfer`, idempotency key
+    `chargebackID+":credit"`), and records a `card.disputes` row keyed by
+    the simulator's `chargeback_id` (`UNIQUE`) so a redelivered webhook is a
+    no-op rather than a second credit. `Resolved` is idempotent on dispute
+    status: `won` leaves the credit in place (no ledger action); `lost`
+    reverses it (`wallet → settlement`, idempotency key
+    `chargebackID+":reversal"`).
+  - New events `card.chargeback.opened` / `card.chargeback.resolved`,
+    projected by `pkg/walletprojection` — "opened" creates a
+    `chargeback_credit` wallet-history row (status `provisional`);
+    "resolved" is a `CaptureUpdate` reusing the same row ID, flipping status
+    to `won`/`lost` (the ledger transfer, if any, already moved the money;
+    same pattern as `applyBankTransferReturned`).
+
+**Deliberately not done in 2b**:
+- Partial/multi-capture (airline/hotel patterns) — blocked on more than
+  simulator work: goledger's `CaptureHold` (see
+  `proto/goledger/v1/hold_service.proto`) always captures the full hold
+  amount, no partial-amount parameter. Doing this properly needs a goledger
+  change, not just a neobank one.
 - MCC-based magic values (e.g. `7995` gambling) for exercising card controls
-  — deferred because `AuthorizeTransactionUseCase` doesn't currently branch
-  on MCC at all; adding that decline path is orthogonal to the simulator work.
+  — still deferred because `AuthorizeTransactionUseCase` doesn't currently
+  branch on MCC at all; adding that decline path is orthogonal to the
+  simulator work.
+- No test coverage in card service for the new chargeback usecase — this
+  service has no unit-test/fakes infrastructure at all yet (unlike payment/
+  cardproc), so adding one test file would be inventing a testing
+  convention rather than following an established one. Cardproc's own new
+  usecases (`expire_authorizations`, `open_chargeback`,
+  `resolve_chargeback`) are unit-tested with fakes, consistent with that
+  simulator's existing pattern.
 
 **Done when** (2a, met): `POST /sim/transactions` end-to-end produces a real
 ledger hold via the existing saga, `capture: true` settles it, and
 `.../capture` / `.../reverse` drive the same outcomes for auth-only
 transactions — all through the synchronous-auth-plus-async-webhook path
 rather than the old direct-call shortcut.
-**Done when** (2b, not yet met): auth expiry releases holds automatically; a
-chargeback produces provisional-credit postings and a dispute record;
-declines happen for MCC-restricted categories, not just frozen
-cards/limits/funds.
+**Done when** (2b, met): auth expiry releases holds automatically; a
+chargeback produces a provisional credit and a dispute record, and
+resolving it either finalizes or reverses that credit. Not yet met: MCC-
+restricted declines, and partial/multi-capture (needs a goledger change).
 
 ## Phase 3 — KYC vendor simulator (`services/simulators/kyc`) — done
 

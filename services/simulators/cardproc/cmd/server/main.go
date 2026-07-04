@@ -39,6 +39,7 @@ func main() {
 	queries := sqlc.New(pool)
 	cardRepo := sqlcrepo.NewCardRepository(queries)
 	txRepo := sqlcrepo.NewTransactionRepository(queries)
+	chargebackRepo := sqlcrepo.NewChargebackRepository(queries)
 	deliveryStore := deliverystore.NewPostgres(queries)
 
 	dispatcher := vendorsim.NewDispatcher(deliveryStore, []byte(cfg.WebhookSecret), logger)
@@ -58,8 +59,31 @@ func main() {
 	simulateTxUC := usecase.NewSimulateTransactionUseCase(cardRepo, txRepo, cardClient, dispatcher, cfg.EventsURL)
 	captureTxUC := usecase.NewCaptureTransactionUseCase(txRepo, dispatcher, cfg.EventsURL)
 	reverseTxUC := usecase.NewReverseTransactionUseCase(txRepo, dispatcher, cfg.EventsURL)
+	expireAuthsUC := usecase.NewExpireAuthorizationsUseCase(txRepo, dispatcher, cfg.EventsURL)
+	openChargebackUC := usecase.NewOpenChargebackUseCase(txRepo, chargebackRepo, dispatcher, cfg.EventsURL)
+	resolveChargebackUC := usecase.NewResolveChargebackUseCase(chargebackRepo, dispatcher, cfg.EventsURL)
 
-	server := apiadapter.NewServer(issueCardUC, simulateTxUC, captureTxUC, reverseTxUC, cardRepo, deliveryStore)
+	server := apiadapter.NewServer(issueCardUC, simulateTxUC, captureTxUC, reverseTxUC, openChargebackUC, resolveChargebackUC, cardRepo, chargebackRepo, deliveryStore)
+
+	sweepCtx, cancelSweep := context.WithCancel(ctx)
+	defer cancelSweep()
+	go func() {
+		ticker := time.NewTicker(cfg.AuthSweepInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-sweepCtx.Done():
+				return
+			case <-ticker.C:
+				if n, err := expireAuthsUC.Sweep(sweepCtx, cfg.AuthTTL); err != nil {
+					logger.Error("auth expiry sweep failed", "error", err)
+				} else if n > 0 {
+					logger.Info("auth expiry sweep", "expired", n)
+				}
+			}
+		}
+	}()
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))

@@ -14,6 +14,7 @@ import (
 type Querier interface {
 	CreateAuthorization(ctx context.Context, arg CreateAuthorizationParams) error
 	CreateCard(ctx context.Context, arg CreateCardParams) error
+	CreateDispute(ctx context.Context, arg CreateDisputeParams) (CreateDisputeRow, error)
 	CreateSagaInstance(ctx context.Context, arg CreateSagaInstanceParams) error
 	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error)
 	FinishReconciliationRun(ctx context.Context, arg FinishReconciliationRunParams) error
@@ -22,6 +23,7 @@ type Querier interface {
 	GetCardByID(ctx context.Context, id uuid.UUID) (GetCardByIDRow, error)
 	GetCardByProcessorRef(ctx context.Context, processorRef pgtype.Text) (GetCardByProcessorRefRow, error)
 	GetCardByUserAndIdempotencyKey(ctx context.Context, arg GetCardByUserAndIdempotencyKeyParams) (GetCardByUserAndIdempotencyKeyRow, error)
+	GetDisputeByChargebackID(ctx context.Context, chargebackID string) (GetDisputeByChargebackIDRow, error)
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	InsertFraudDecision(ctx context.Context, arg InsertFraudDecisionParams) error
@@ -37,6 +39,7 @@ type Querier interface {
 	MarkAuthorizationHold(ctx context.Context, arg MarkAuthorizationHoldParams) error
 	MarkAuthorizationVoided(ctx context.Context, arg MarkAuthorizationVoidedParams) error
 	MarkCardCancelled(ctx context.Context, id uuid.UUID) error
+	MarkDisputeResolved(ctx context.Context, arg MarkDisputeResolvedParams) (MarkDisputeResolvedRow, error)
 	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
 	ResolveReconciliationBreak(ctx context.Context, arg ResolveReconciliationBreakParams) (int64, error)
 	StartReconciliationRun(ctx context.Context, arg StartReconciliationRunParams) (uuid.UUID, error)

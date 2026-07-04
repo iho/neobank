@@ -14,12 +14,14 @@
 package events
 
 const (
-	TypeCardIssued       = "card.issued"
-	TypeCardFrozen       = "card.frozen"
-	TypeCardUnfrozen     = "card.unfrozen"
-	TypeCardAuthApproved = "card.auth.approved"
-	TypeCardAuthCaptured = "card.auth.captured"
-	TypeCardAuthVoided   = "card.auth.voided"
+	TypeCardIssued             = "card.issued"
+	TypeCardFrozen             = "card.frozen"
+	TypeCardUnfrozen           = "card.unfrozen"
+	TypeCardAuthApproved       = "card.auth.approved"
+	TypeCardAuthCaptured       = "card.auth.captured"
+	TypeCardAuthVoided         = "card.auth.voided"
+	TypeCardChargebackOpened   = "card.chargeback.opened"
+	TypeCardChargebackResolved = "card.chargeback.resolved"
 )
 
 type CardIssued struct {
@@ -57,13 +59,13 @@ func (e CardUnfrozen) AggregateID() string   { return e.CardID }
 func (e CardUnfrozen) Version() int          { return 1 }
 
 type CardAuthApproved struct {
-	AuthorizationID       string `json:"authorization_id"`
-	CardID                string `json:"card_id"`
-	UserID                string `json:"user_id"`
-	Amount                string `json:"amount"`
-	Currency              string `json:"currency"`
-	MerchantName          string `json:"merchant_name"`
-	MerchantCategoryCode  string `json:"merchant_category_code,omitempty"`
+	AuthorizationID      string `json:"authorization_id"`
+	CardID               string `json:"card_id"`
+	UserID               string `json:"user_id"`
+	Amount               string `json:"amount"`
+	Currency             string `json:"currency"`
+	MerchantName         string `json:"merchant_name"`
+	MerchantCategoryCode string `json:"merchant_category_code,omitempty"`
 }
 
 func (e CardAuthApproved) EventType() string     { return TypeCardAuthApproved }
@@ -99,3 +101,41 @@ func (e CardAuthVoided) EventType() string     { return TypeCardAuthVoided }
 func (e CardAuthVoided) AggregateType() string { return "authorization" }
 func (e CardAuthVoided) AggregateID() string   { return e.AuthorizationID }
 func (e CardAuthVoided) Version() int          { return 1 }
+
+// CardChargebackOpened is published when a captured transaction is disputed:
+// the cardholder gets a provisional credit immediately, before the dispute
+// is resolved either way (see CardChargebackResolved).
+type CardChargebackOpened struct {
+	DisputeID                   string `json:"dispute_id"`
+	AuthorizationID             string `json:"authorization_id"`
+	CardID                      string `json:"card_id"`
+	UserID                      string `json:"user_id"`
+	Amount                      string `json:"amount"`
+	Currency                    string `json:"currency"`
+	Reason                      string `json:"reason"`
+	ProvisionalCreditTransferID string `json:"provisional_credit_transfer_id"`
+}
+
+func (e CardChargebackOpened) EventType() string     { return TypeCardChargebackOpened }
+func (e CardChargebackOpened) AggregateType() string { return "dispute" }
+func (e CardChargebackOpened) AggregateID() string   { return e.DisputeID }
+func (e CardChargebackOpened) Version() int          { return 1 }
+
+// CardChargebackResolved closes out a dispute: "won" (cardholder keeps the
+// provisional credit, it's now final) or "lost" (the credit is reversed
+// back out of the wallet).
+type CardChargebackResolved struct {
+	DisputeID          string `json:"dispute_id"`
+	AuthorizationID    string `json:"authorization_id"`
+	CardID             string `json:"card_id"`
+	UserID             string `json:"user_id"`
+	Amount             string `json:"amount"`
+	Currency           string `json:"currency"`
+	Outcome            string `json:"outcome"`
+	ReversalTransferID string `json:"reversal_transfer_id,omitempty"`
+}
+
+func (e CardChargebackResolved) EventType() string     { return TypeCardChargebackResolved }
+func (e CardChargebackResolved) AggregateType() string { return "dispute" }
+func (e CardChargebackResolved) AggregateID() string   { return e.DisputeID }
+func (e CardChargebackResolved) Version() int          { return 1 }

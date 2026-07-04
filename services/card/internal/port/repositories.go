@@ -43,3 +43,13 @@ type AuthorizationRepository interface {
 type FraudDecisionRepository interface {
 	Record(ctx context.Context, entityType, entityID, userID, transactionType, amount, currency string, result fraud.Result) error
 }
+
+// DisputeRepository is keyed by the cardproc simulator's chargeback ID
+// (chargeback_id UNIQUE), so a redelivered "opened" webhook is a no-op
+// rather than a second provisional credit.
+type DisputeRepository interface {
+	Create(ctx context.Context, d domain.Dispute) (*domain.Dispute, error)
+	GetByChargebackID(ctx context.Context, chargebackID string) (*domain.Dispute, error)
+	MarkResolved(ctx context.Context, chargebackID, status, reversalTransferID string) (*domain.Dispute, error)
+	WithTx(tx pgx.Tx) DisputeRepository
+}

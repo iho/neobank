@@ -55,6 +55,22 @@ type CardCard struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+type CardDispute struct {
+	ID                          uuid.UUID
+	ChargebackID                string
+	AuthorizationID             uuid.UUID
+	CardID                      uuid.UUID
+	UserID                      uuid.UUID
+	Amount                      pgtype.Numeric
+	Currency                    string
+	Reason                      string
+	Status                      string
+	ProvisionalCreditTransferID string
+	ReversalTransferID          string
+	CreatedAt                   pgtype.Timestamptz
+	UpdatedAt                   pgtype.Timestamptz
+}
+
 type CardFraudDecision struct {
 	ID              uuid.UUID
 	EntityType      string

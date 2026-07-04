@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/iho/neobank/services/simulators/cardproc/internal/domain"
 )
@@ -125,6 +126,79 @@ func (r *fakeTransactionRepository) MarkReversed(_ context.Context, id string) e
 	r.txs[id] = tx
 
 	return nil
+}
+
+func (r *fakeTransactionRepository) MarkExpired(_ context.Context, id string) error {
+	tx, ok := r.txs[id]
+	if !ok {
+		return fmt.Errorf("transaction %q not found", id)
+	}
+
+	tx.Status = domain.TransactionStatusExpired
+	r.txs[id] = tx
+
+	return nil
+}
+
+func (r *fakeTransactionRepository) ListExpiredApproved(_ context.Context, cutoff time.Time, limit int32) ([]domain.Transaction, error) {
+	var out []domain.Transaction
+	for _, tx := range r.txs {
+		if tx.Status != domain.TransactionStatusApproved || !tx.CreatedAt.Before(cutoff) {
+			continue
+		}
+		out = append(out, tx)
+		if int32(len(out)) >= limit {
+			break
+		}
+	}
+
+	return out, nil
+}
+
+type fakeChargebackRepository struct {
+	chargebacks map[string]domain.Chargeback
+	seq         int
+}
+
+func newFakeChargebackRepository() *fakeChargebackRepository {
+	return &fakeChargebackRepository{chargebacks: map[string]domain.Chargeback{}}
+}
+
+func (r *fakeChargebackRepository) Create(_ context.Context, transactionID, authorizationID, amount, currency, reason string) (domain.Chargeback, error) {
+	r.seq++
+	cb := domain.Chargeback{
+		ID:              "chargeback-" + strconv.Itoa(r.seq),
+		TransactionID:   transactionID,
+		AuthorizationID: authorizationID,
+		Amount:          amount,
+		Currency:        currency,
+		Reason:          reason,
+		Status:          domain.ChargebackStatusOpened,
+	}
+	r.chargebacks[cb.ID] = cb
+
+	return cb, nil
+}
+
+func (r *fakeChargebackRepository) GetByID(_ context.Context, id string) (*domain.Chargeback, error) {
+	cb, ok := r.chargebacks[id]
+	if !ok {
+		return nil, nil
+	}
+
+	return &cb, nil
+}
+
+func (r *fakeChargebackRepository) SetStatus(_ context.Context, id, status string) (domain.Chargeback, error) {
+	cb, ok := r.chargebacks[id]
+	if !ok {
+		return domain.Chargeback{}, fmt.Errorf("chargeback %q not found", id)
+	}
+
+	cb.Status = status
+	r.chargebacks[id] = cb
+
+	return cb, nil
 }
 
 type fakeDispatcher struct {

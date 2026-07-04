@@ -110,12 +110,83 @@ func (q *Queries) GetTransactionByID(ctx context.Context, id uuid.UUID) (GetTran
 	return i, err
 }
 
+const listExpiredApprovedTransactions = `-- name: ListExpiredApprovedTransactions :many
+SELECT id, card_id, authorization_id, amount::text AS amount, currency, merchant_name, mcc,
+       status, reason_code, created_at, captured_at, reversed_at
+FROM cardproc.transactions
+WHERE status = 'approved' AND created_at < $2
+ORDER BY created_at
+LIMIT $1
+`
+
+type ListExpiredApprovedTransactionsParams struct {
+	Limit  int32
+	Cutoff pgtype.Timestamptz
+}
+
+type ListExpiredApprovedTransactionsRow struct {
+	ID              uuid.UUID
+	CardID          uuid.UUID
+	AuthorizationID string
+	Amount          string
+	Currency        string
+	MerchantName    string
+	Mcc             string
+	Status          string
+	ReasonCode      string
+	CreatedAt       pgtype.Timestamptz
+	CapturedAt      pgtype.Timestamptz
+	ReversedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) ListExpiredApprovedTransactions(ctx context.Context, arg ListExpiredApprovedTransactionsParams) ([]ListExpiredApprovedTransactionsRow, error) {
+	rows, err := q.db.Query(ctx, listExpiredApprovedTransactions, arg.Limit, arg.Cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListExpiredApprovedTransactionsRow{}
+	for rows.Next() {
+		var i ListExpiredApprovedTransactionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CardID,
+			&i.AuthorizationID,
+			&i.Amount,
+			&i.Currency,
+			&i.MerchantName,
+			&i.Mcc,
+			&i.Status,
+			&i.ReasonCode,
+			&i.CreatedAt,
+			&i.CapturedAt,
+			&i.ReversedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markTransactionCaptured = `-- name: MarkTransactionCaptured :exec
 UPDATE cardproc.transactions SET status = 'captured', captured_at = now() WHERE id = $1
 `
 
 func (q *Queries) MarkTransactionCaptured(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, markTransactionCaptured, id)
+	return err
+}
+
+const markTransactionExpired = `-- name: MarkTransactionExpired :exec
+UPDATE cardproc.transactions SET status = 'expired', expired_at = now() WHERE id = $1
+`
+
+func (q *Queries) MarkTransactionExpired(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markTransactionExpired, id)
 	return err
 }
 

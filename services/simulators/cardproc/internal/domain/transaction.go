@@ -7,6 +7,7 @@ const (
 	TransactionStatusDeclined = "declined"
 	TransactionStatusCaptured = "captured"
 	TransactionStatusReversed = "reversed"
+	TransactionStatusExpired  = "expired"
 )
 
 // Transaction is one simulated merchant charge against a card. AuthorizationID

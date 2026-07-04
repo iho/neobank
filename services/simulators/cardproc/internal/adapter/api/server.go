@@ -13,12 +13,15 @@ import (
 )
 
 type Server struct {
-	issueCard  *usecase.IssueCardUseCase
-	simulateTx *usecase.SimulateTransactionUseCase
-	captureTx  *usecase.CaptureTransactionUseCase
-	reverseTx  *usecase.ReverseTransactionUseCase
-	cards      port.CardRepository
-	deliveries vendorsim.DeliveryStore
+	issueCard         *usecase.IssueCardUseCase
+	simulateTx        *usecase.SimulateTransactionUseCase
+	captureTx         *usecase.CaptureTransactionUseCase
+	reverseTx         *usecase.ReverseTransactionUseCase
+	openChargeback    *usecase.OpenChargebackUseCase
+	resolveChargeback *usecase.ResolveChargebackUseCase
+	cards             port.CardRepository
+	chargebacks       port.ChargebackRepository
+	deliveries        vendorsim.DeliveryStore
 }
 
 func NewServer(
@@ -26,16 +29,22 @@ func NewServer(
 	simulateTx *usecase.SimulateTransactionUseCase,
 	captureTx *usecase.CaptureTransactionUseCase,
 	reverseTx *usecase.ReverseTransactionUseCase,
+	openChargeback *usecase.OpenChargebackUseCase,
+	resolveChargeback *usecase.ResolveChargebackUseCase,
 	cards port.CardRepository,
+	chargebacks port.ChargebackRepository,
 	deliveries vendorsim.DeliveryStore,
 ) *Server {
 	return &Server{
-		issueCard:  issueCard,
-		simulateTx: simulateTx,
-		captureTx:  captureTx,
-		reverseTx:  reverseTx,
-		cards:      cards,
-		deliveries: deliveries,
+		issueCard:         issueCard,
+		simulateTx:        simulateTx,
+		captureTx:         captureTx,
+		reverseTx:         reverseTx,
+		openChargeback:    openChargeback,
+		resolveChargeback: resolveChargeback,
+		cards:             cards,
+		chargebacks:       chargebacks,
+		deliveries:        deliveries,
 	}
 }
 
@@ -46,6 +55,9 @@ func (s *Server) Mount(r chi.Router) {
 	r.Post("/sim/transactions", s.simulateTransaction)
 	r.Post("/sim/transactions/{id}/capture", s.captureTransaction)
 	r.Post("/sim/transactions/{id}/reverse", s.reverseTransaction)
+	r.Post("/sim/transactions/{id}/chargeback", s.openChargebackHandler)
+	r.Post("/sim/chargebacks/{id}/resolve", s.resolveChargebackHandler)
+	r.Get("/sim/chargebacks/{id}", s.getChargeback)
 	r.Get("/sim/deliveries", s.listDeliveries)
 	r.Get("/sim/deliveries/{id}", s.getDelivery)
 }
@@ -170,6 +182,81 @@ func (s *Server) reverseTransaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, toTransactionResponse(tx))
+}
+
+type openChargebackRequest struct {
+	Reason string `json:"reason"`
+}
+
+type resolveChargebackRequest struct {
+	Outcome string `json:"outcome"`
+}
+
+type chargebackResponse struct {
+	ID              string `json:"id"`
+	TransactionID   string `json:"transaction_id"`
+	AuthorizationID string `json:"authorization_id"`
+	Amount          string `json:"amount"`
+	Currency        string `json:"currency"`
+	Reason          string `json:"reason"`
+	Status          string `json:"status"`
+}
+
+func (s *Server) openChargebackHandler(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	var req openChargebackRequest
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	cb, err := s.openChargeback.Execute(r.Context(), id, req.Reason)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toChargebackResponse(cb))
+}
+
+func (s *Server) resolveChargebackHandler(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	var req resolveChargebackRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	cb, err := s.resolveChargeback.Execute(r.Context(), id, req.Outcome)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toChargebackResponse(cb))
+}
+
+func (s *Server) getChargeback(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	cb, err := s.chargebacks.GetByID(r.Context(), id)
+	if err != nil || cb == nil {
+		writeError(w, http.StatusNotFound, "chargeback not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toChargebackResponse(*cb))
+}
+
+func toChargebackResponse(cb domain.Chargeback) chargebackResponse {
+	return chargebackResponse{
+		ID:              cb.ID,
+		TransactionID:   cb.TransactionID,
+		AuthorizationID: cb.AuthorizationID,
+		Amount:          cb.Amount,
+		Currency:        cb.Currency,
+		Reason:          cb.Reason,
+		Status:          cb.Status,
+	}
 }
 
 func (s *Server) listDeliveries(w http.ResponseWriter, r *http.Request) {

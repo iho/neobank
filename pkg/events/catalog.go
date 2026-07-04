@@ -171,6 +171,22 @@ func Catalog() []CatalogEntry {
 			Topics:        []string{"card.events"},
 			PayloadFields: []string{"authorization_id", "card_id", "user_id", "amount", "currency"},
 		},
+		{
+			EventType:     TypeCardChargebackOpened,
+			EventVersion:  1,
+			AggregateType: "dispute",
+			Description:   "Captured transaction disputed; cardholder issued a provisional credit",
+			Topics:        []string{"card.events"},
+			PayloadFields: []string{"dispute_id", "authorization_id", "card_id", "user_id", "amount", "currency", "reason", "provisional_credit_transfer_id"},
+		},
+		{
+			EventType:     TypeCardChargebackResolved,
+			EventVersion:  1,
+			AggregateType: "dispute",
+			Description:   "Dispute resolved won (credit finalized) or lost (credit reversed)",
+			Topics:        []string{"card.events"},
+			PayloadFields: []string{"dispute_id", "authorization_id", "card_id", "user_id", "amount", "currency", "outcome", "reversal_transfer_id"},
+		},
 	}
 }
 
@@ -250,6 +266,14 @@ func RegisteredEvents() []Event {
 		CardAuthVoided{
 			AuthorizationID: "auth-2", CardID: "card-1", UserID: "user-1",
 			Amount: "15.00", Currency: "USD",
+		},
+		CardChargebackOpened{
+			DisputeID: "dispute-1", AuthorizationID: "auth-1", CardID: "card-1", UserID: "user-1",
+			Amount: "25.00", Currency: "USD", Reason: "fraud", ProvisionalCreditTransferID: "ltx-cb-1",
+		},
+		CardChargebackResolved{
+			DisputeID: "dispute-1", AuthorizationID: "auth-1", CardID: "card-1", UserID: "user-1",
+			Amount: "25.00", Currency: "USD", Outcome: "lost", ReversalTransferID: "ltx-cb-2",
 		},
 	}
 }

@@ -72,6 +72,7 @@ func main() {
 	queries := sqlc.New(pool)
 	cardRepo := sqlcrepo.NewCardRepository(queries)
 	authRepo := sqlcrepo.NewAuthorizationRepository(queries)
+	disputeRepo := sqlcrepo.NewDisputeRepository(queries)
 	outboxRepo := sqlcrepo.NewOutboxRepository(queries)
 	auditRepo := sqlcrepo.NewAuditRepository(queries)
 	fraudRepo := sqlcrepo.NewFraudDecisionRepository(queries)
@@ -95,10 +96,11 @@ func main() {
 	captureUC := usecase.NewCaptureAuthorizationUseCase(authRepo, ledger, outboxRepo, auditRepo, cfg.SettlementLedgerAcctID, txRunner)
 	reverseUC := usecase.NewReverseAuthorizationUseCase(authRepo, ledger, outboxRepo, auditRepo, txRunner)
 	listAuthsUC := usecase.NewListAuthorizationsUseCase(authRepo)
+	chargebackUC := usecase.NewProcessChargebackWebhookUseCase(authRepo, disputeRepo, users, ledger, outboxRepo, auditRepo, cfg.SettlementLedgerAcctID, txRunner)
 
 	strictServer := apiadapter.NewServer(issueUC, freezeUC, unfreezeUC, updateControlsUC, authorizeUC, captureUC, listAuthsUC)
 	strictHandler := genapi.NewStrictHandler(strictServer, nil)
-	cardProcHandlers := apiadapter.NewCardProcHandlers(authorizeUC, captureUC, reverseUC, cfg.CardProcWebhookSecret)
+	cardProcHandlers := apiadapter.NewCardProcHandlers(authorizeUC, captureUC, reverseUC, chargebackUC, cfg.CardProcWebhookSecret)
 
 	producer := outbox.NewProducer(outbox.ProducerConfig{
 		KafkaBrokers:    cfg.KafkaBrokers,

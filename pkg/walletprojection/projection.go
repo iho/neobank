@@ -59,6 +59,11 @@ func Apply(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {
 	case events.TypeCardAuthVoided:
 		update, err := applyCardAuthVoided(envelope)
 		return nil, update, err
+	case events.TypeCardChargebackOpened:
+		return applyCardChargebackOpened(envelope)
+	case events.TypeCardChargebackResolved:
+		update, err := applyCardChargebackResolved(envelope)
+		return nil, update, err
 
 	default:
 		return nil, nil, nil
@@ -328,6 +333,57 @@ func applyCardAuthCaptured(envelope events.Envelope) (*CaptureUpdate, error) {
 		Amount:        payload.Amount,
 		Currency:      payload.Currency,
 		Status:        "captured",
+		CreatedAt:     createdAt,
+	}, nil
+}
+
+func applyCardChargebackOpened(envelope events.Envelope) ([]Row, *CaptureUpdate, error) {
+	var payload events.CardChargebackOpened
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return nil, nil, fmt.Errorf("parse card chargeback opened: %w", err)
+	}
+
+	createdAt := envelope.OccurredAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	return []Row{{
+		UserID:        payload.UserID,
+		ID:            payload.DisputeID,
+		SourceEventID: envelope.EventID,
+		Type:          "chargeback_credit",
+		Amount:        payload.Amount,
+		Currency:      payload.Currency,
+		Direction:     "credit",
+		Status:        "provisional",
+		CreatedAt:     createdAt,
+	}}, nil, nil
+}
+
+// applyCardChargebackResolved reuses the chargeback-opened row's ID: the
+// ledger transfer (if any) already moved the money, this only needs to
+// reflect the dispute's final state ("won" the credit stays, "lost" it was
+// clawed back) — same pattern as applyBankTransferReturned.
+func applyCardChargebackResolved(envelope events.Envelope) (*CaptureUpdate, error) {
+	var payload events.CardChargebackResolved
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return nil, fmt.Errorf("parse card chargeback resolved: %w", err)
+	}
+
+	createdAt := envelope.OccurredAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	return &CaptureUpdate{
+		UserID:        payload.UserID,
+		ID:            payload.DisputeID,
+		SourceEventID: envelope.EventID,
+		Type:          "chargeback_credit",
+		Amount:        payload.Amount,
+		Currency:      payload.Currency,
+		Status:        payload.Outcome,
 		CreatedAt:     createdAt,
 	}, nil
 }

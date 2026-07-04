@@ -33,7 +33,7 @@ Designed for **auditability**: correlation IDs end-to-end, append-only evidence 
 | P2P transfers (saga: fraud → ledger → outbox) | Done |
 | Bank transfer top-up + outbound send (rails simulator: virtual IBAN, inbound/outbound webhooks, ledger credit/debit, recon) | Done (`services/simulators/rails`; see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md)) |
 | Virtual cards (issue, freeze, unfreeze) | Done |
-| Card authorization + capture (hold → settle) | Done, driven by cardproc simulator webhooks (`services/simulators/cardproc`); see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md) |
+| Card authorization + capture (hold → settle), auth expiry sweep, chargebacks (provisional credit → won/lost) | Done, driven by cardproc simulator webhooks (`services/simulators/cardproc`); see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md) |
 | Multi-currency wallets + FX conversion (fx simulator: quote → execute → two-leg ledger posting) | Done (`services/simulators/fx`; fee-income separation and recon not yet wired — see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md)) |
 | Unified wallet tx history (CQRS projection) | Done |
 | Notifications (HTTP ingest + optional Kafka) | Done |
@@ -467,7 +467,9 @@ Contract source: [pkg/events/catalog.go](pkg/events/catalog.go). Export with `ma
 | `CARDPROC_SERVICE_URL` | `http://localhost:8091` | card (issues virtual cards) |
 | `CARDPROC_WEBHOOK_SECRET` | `dev-cardproc-webhook-secret` | card, cardproc simulator (shared HMAC secret) |
 | `CARD_SERVICE_AUTHORIZE_URL` | `http://localhost:8084/webhooks/cardproc/authorize` | cardproc simulator (synchronous auth decision) |
-| `CARD_SERVICE_EVENTS_URL` | `http://localhost:8084/webhooks/cardproc/events` | cardproc simulator (async capture/reversal) |
+| `CARD_SERVICE_EVENTS_URL` | `http://localhost:8084/webhooks/cardproc/events` | cardproc simulator (async capture/reversal/expiry/chargeback) |
+| `CARDPROC_AUTH_TTL` | `5m` | cardproc simulator (background sweep expires unauthorized-but-uncaptured holds older than this) |
+| `CARDPROC_AUTH_SWEEP_INTERVAL` | `30s` | cardproc simulator (how often the auth expiry sweep runs) |
 | `KYC_VENDOR_SERVICE_URL` | `http://localhost:8092` | user (submits applicants) |
 | `KYC_WEBHOOK_SECRET` | `dev-kyc-webhook-secret` | user, kyc simulator (shared HMAC secret) |
 | `USER_SERVICE_EVENTS_URL` | `http://localhost:8081/webhooks/kyc/events` | kyc simulator (async verdict) |

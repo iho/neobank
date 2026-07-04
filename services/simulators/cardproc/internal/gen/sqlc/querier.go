@@ -14,16 +14,21 @@ type Querier interface {
 	CancelCard(ctx context.Context, id uuid.UUID) error
 	ClaimDueDeliveries(ctx context.Context, arg ClaimDueDeliveriesParams) ([]CardprocWebhookDelivery, error)
 	CreateCard(ctx context.Context, arg CreateCardParams) (CardprocCard, error)
+	CreateChargeback(ctx context.Context, arg CreateChargebackParams) (CreateChargebackRow, error)
 	CreateTransaction(ctx context.Context, arg CreateTransactionParams) (CreateTransactionRow, error)
 	EnqueueDelivery(ctx context.Context, arg EnqueueDeliveryParams) error
 	GetCardByID(ctx context.Context, id uuid.UUID) (CardprocCard, error)
+	GetChargebackByID(ctx context.Context, id uuid.UUID) (GetChargebackByIDRow, error)
 	GetDelivery(ctx context.Context, id uuid.UUID) (CardprocWebhookDelivery, error)
 	GetTransactionByID(ctx context.Context, id uuid.UUID) (GetTransactionByIDRow, error)
 	ListDeliveries(ctx context.Context, limitVal int32) ([]CardprocWebhookDelivery, error)
+	ListExpiredApprovedTransactions(ctx context.Context, arg ListExpiredApprovedTransactionsParams) ([]ListExpiredApprovedTransactionsRow, error)
 	MarkDeliveryDelivered(ctx context.Context, arg MarkDeliveryDeliveredParams) error
 	MarkDeliveryFailed(ctx context.Context, arg MarkDeliveryFailedParams) error
 	MarkTransactionCaptured(ctx context.Context, id uuid.UUID) error
+	MarkTransactionExpired(ctx context.Context, id uuid.UUID) error
 	MarkTransactionReversed(ctx context.Context, id uuid.UUID) error
+	SetChargebackStatus(ctx context.Context, arg SetChargebackStatusParams) (SetChargebackStatusRow, error)
 	SetTransactionAuthResult(ctx context.Context, arg SetTransactionAuthResultParams) (SetTransactionAuthResultRow, error)
 }
 

@@ -22,3 +22,14 @@ UPDATE cardproc.transactions SET status = 'captured', captured_at = now() WHERE 
 
 -- name: MarkTransactionReversed :exec
 UPDATE cardproc.transactions SET status = 'reversed', reversed_at = now() WHERE id = $1;
+
+-- name: MarkTransactionExpired :exec
+UPDATE cardproc.transactions SET status = 'expired', expired_at = now() WHERE id = $1;
+
+-- name: ListExpiredApprovedTransactions :many
+SELECT id, card_id, authorization_id, amount::text AS amount, currency, merchant_name, mcc,
+       status, reason_code, created_at, captured_at, reversed_at
+FROM cardproc.transactions
+WHERE status = 'approved' AND created_at < @cutoff
+ORDER BY created_at
+LIMIT $1;

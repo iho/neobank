@@ -28,11 +28,29 @@ CREATE TABLE cardproc.transactions (
     reason_code      TEXT NOT NULL DEFAULT '',
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     captured_at      TIMESTAMPTZ,
-    reversed_at      TIMESTAMPTZ
+    reversed_at      TIMESTAMPTZ,
+    expired_at       TIMESTAMPTZ
 );
 
 CREATE INDEX idx_cardproc_transactions_card
     ON cardproc.transactions (card_id, created_at);
+
+-- One row per simulated dispute against a captured transaction. Its ID is
+-- what the card service tracks as dispute_id.
+CREATE TABLE cardproc.chargebacks (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id   UUID NOT NULL REFERENCES cardproc.transactions(id),
+    authorization_id TEXT NOT NULL,
+    amount           NUMERIC(20,2) NOT NULL CHECK (amount > 0),
+    currency         CHAR(3) NOT NULL,
+    reason           TEXT NOT NULL DEFAULT '',
+    status           TEXT NOT NULL DEFAULT 'opened',
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_cardproc_chargebacks_transaction
+    ON cardproc.chargebacks (transaction_id);
 
 -- Outbound webhook delivery queue backing pkg/vendorsim.DeliveryStore, for
 -- the async capture/reversal events only (the auth decision is synchronous).

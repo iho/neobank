@@ -2,7 +2,9 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -24,19 +26,21 @@ var centsPerUnit = decimal.NewFromInt(100)
 // through vendorsim.VerifyWebhook, since that middleware's replay de-dup
 // doesn't apply to a synchronous call-and-response; the async route uses it.
 type CardProcHandlers struct {
-	authorize *usecase.AuthorizeTransactionUseCase
-	capture   *usecase.CaptureAuthorizationUseCase
-	reverse   *usecase.ReverseAuthorizationUseCase
-	secret    []byte
+	authorize  *usecase.AuthorizeTransactionUseCase
+	capture    *usecase.CaptureAuthorizationUseCase
+	reverse    *usecase.ReverseAuthorizationUseCase
+	chargeback *usecase.ProcessChargebackWebhookUseCase
+	secret     []byte
 }
 
 func NewCardProcHandlers(
 	authorize *usecase.AuthorizeTransactionUseCase,
 	capture *usecase.CaptureAuthorizationUseCase,
 	reverse *usecase.ReverseAuthorizationUseCase,
+	chargeback *usecase.ProcessChargebackWebhookUseCase,
 	webhookSecret string,
 ) *CardProcHandlers {
-	return &CardProcHandlers{authorize: authorize, capture: capture, reverse: reverse, secret: []byte(webhookSecret)}
+	return &CardProcHandlers{authorize: authorize, capture: capture, reverse: reverse, chargeback: chargeback, secret: []byte(webhookSecret)}
 }
 
 type authorizeWebhookRequest struct {
@@ -134,18 +138,24 @@ type cardEventWebhookPayload struct {
 }
 
 // HandleEvents consumes the cardproc simulator's async lifecycle webhooks
-// (capture, reversal), mounted behind vendorsim.VerifyWebhook.
+// (capture, reversal, expiry, chargeback), mounted behind
+// vendorsim.VerifyWebhook.
 func (h *CardProcHandlers) HandleEvents(w http.ResponseWriter, r *http.Request) {
 	eventType := r.Header.Get(vendorsim.HeaderEventType)
 
-	var payload cardEventWebhookPayload
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
 		writeAPIError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	switch eventType {
 	case "card.captured":
+		var payload cardEventWebhookPayload
+		if err := json.Unmarshal(body, &payload); err != nil {
+			writeAPIError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
 		if _, err := h.capture.Execute(r.Context(), usecase.CaptureAuthorizationInput{
 			AuthorizationID: payload.AuthorizationID,
 		}); err != nil {
@@ -153,10 +163,51 @@ func (h *CardProcHandlers) HandleEvents(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	case "card.auth.reversed":
+		var payload cardEventWebhookPayload
+		if err := json.Unmarshal(body, &payload); err != nil {
+			writeAPIError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
 		if _, err := h.reverse.Execute(r.Context(), usecase.ReverseAuthorizationInput{
 			AuthorizationID: payload.AuthorizationID,
 			Reason:          payload.Reason,
 		}); err != nil {
+			writeAPIError(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+	case "card.auth.expired":
+		// A hold aging out unused is handled identically to an explicit
+		// reversal (ReverseAuthorizationUseCase), just from a distinct
+		// event type so audit/observability can tell the two apart.
+		var payload cardEventWebhookPayload
+		if err := json.Unmarshal(body, &payload); err != nil {
+			writeAPIError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+		if _, err := h.reverse.Execute(r.Context(), usecase.ReverseAuthorizationInput{
+			AuthorizationID: payload.AuthorizationID,
+			Reason:          "expired",
+		}); err != nil {
+			writeAPIError(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+	case "card.chargeback.opened":
+		var payload usecase.ChargebackWebhookPayload
+		if err := json.Unmarshal(body, &payload); err != nil {
+			writeAPIError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+		if _, err := h.chargeback.Opened(r.Context(), payload); err != nil {
+			writeAPIError(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+	case "card.chargeback.won":
+		if err := h.handleChargebackResolution(r.Context(), body, domain.DisputeStatusWon); err != nil {
+			writeAPIError(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+	case "card.chargeback.lost":
+		if err := h.handleChargebackResolution(r.Context(), body, domain.DisputeStatusLost); err != nil {
 			writeAPIError(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
@@ -166,6 +217,17 @@ func (h *CardProcHandlers) HandleEvents(w http.ResponseWriter, r *http.Request) 
 	}
 
 	writeAPIJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *CardProcHandlers) handleChargebackResolution(ctx context.Context, body []byte, outcome string) error {
+	var payload usecase.ChargebackWebhookPayload
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return fmt.Errorf("invalid request body")
+	}
+
+	_, err := h.chargeback.Resolved(ctx, payload, outcome)
+
+	return err
 }
 
 func writeAPIJSON(w http.ResponseWriter, status int, body any) {

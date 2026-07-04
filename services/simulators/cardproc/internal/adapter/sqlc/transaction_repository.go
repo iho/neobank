@@ -3,11 +3,13 @@ package sqlcrepo
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/services/simulators/cardproc/internal/domain"
 	"github.com/iho/neobank/services/simulators/cardproc/internal/gen/sqlc"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type TransactionRepository struct {
@@ -139,4 +141,50 @@ func (r *TransactionRepository) MarkReversed(ctx context.Context, id string) err
 	}
 
 	return r.q.MarkTransactionReversed(ctx, uid)
+}
+
+func (r *TransactionRepository) MarkExpired(ctx context.Context, id string) error {
+	uid, err := pgutil.ParseUUID(id)
+	if err != nil {
+		return err
+	}
+
+	return r.q.MarkTransactionExpired(ctx, uid)
+}
+
+func (r *TransactionRepository) ListExpiredApproved(ctx context.Context, cutoff time.Time, limit int32) ([]domain.Transaction, error) {
+	rows, err := r.q.ListExpiredApprovedTransactions(ctx, sqlc.ListExpiredApprovedTransactionsParams{
+		Limit:  limit,
+		Cutoff: pgtype.Timestamptz{Time: cutoff, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	txs := make([]domain.Transaction, 0, len(rows))
+	for _, row := range rows {
+		tx := domain.Transaction{
+			ID:              row.ID.String(),
+			CardID:          row.CardID.String(),
+			AuthorizationID: row.AuthorizationID,
+			Amount:          row.Amount,
+			Currency:        row.Currency,
+			MerchantName:    row.MerchantName,
+			MCC:             row.Mcc,
+			Status:          row.Status,
+			ReasonCode:      row.ReasonCode,
+			CreatedAt:       row.CreatedAt.Time.UTC(),
+		}
+		if row.CapturedAt.Valid {
+			t := row.CapturedAt.Time.UTC()
+			tx.CapturedAt = &t
+		}
+		if row.ReversedAt.Valid {
+			t := row.ReversedAt.Time.UTC()
+			tx.ReversedAt = &t
+		}
+		txs = append(txs, tx)
+	}
+
+	return txs, nil
 }

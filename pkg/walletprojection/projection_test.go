@@ -212,3 +212,43 @@ func TestApplyCardAuthVoided(t *testing.T) {
 		t.Fatalf("void update = %+v", update)
 	}
 }
+
+func TestApplyCardChargebackOpenedAndResolved(t *testing.T) {
+	openedPayload, _ := json.Marshal(events.CardChargebackOpened{
+		DisputeID: "d1", AuthorizationID: "a1", CardID: "c1", UserID: "u1",
+		Amount: "25.00", Currency: "USD", Reason: "fraud", ProvisionalCreditTransferID: "ltx-cb-1",
+	})
+
+	rows, update, err := Apply(events.Envelope{
+		EventID: "e8", EventType: events.TypeCardChargebackOpened, Payload: openedPayload,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if update != nil {
+		t.Fatal("expected no capture update for chargeback opened")
+	}
+
+	if len(rows) != 1 || rows[0].ID != "d1" || rows[0].Type != "chargeback_credit" ||
+		rows[0].Direction != "credit" || rows[0].Status != "provisional" || rows[0].Amount != "25.00" {
+		t.Fatalf("chargeback opened row = %+v", rows)
+	}
+
+	resolvedPayload, _ := json.Marshal(events.CardChargebackResolved{
+		DisputeID: "d1", AuthorizationID: "a1", CardID: "c1", UserID: "u1",
+		Amount: "25.00", Currency: "USD", Outcome: "lost", ReversalTransferID: "ltx-cb-2",
+	})
+
+	_, resolveUpdate, err := Apply(events.Envelope{
+		EventID: "e9", EventType: events.TypeCardChargebackResolved, Payload: resolvedPayload,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resolveUpdate == nil || resolveUpdate.ID != "d1" || resolveUpdate.Status != "lost" ||
+		resolveUpdate.Amount != "25.00" {
+		t.Fatalf("chargeback resolved update = %+v", resolveUpdate)
+	}
+}

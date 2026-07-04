@@ -21,6 +21,18 @@ type CardprocCard struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+type CardprocChargeback struct {
+	ID              uuid.UUID
+	TransactionID   uuid.UUID
+	AuthorizationID string
+	Amount          pgtype.Numeric
+	Currency        string
+	Reason          string
+	Status          string
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
 type CardprocTransaction struct {
 	ID              uuid.UUID
 	CardID          uuid.UUID
@@ -34,6 +46,7 @@ type CardprocTransaction struct {
 	CreatedAt       pgtype.Timestamptz
 	CapturedAt      pgtype.Timestamptz
 	ReversedAt      pgtype.Timestamptz
+	ExpiredAt       pgtype.Timestamptz
 }
 
 type CardprocWebhookDelivery struct {

@@ -44,57 +44,80 @@ struct KycFormView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("A few quick details")
-                            .font(.title2.bold())
-                        Text("We're required to verify your identity before your wallet can go live.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .listRowInsets(EdgeInsets())
-                    .padding(.vertical, 8)
-                }
+            ZStack {
+                BrandBackground()
 
-                if let rejectionReason {
-                    Section {
-                        Label("Previous submission was rejected: \(rejectionReason)", systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
-                    }
-                }
-
-                Section {
-                    TextField("Full legal name", text: $fullName)
-                        .textContentType(.name)
-                    DatePicker("Date of birth", selection: $dateOfBirth, in: dateOfBirthRange, displayedComponents: .date)
-                    TextField("Country code (ISO-2, e.g. US)", text: $countryCode)
-                        .textInputAutocapitalization(.characters)
-                        .autocorrectionDisabled()
-                        .onChange(of: countryCode) { _, newValue in
-                            countryCode = String(newValue.uppercased().prefix(2))
+                ScrollView {
+                    VStack(spacing: 24) {
+                        VStack(spacing: 12) {
+                            GlowIcon(systemName: "checkmark.shield.fill", diameter: 72, iconSize: 32)
+                            Text("A few quick details")
+                                .font(.title2.bold())
+                            Text("We're required to verify your identity before your wallet can go live.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
                         }
-                    TextField("Document type (optional)", text: $documentType)
-                    TextField("Document number (optional)", text: $documentNumber)
-                }
+                        .padding(.top, 8)
 
-                if let errorMessage {
-                    Section {
-                        Text(errorMessage).foregroundStyle(.red)
-                    }
-                }
-
-                Section {
-                    Button {
-                        submit()
-                    } label: {
-                        if isSubmitting {
-                            ProgressView().frame(maxWidth: .infinity)
-                        } else {
-                            Text("Submit").frame(maxWidth: .infinity)
+                        if let rejectionReason {
+                            Label("Previous submission was rejected: \(rejectionReason)", systemImage: "exclamationmark.triangle.fill")
+                                .font(.subheadline)
+                                .foregroundStyle(.red)
+                                .padding(12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .surfaceCard(cornerRadius: 14)
                         }
+
+                        VStack(spacing: 12) {
+                            TextField("Full legal name", text: $fullName)
+                                .brandField()
+                                .textContentType(.name)
+
+                            HStack {
+                                Text("Date of birth")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                DatePicker("", selection: $dateOfBirth, in: dateOfBirthRange, displayedComponents: .date)
+                                    .labelsHidden()
+                            }
+                            .brandField()
+
+                            TextField("Country code (ISO-2, e.g. US)", text: $countryCode)
+                                .brandField()
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .onChange(of: countryCode) { _, newValue in
+                                    countryCode = String(newValue.uppercased().prefix(2))
+                                }
+
+                            TextField("Document type (optional)", text: $documentType)
+                                .brandField()
+
+                            TextField("Document number (optional)", text: $documentNumber)
+                                .brandField()
+                        }
+
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                        }
+
+                        Button {
+                            submit()
+                        } label: {
+                            if isSubmitting {
+                                ProgressView().tint(.white)
+                            } else {
+                                Text("Submit")
+                            }
+                        }
+                        .buttonStyle(.brandPrimary)
+                        .disabled(isSubmitting || !canSubmit)
                     }
-                    .disabled(isSubmitting || !canSubmit)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 24)
                 }
             }
             .navigationTitle("Verify your identity")

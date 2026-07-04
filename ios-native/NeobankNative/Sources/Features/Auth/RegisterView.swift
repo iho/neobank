@@ -15,44 +15,69 @@ struct RegisterView: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                TextField("Email", text: $email)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                TextField("Phone (optional)", text: $phone)
-                    .keyboardType(.phonePad)
-                SecureField("Password", text: $password)
-                TextField("Invite code (optional)", text: $inviteCode)
-                    .textInputAutocapitalization(.characters)
-            } footer: {
-                if password.isEmpty == false && password.count < 8 {
-                    Text("At least 8 characters")
-                        .foregroundStyle(.red)
-                }
-            }
+        ZStack {
+            BrandBackground()
 
-            if let errorMessage {
-                Section {
-                    Text(errorMessage).foregroundStyle(.red)
-                }
-            }
-
-            Section {
-                Button {
-                    submit()
-                } label: {
-                    if isSubmitting {
-                        ProgressView().frame(maxWidth: .infinity)
-                    } else {
-                        Text("Create account").frame(maxWidth: .infinity)
+            ScrollView {
+                VStack(spacing: 24) {
+                    VStack(spacing: 8) {
+                        Text("Create account")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                        Text("Set up your Neobank wallet")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
+                    .padding(.top, 24)
+
+                    VStack(spacing: 12) {
+                        TextField("Email", text: $email)
+                            .brandField()
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+
+                        TextField("Phone (optional)", text: $phone)
+                            .brandField()
+                            .keyboardType(.phonePad)
+
+                        SecureField("Password", text: $password)
+                            .brandField()
+
+                        if !password.isEmpty && password.count < 8 {
+                            Text("At least 8 characters")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        TextField("Invite code (optional)", text: $inviteCode)
+                            .brandField()
+                            .textInputAutocapitalization(.characters)
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+
+                    Button {
+                        submit()
+                    } label: {
+                        if isSubmitting {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text("Create account")
+                        }
+                    }
+                    .buttonStyle(.brandPrimary)
+                    .disabled(isSubmitting || !canSubmit)
                 }
-                .disabled(isSubmitting || !canSubmit)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
             }
+            .scrollDismissesKeyboard(.interactively)
         }
-        .navigationTitle("Create account")
         .navigationBarTitleDisplayMode(.inline)
     }
 

@@ -19,8 +19,17 @@ struct ComingSoonView: View {
 
     var body: some View {
         NavigationStack {
-            ContentUnavailableView(title, systemImage: systemImage, description: Text("Coming soon."))
-                .navigationTitle(title)
+            ZStack {
+                BrandBackground()
+                VStack(spacing: 16) {
+                    GlowIcon(systemName: systemImage, diameter: 72, iconSize: 32)
+                    Text(title).font(.title2.bold())
+                    Text("Coming soon.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle(title)
         }
     }
 }

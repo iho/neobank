@@ -18,63 +18,69 @@ struct LoginView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                VStack(spacing: 8) {
-                    Image(systemName: "banknote.fill")
-                        .font(.system(size: 40))
-                        .foregroundStyle(.tint)
-                    Text("Neobank")
-                        .font(.largeTitle.bold())
-                }
-                .padding(.top, 48)
+        ZStack {
+            BrandBackground()
 
-                VStack(spacing: 16) {
-                    TextField("Email", text: $email)
-                        .textFieldStyle(.roundedBorder)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .textContentType(.username)
-                        .focused($focusedField, equals: .email)
-                        .submitLabel(.next)
-                        .onSubmit { focusedField = .password }
-
-                    SecureField("Password", text: $password)
-                        .textFieldStyle(.roundedBorder)
-                        .textContentType(.password)
-                        .focused($focusedField, equals: .password)
-                        .submitLabel(.go)
-                        .onSubmit { submit() }
-                }
-
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                }
-
-                Button {
-                    submit()
-                } label: {
-                    if isSubmitting {
-                        ProgressView().frame(maxWidth: .infinity)
-                    } else {
-                        Text("Log in").frame(maxWidth: .infinity)
+            ScrollView {
+                VStack(spacing: 32) {
+                    VStack(spacing: 16) {
+                        GlowIcon(systemName: "banknote.fill")
+                        Text("Neobank")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
                     }
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(isSubmitting || !canSubmit)
+                    .padding(.top, 56)
 
-                NavigationLink("Don't have an account? Register") {
-                    RegisterView()
+                    VStack(spacing: 12) {
+                        TextField("Email", text: $email)
+                            .brandField()
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .textContentType(.username)
+                            .focused($focusedField, equals: .email)
+                            .submitLabel(.next)
+                            .onSubmit { focusedField = .password }
+
+                        SecureField("Password", text: $password)
+                            .brandField()
+                            .textContentType(.password)
+                            .focused($focusedField, equals: .password)
+                            .submitLabel(.go)
+                            .onSubmit { submit() }
+                    }
+                    .padding(.horizontal, 24)
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .padding(.horizontal, 24)
+                    }
+
+                    VStack(spacing: 16) {
+                        Button {
+                            submit()
+                        } label: {
+                            if isSubmitting {
+                                ProgressView().tint(.white)
+                            } else {
+                                Text("Log in")
+                            }
+                        }
+                        .buttonStyle(.brandPrimary)
+                        .disabled(isSubmitting || !canSubmit)
+
+                        NavigationLink("Don't have an account? Register") {
+                            RegisterView()
+                        }
+                        .font(.footnote.weight(.medium))
+                    }
+                    .padding(.horizontal, 24)
                 }
-                .font(.footnote)
+                .padding(.bottom, 24)
             }
-            .padding(24)
+            .scrollDismissesKeyboard(.interactively)
         }
-        .scrollDismissesKeyboard(.interactively)
     }
 
     private func submit() {

@@ -10,21 +10,24 @@ struct KycPendingView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                Image(systemName: "hourglass")
-                    .font(.system(size: 40))
-                    .foregroundStyle(.tint)
-                Text("We're reviewing your details")
-                    .font(.title3.bold())
-                Text("This usually only takes a moment.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Button("Check status") {
-                    Task { await kycController.load() }
+            ZStack {
+                BrandBackground()
+
+                VStack(spacing: 16) {
+                    GlowIcon(systemName: "hourglass", diameter: 72, iconSize: 32)
+                    Text("We're reviewing your details")
+                        .font(.title3.bold())
+                    Text("This usually only takes a moment.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Button("Check status") {
+                        Task { await kycController.load() }
+                    }
+                    .buttonStyle(.bordered)
+                    .padding(.top, 8)
                 }
-                .buttonStyle(.bordered)
+                .padding()
             }
-            .padding()
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {

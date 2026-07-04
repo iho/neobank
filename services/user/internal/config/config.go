@@ -5,30 +5,34 @@ import (
 )
 
 type Config struct {
-	DatabaseURL              string
-	HTTPPort                 string
-	GRPCPort                 string
-	LedgerAddr               string
-	RedisURL                 string
-	JWTSecret                string
-	KafkaBrokers             string
-	NotificationURL          string
-	DepositSourceAccountID   string
-	DepositMaxAmount         string
+	DatabaseURL            string
+	HTTPPort               string
+	GRPCPort               string
+	LedgerAddr             string
+	RedisURL               string
+	JWTSecret              string
+	KafkaBrokers           string
+	NotificationURL        string
+	DepositSourceAccountID string
+	DepositMaxAmount       string
+	KYCVendorURL           string
+	KYCWebhookSecret       string
 }
 
 func Load() Config {
 	return Config{
-		DatabaseURL:     env("DATABASE_URL", "postgres://neobank:neobank@localhost:5432/neobank?sslmode=disable"),
-		HTTPPort:        env("HTTP_PORT", "8081"),
-		GRPCPort:        env("GRPC_PORT", "50052"),
-		LedgerAddr:      env("LEDGER_GRPC_ADDR", "localhost:50051"),
-		RedisURL:        env("REDIS_URL", "redis://localhost:6379/0"),
-		JWTSecret:       env("JWT_SECRET", "dev-secret-change-me"),
-		KafkaBrokers:    env("KAFKA_BROKERS", ""),
+		DatabaseURL:            env("DATABASE_URL", "postgres://neobank:neobank@localhost:5432/neobank?sslmode=disable"),
+		HTTPPort:               env("HTTP_PORT", "8081"),
+		GRPCPort:               env("GRPC_PORT", "50052"),
+		LedgerAddr:             env("LEDGER_GRPC_ADDR", "localhost:50051"),
+		RedisURL:               env("REDIS_URL", "redis://localhost:6379/0"),
+		JWTSecret:              env("JWT_SECRET", "dev-secret-change-me"),
+		KafkaBrokers:           env("KAFKA_BROKERS", ""),
 		NotificationURL:        env("NOTIFICATION_SERVICE_URL", "http://localhost:8083/api/v1/internal/events"),
 		DepositSourceAccountID: env("DEPOSIT_SOURCE_LEDGER_ACCOUNT_ID", ""),
 		DepositMaxAmount:       env("DEPOSIT_MAX_AMOUNT", "10000.00"),
+		KYCVendorURL:           env("KYC_VENDOR_SERVICE_URL", "http://localhost:8092"),
+		KYCWebhookSecret:       env("KYC_WEBHOOK_SECRET", "dev-kyc-webhook-secret"),
 	}
 }
 

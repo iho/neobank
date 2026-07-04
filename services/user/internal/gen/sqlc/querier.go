@@ -27,6 +27,8 @@ type Querier interface {
 	DeleteWalletByID(ctx context.Context, id uuid.UUID) error
 	FetchUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxEventsRow, error)
 	GetDepositByUserAndIdempotencyKey(ctx context.Context, arg GetDepositByUserAndIdempotencyKeyParams) (GetDepositByUserAndIdempotencyKeyRow, error)
+	GetKYCCaseByID(ctx context.Context, id uuid.UUID) (GetKYCCaseByIDRow, error)
+	GetKYCCaseByVendorApplicant(ctx context.Context, vendorApplicantID pgtype.Text) (GetKYCCaseByVendorApplicantRow, error)
 	GetLatestKYCCaseByUser(ctx context.Context, userID uuid.UUID) (GetLatestKYCCaseByUserRow, error)
 	GetReferralInviteByCode(ctx context.Context, inviteCode string) (UserReferralInvite, error)
 	GetSagaByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetSagaByIdempotencyKeyRow, error)
@@ -55,10 +57,12 @@ type Querier interface {
 	ListWalletTransactionsByUserInRange(ctx context.Context, arg ListWalletTransactionsByUserInRangeParams) ([]ListWalletTransactionsByUserInRangeRow, error)
 	ListWalletsByUser(ctx context.Context, userID uuid.UUID) ([]ListWalletsByUserRow, error)
 	ListWalletsByUserID(ctx context.Context, userID uuid.UUID) ([]ListWalletsByUserIDRow, error)
+	MarkKYCCaseManualReview(ctx context.Context, id uuid.UUID) error
 	MarkOutboxEventPublished(ctx context.Context, eventID uuid.UUID) error
 	MaskUserAccount(ctx context.Context, arg MaskUserAccountParams) error
 	MaskUserProfile(ctx context.Context, userID uuid.UUID) error
 	RejectKYCCase(ctx context.Context, arg RejectKYCCaseParams) error
+	SetKYCCaseVendorApplicant(ctx context.Context, arg SetKYCCaseVendorApplicantParams) error
 	UpdatePasswordHash(ctx context.Context, arg UpdatePasswordHashParams) error
 	UpdateSagaInstance(ctx context.Context, arg UpdateSagaInstanceParams) error
 	UpsertDeviceToken(ctx context.Context, arg UpsertDeviceTokenParams) (UserDeviceToken, error)

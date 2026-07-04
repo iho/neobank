@@ -24,4 +24,7 @@ cd /svc/rails && /usr/local/bin/migrate-rails
 echo "==> cardproc simulator migrations"
 cd /svc/cardproc && /usr/local/bin/migrate-cardproc
 
+echo "==> kyc simulator migrations"
+cd /svc/kyc && /usr/local/bin/migrate-kyc
+
 echo "all service migrations applied"

@@ -41,10 +41,11 @@ type Profile struct {
 }
 
 type KYCCase struct {
-	ID              string
-	UserID          string
-	Status          KYCStatus
-	RejectionReason string
+	ID                string
+	UserID            string
+	Status            KYCStatus
+	RejectionReason   string
+	VendorApplicantID string
 }
 
 func (s KYCStatus) String() string { return string(s) }

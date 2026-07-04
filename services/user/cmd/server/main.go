@@ -20,16 +20,18 @@ import (
 	"github.com/iho/neobank/pkg/metrics"
 	"github.com/iho/neobank/pkg/otel"
 	"github.com/iho/neobank/pkg/outbox"
-	"github.com/iho/neobank/pkg/screening"
 	"github.com/iho/neobank/pkg/pgutil"
 	"github.com/iho/neobank/pkg/reqctx"
 	"github.com/iho/neobank/pkg/runtime"
+	"github.com/iho/neobank/pkg/screening"
 	"github.com/iho/neobank/pkg/sloghttp"
 	"github.com/iho/neobank/pkg/vault"
+	"github.com/iho/neobank/pkg/vendorsim"
 	apiadapter "github.com/iho/neobank/services/user/internal/adapter/api"
-	grpcadapter "github.com/iho/neobank/services/user/internal/adapter/grpc"
 	"github.com/iho/neobank/services/user/internal/adapter/auth"
+	grpcadapter "github.com/iho/neobank/services/user/internal/adapter/grpc"
 	kafkaadapter "github.com/iho/neobank/services/user/internal/adapter/kafka"
+	"github.com/iho/neobank/services/user/internal/adapter/kycclient"
 	ledgeradapter "github.com/iho/neobank/services/user/internal/adapter/ledger"
 	sqlcrepo "github.com/iho/neobank/services/user/internal/adapter/sqlc"
 	"github.com/iho/neobank/services/user/internal/config"
@@ -114,8 +116,11 @@ func main() {
 	refreshUC := usecase.NewRefreshTokenUseCase(tokenIssuer, userRepo)
 	txRunner := pgutil.NewTxRunner(pool)
 	provisionWalletUC := usecase.NewProvisionWalletUseCase(walletRepo, ledgerAdapter, outboxRepo, auditRepo, sagaStore, txRunner)
-	submitKYCUC := usecase.NewSubmitKYCUseCase(kycRepo, provisionWalletUC, screening.NewStubScreener(), outboxRepo, auditRepo, txRunner)
+	kycVendor := kycclient.New(kycclient.Config{BaseURL: cfg.KYCVendorURL})
+	submitKYCUC := usecase.NewSubmitKYCUseCase(kycRepo, provisionWalletUC, screening.NewStubScreener(), kycVendor, outboxRepo, auditRepo, txRunner)
 	getKYCStatusUC := usecase.NewGetKYCStatusUseCase(kycRepo)
+	processKYCVerdictUC := usecase.NewProcessKYCVerdictUseCase(kycRepo, provisionWalletUC, outboxRepo, auditRepo)
+	kycVendorHandlers := apiadapter.NewKYCVendorHandlers(processKYCVerdictUC)
 	getProfileUC := usecase.NewGetProfileUseCase(userRepo)
 	walletBalanceUC := usecase.NewGetWalletBalanceUseCase(walletRepo, ledgerAdapter)
 	projectWalletEventUC := usecase.NewProjectWalletEventUseCase(walletTxRepo, inboxRepo)
@@ -173,6 +178,19 @@ func main() {
 	metrics.Mount(r)
 	genapi.HandlerFromMux(strictHandler, r)
 
+	// The KYC vendor webhook is mounted on a bare root router (no
+	// Idempotency-Key middleware, which webhook deliveries don't carry)
+	// behind vendorsim.VerifyWebhook — same pattern as payment's rails
+	// webhook and card's cardproc events webhook.
+	root := chi.NewRouter()
+	root.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	root.Use(sloghttp.AccessLog(logger, sloghttp.WithService("user")))
+	root.With(vendorsim.VerifyWebhook(vendorsim.VerifyWebhookConfig{
+		Secret: []byte(cfg.KYCWebhookSecret),
+		Nonces: vendorsim.NewMemoryNonceStore(),
+	})).Post("/webhooks/kyc/events", kycVendorHandlers.HandleKYCEvents)
+	root.Mount("/", r)
+
 	grpcServer, err := grpcutil.NewServer()
 	if err != nil {
 		logger.Error("grpc server init failed", "error", err)
@@ -200,7 +218,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%s", cfg.HTTPPort),
-		Handler:           r,
+		Handler:           root,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

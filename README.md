@@ -28,7 +28,7 @@ Designed for **auditability**: correlation IDs end-to-end, append-only evidence 
 | Capability | Status |
 |------------|--------|
 | User registration, login, JWT refresh | Done |
-| KYC-lite (auto-approve) + wallet provisioning saga | Done |
+| KYC + wallet provisioning saga | Done — async vendor verdict via `services/simulators/kyc` (approve/reject/manual-review), not auto-approve; see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md) |
 | Wallet balance (ledger `GetAccount`) | Done |
 | P2P transfers (saga: fraud → ledger → outbox) | Done |
 | Bank transfer top-up (rails simulator: virtual IBAN + inbound webhook → ledger credit) | Done (`services/simulators/rails`; outbound transfers/recon not yet wired — see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md)) |
@@ -301,6 +301,7 @@ P2P transfers need a funded sender ledger account and a second registered user; 
 | Card | 8084 | Virtual cards, authorizations, capture |
 | Rails simulator | 8090 | Simulated payment rail: virtual IBANs, inbound transfer webhooks (see [docs/vendor-simulators-plan.md](docs/vendor-simulators-plan.md)) |
 | Cardproc simulator | 8091 | Simulated card network: issues virtual cards, drives real-time auth + capture/reversal webhooks into Card |
+| KYC simulator | 8092 | Simulated identity vendor: async approve/reject/manual-review verdicts into User |
 | Vault (local dev) | 8200 | Optional Transit encryption for PII |
 | goledger (external) | 50051 | Double-entry ledger |
 
@@ -465,6 +466,9 @@ Contract source: [pkg/events/catalog.go](pkg/events/catalog.go). Export with `ma
 | `CARDPROC_WEBHOOK_SECRET` | `dev-cardproc-webhook-secret` | card, cardproc simulator (shared HMAC secret) |
 | `CARD_SERVICE_AUTHORIZE_URL` | `http://localhost:8084/webhooks/cardproc/authorize` | cardproc simulator (synchronous auth decision) |
 | `CARD_SERVICE_EVENTS_URL` | `http://localhost:8084/webhooks/cardproc/events` | cardproc simulator (async capture/reversal) |
+| `KYC_VENDOR_SERVICE_URL` | `http://localhost:8092` | user (submits applicants) |
+| `KYC_WEBHOOK_SECRET` | `dev-kyc-webhook-secret` | user, kyc simulator (shared HMAC secret) |
+| `USER_SERVICE_EVENTS_URL` | `http://localhost:8081/webhooks/kyc/events` | kyc simulator (async verdict) |
 | `APP_ENV` | `development` | gateway (dev-auth gate) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | _(empty)_ | all services (tracing off if unset) |
 | `VAULT_ADDR` | _(empty)_ | user (noop encryption if unset) |

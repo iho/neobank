@@ -97,6 +97,57 @@ func (r *KYCRepository) GetLatestByUser(ctx context.Context, userID string) (*do
 	}, nil
 }
 
+func (r *KYCRepository) GetByID(ctx context.Context, caseID string) (*domain.KYCCase, error) {
+	id, err := pgutil.ParseUUID(caseID)
+	if err != nil {
+		return nil, err
+	}
+	row, err := r.q.GetKYCCaseByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.KYCCase{
+		ID:                row.ID.String(),
+		UserID:            row.UserID.String(),
+		Status:            domain.KYCStatus(row.Status),
+		RejectionReason:   row.RejectionReason,
+		VendorApplicantID: row.VendorApplicantID,
+	}, nil
+}
+
+func (r *KYCRepository) GetByVendorApplicant(ctx context.Context, applicantID string) (*domain.KYCCase, error) {
+	row, err := r.q.GetKYCCaseByVendorApplicant(ctx, pgutil.Text(applicantID))
+	if err != nil {
+		return nil, err
+	}
+	return &domain.KYCCase{
+		ID:                row.ID.String(),
+		UserID:            row.UserID.String(),
+		Status:            domain.KYCStatus(row.Status),
+		RejectionReason:   row.RejectionReason,
+		VendorApplicantID: row.VendorApplicantID,
+	}, nil
+}
+
+func (r *KYCRepository) SetVendorApplicant(ctx context.Context, caseID, applicantID string) error {
+	id, err := pgutil.ParseUUID(caseID)
+	if err != nil {
+		return err
+	}
+	return r.q.SetKYCCaseVendorApplicant(ctx, sqlc.SetKYCCaseVendorApplicantParams{
+		ID:                id,
+		VendorApplicantID: pgutil.Text(applicantID),
+	})
+}
+
+func (r *KYCRepository) MarkManualReview(ctx context.Context, caseID string) error {
+	id, err := pgutil.ParseUUID(caseID)
+	if err != nil {
+		return err
+	}
+	return r.q.MarkKYCCaseManualReview(ctx, id)
+}
+
 func (r *KYCRepository) ApproveCase(ctx context.Context, caseID, decidedBy string) error {
 	id, err := pgutil.ParseUUID(caseID)
 	if err != nil {

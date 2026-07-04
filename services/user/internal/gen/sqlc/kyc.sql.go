@@ -59,6 +59,62 @@ func (q *Queries) CreateKYCCase(ctx context.Context, arg CreateKYCCaseParams) (C
 	return i, err
 }
 
+const getKYCCaseByID = `-- name: GetKYCCaseByID :one
+SELECT id, user_id, status, COALESCE(rejection_reason, '') AS rejection_reason,
+       COALESCE(vendor_applicant_id, '') AS vendor_applicant_id
+FROM "user".kyc_cases
+WHERE id = $1
+`
+
+type GetKYCCaseByIDRow struct {
+	ID                uuid.UUID
+	UserID            uuid.UUID
+	Status            string
+	RejectionReason   string
+	VendorApplicantID string
+}
+
+func (q *Queries) GetKYCCaseByID(ctx context.Context, id uuid.UUID) (GetKYCCaseByIDRow, error) {
+	row := q.db.QueryRow(ctx, getKYCCaseByID, id)
+	var i GetKYCCaseByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.RejectionReason,
+		&i.VendorApplicantID,
+	)
+	return i, err
+}
+
+const getKYCCaseByVendorApplicant = `-- name: GetKYCCaseByVendorApplicant :one
+SELECT id, user_id, status, COALESCE(rejection_reason, '') AS rejection_reason,
+       COALESCE(vendor_applicant_id, '') AS vendor_applicant_id
+FROM "user".kyc_cases
+WHERE vendor_applicant_id = $1
+`
+
+type GetKYCCaseByVendorApplicantRow struct {
+	ID                uuid.UUID
+	UserID            uuid.UUID
+	Status            string
+	RejectionReason   string
+	VendorApplicantID string
+}
+
+func (q *Queries) GetKYCCaseByVendorApplicant(ctx context.Context, vendorApplicantID pgtype.Text) (GetKYCCaseByVendorApplicantRow, error) {
+	row := q.db.QueryRow(ctx, getKYCCaseByVendorApplicant, vendorApplicantID)
+	var i GetKYCCaseByVendorApplicantRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.RejectionReason,
+		&i.VendorApplicantID,
+	)
+	return i, err
+}
+
 const getLatestKYCCaseByUser = `-- name: GetLatestKYCCaseByUser :one
 SELECT id, user_id, status, COALESCE(rejection_reason, '') AS rejection_reason
 FROM "user".kyc_cases
@@ -86,6 +142,17 @@ func (q *Queries) GetLatestKYCCaseByUser(ctx context.Context, userID uuid.UUID) 
 	return i, err
 }
 
+const markKYCCaseManualReview = `-- name: MarkKYCCaseManualReview :exec
+UPDATE "user".kyc_cases
+SET status = 'manual_review'
+WHERE id = $1
+`
+
+func (q *Queries) MarkKYCCaseManualReview(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markKYCCaseManualReview, id)
+	return err
+}
+
 const rejectKYCCase = `-- name: RejectKYCCase :exec
 UPDATE "user".kyc_cases
 SET status = 'rejected', decided_at = now(), rejection_reason = $1, decided_by = $2
@@ -100,6 +167,22 @@ type RejectKYCCaseParams struct {
 
 func (q *Queries) RejectKYCCase(ctx context.Context, arg RejectKYCCaseParams) error {
 	_, err := q.db.Exec(ctx, rejectKYCCase, arg.RejectionReason, arg.DecidedBy, arg.ID)
+	return err
+}
+
+const setKYCCaseVendorApplicant = `-- name: SetKYCCaseVendorApplicant :exec
+UPDATE "user".kyc_cases
+SET vendor_applicant_id = $1
+WHERE id = $2
+`
+
+type SetKYCCaseVendorApplicantParams struct {
+	VendorApplicantID pgtype.Text
+	ID                uuid.UUID
+}
+
+func (q *Queries) SetKYCCaseVendorApplicant(ctx context.Context, arg SetKYCCaseVendorApplicantParams) error {
+	_, err := q.db.Exec(ctx, setKYCCaseVendorApplicant, arg.VendorApplicantID, arg.ID)
 	return err
 }
 

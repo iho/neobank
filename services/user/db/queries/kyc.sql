@@ -28,3 +28,25 @@ WHERE id = @id;
 UPDATE "user".kyc_cases
 SET status = 'rejected', decided_at = now(), rejection_reason = @rejection_reason, decided_by = @decided_by
 WHERE id = @id;
+
+-- name: MarkKYCCaseManualReview :exec
+UPDATE "user".kyc_cases
+SET status = 'manual_review'
+WHERE id = @id;
+
+-- name: SetKYCCaseVendorApplicant :exec
+UPDATE "user".kyc_cases
+SET vendor_applicant_id = @vendor_applicant_id
+WHERE id = @id;
+
+-- name: GetKYCCaseByID :one
+SELECT id, user_id, status, COALESCE(rejection_reason, '') AS rejection_reason,
+       COALESCE(vendor_applicant_id, '') AS vendor_applicant_id
+FROM "user".kyc_cases
+WHERE id = @id;
+
+-- name: GetKYCCaseByVendorApplicant :one
+SELECT id, user_id, status, COALESCE(rejection_reason, '') AS rejection_reason,
+       COALESCE(vendor_applicant_id, '') AS vendor_applicant_id
+FROM "user".kyc_cases
+WHERE vendor_applicant_id = @vendor_applicant_id;

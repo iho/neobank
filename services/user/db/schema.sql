@@ -24,14 +24,19 @@ CREATE TABLE "user".profiles (
 );
 
 CREATE TABLE "user".kyc_cases (
-    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id          UUID NOT NULL REFERENCES "user".users(id),
-    status           TEXT NOT NULL DEFAULT 'pending',
-    submitted_at     TIMESTAMPTZ,
-    decided_at       TIMESTAMPTZ,
-    rejection_reason TEXT,
-    decided_by       TEXT
+    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id              UUID NOT NULL REFERENCES "user".users(id),
+    status               TEXT NOT NULL DEFAULT 'pending',
+    submitted_at         TIMESTAMPTZ,
+    decided_at           TIMESTAMPTZ,
+    rejection_reason     TEXT,
+    decided_by           TEXT,
+    vendor_applicant_id  TEXT
 );
+
+CREATE UNIQUE INDEX idx_user_kyc_cases_vendor_applicant
+    ON "user".kyc_cases (vendor_applicant_id)
+    WHERE vendor_applicant_id IS NOT NULL;
 
 CREATE TABLE "user".kyc_submissions (
     id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),

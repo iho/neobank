@@ -260,35 +260,71 @@ chargeback produces provisional-credit postings and a dispute record;
 declines happen for MCC-restricted categories, not just frozen
 cards/limits/funds.
 
-## Phase 3 — KYC vendor simulator (`services/simulators/kyc`)
+## Phase 3 — KYC vendor simulator (`services/simulators/kyc`) — done
 
 Mimics an Onfido/Sumsub-style identity vendor with async verdicts.
 
-**Simulator responsibilities**
-- `POST /v1/applicants` (PII payload) → applicant ID, status `pending`.
-- `POST /v1/applicants/{id}/documents` — fake document upload (metadata only).
-- Async verdict webhook `kyc.check.completed` after a configurable delay:
-  `approved` / `rejected` / `manual_review` — driven by magic values (surname
-  `REJECT` / `REVIEW`; DOB making applicant under 18 → rejected; anything else →
-  approved). Manual-review cases resolvable via admin API
-  (`POST /sim/reviews/{id}/resolve`) to mimic a human agent.
-- `GET /v1/applicants/{id}` for polling fallback.
+**Implemented and wired end-to-end:**
 
-**Neobank-side changes**
-- User service: `submit_kyc.go` stops auto-approving; it submits to the vendor via
-  a `port.KYCVendor` interface and parks the user in `kyc_pending`. Webhook
-  consumer advances the state machine: `approved` → run the existing wallet
-  provisioning saga; `rejected` → terminal state + notification; `manual_review` →
-  waiting state surfaced in (future) back-office.
-- Screening tie-in: keep the existing sanctions/PEP stub (`pkg/screening`) as a
-  separate step — vendor verdict and screening are independent gates, matching
-  reality.
-- Mobile: KYC screen already exists; it gains a "verification in progress" state
-  (poll or push notification on verdict).
+- `services/simulators/kyc`: a standalone HTTP service (plain `chi` handlers,
+  same rationale as rails/cardproc) with:
+  - `POST /v1/applicants` — submits an applicant (`external_ref`, `full_name`,
+    `date_of_birth`, `country_code`). The verdict is decided *here*,
+    deterministically, by the shared `pkg/vendorsim` magic-value conventions:
+    a name containing `REJECT` → rejected, containing `REVIEW` → manual
+    review, an applicant under 18 → rejected (`underage`), otherwise
+    approved. Approved/rejected schedule the `kyc.check.completed` webhook
+    immediately via `pkg/vendorsim.Dispatcher`; `manual_review` schedules
+    nothing — it waits for a human.
+  - `GET /v1/applicants/{id}` — polling fallback / status check.
+  - `POST /sim/reviews/{id}/resolve` — the admin endpoint mimicking a human
+    reviewer clearing a `manual_review` case to `approved`/`rejected`, which
+    then fires the same webhook.
+  - `GET /sim/deliveries[/{id}]` — admin visibility into delivery state.
+  - Its own Postgres schema (`kyc.applicants`, `kyc.webhook_deliveries`) and
+    a Postgres-backed `vendorsim.DeliveryStore`, same pattern as rails/cardproc.
+- User service:
+  - `SubmitKYCUseCase` no longer auto-approves. Sanctions/PEP screening
+    (`pkg/screening`) stays a separate, instant hard-stop — it can still
+    reject synchronously without ever calling the vendor. If screening
+    passes, the case submits to the vendor and returns `pending`; no wallet
+    is provisioned in this call anymore.
+  - New `ProcessKYCVerdictUseCase` (called from the webhook consumer):
+    `approved` runs the *existing* `ProvisionWalletUseCase` and publishes the
+    *existing* `events.KYCApproved`; `rejected` publishes the existing
+    `events.KYCRejected`; `manual_review` just flips the case's status. No
+    new event types were needed — the async path reuses exactly what the old
+    synchronous path already published.
+  - `POST /webhooks/kyc/events` — mounted on a bare root router outside the
+    global `Idempotency-Key` middleware, behind `vendorsim.VerifyWebhook`,
+    same pattern as the rails/cardproc async webhooks. Idempotent by
+    construction: `ProcessKYCVerdictUseCase` no-ops if the case is already in
+    a terminal state (handles a redelivered or duplicated webhook).
+  - Migration adds `kyc_cases.vendor_applicant_id` (unique, nullable) so the
+    webhook can resolve the vendor's applicant ID back to a case — reusing
+    the existing `kyc_cases`/`kyc_submissions` tables rather than a parallel
+    structure.
+- `deployments/docker-compose.services.yml` runs `kyc` alongside the other
+  services; user depends on it being healthy.
 
-**Done when**: registration → KYC → provisioning works with a genuinely async
-verdict; each magic-value branch has an integration test; a user stuck in
-`manual_review` can be resolved via the admin API and completes provisioning.
+**Deliberately not done:**
+- No mobile UI change for a "verification in progress" state — `GET
+  /v1/kyc/status` already returns `pending`/`manual_review` correctly via the
+  existing polling endpoint, so nothing broke, but there's no push
+  notification on verdict yet (would reuse the existing notification
+  service, which already consumes `user.events`).
+- No integration test in `tests/integration` yet driving the simulator's
+  admin API end-to-end (unit tests cover each magic-value branch and the
+  manual-review resolution flow with fakes).
+- Document upload (`POST /v1/applicants/{id}/documents`) was dropped from
+  the original sketch — it would only ever be metadata with no consumer, so
+  it stayed unbuilt rather than adding an endpoint nothing calls.
+
+**Done when** (met): registration → KYC → provisioning works with a
+genuinely async verdict; each magic-value branch (approve/reject/manual
+review/underage) is unit-tested; a user stuck in `manual_review` can be
+resolved via the admin API and completes provisioning; a redelivered verdict
+webhook is a no-op, not a double wallet-provision.
 
 ## Phase 4 — FX / rates simulator (`services/simulators/fx`)
 

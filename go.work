@@ -9,6 +9,7 @@ use (
 	./services/notification
 	./services/payment
 	./services/simulators/cardproc
+	./services/simulators/kyc
 	./services/simulators/rails
 	./services/user
 	./tests/integration

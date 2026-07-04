@@ -60,13 +60,14 @@ type UserGdprRequest struct {
 }
 
 type UserKycCase struct {
-	ID              uuid.UUID
-	UserID          uuid.UUID
-	Status          string
-	SubmittedAt     pgtype.Timestamptz
-	DecidedAt       pgtype.Timestamptz
-	RejectionReason pgtype.Text
-	DecidedBy       pgtype.Text
+	ID                uuid.UUID
+	UserID            uuid.UUID
+	Status            string
+	SubmittedAt       pgtype.Timestamptz
+	DecidedAt         pgtype.Timestamptz
+	RejectionReason   pgtype.Text
+	DecidedBy         pgtype.Text
+	VendorApplicantID pgtype.Text
 }
 
 type UserKycSubmission struct {

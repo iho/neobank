@@ -58,8 +58,14 @@ type KYCRepository interface {
 	UpsertProfile(ctx context.Context, userID, fullName, dob, country string) error
 	CreateCase(ctx context.Context, id, userID, status string) (domain.KYCCase, error)
 	GetLatestByUser(ctx context.Context, userID string) (*domain.KYCCase, error)
+	GetByID(ctx context.Context, caseID string) (*domain.KYCCase, error)
+	// GetByVendorApplicant resolves the KYC vendor's applicant ID back to a
+	// case, so the async verdict webhook can find which case to update.
+	GetByVendorApplicant(ctx context.Context, applicantID string) (*domain.KYCCase, error)
+	SetVendorApplicant(ctx context.Context, caseID, applicantID string) error
 	ApproveCase(ctx context.Context, caseID, decidedBy string) error
 	RejectCase(ctx context.Context, caseID, reason, decidedBy string) error
+	MarkManualReview(ctx context.Context, caseID string) error
 	CreateSubmission(ctx context.Context, sub KYCSubmission) error
 	RecordScreeningCheck(ctx context.Context, check ScreeningCheck) error
 	WithTx(tx pgx.Tx) KYCRepository

@@ -5,7 +5,7 @@ struct MainTabsView: View {
         TabView {
             WalletView()
                 .tabItem { Label("Wallet", systemImage: "wallet.pass") }
-            ComingSoonView(title: "Cards", systemImage: "creditcard")
+            CardsListView()
                 .tabItem { Label("Cards", systemImage: "creditcard") }
             ComingSoonView(title: "Alerts", systemImage: "bell")
                 .tabItem { Label("Alerts", systemImage: "bell") }

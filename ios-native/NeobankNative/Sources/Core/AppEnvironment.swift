@@ -8,6 +8,7 @@ struct AppEnvironment {
     let authController: AuthController
     let kycController: KycController
     let walletController: WalletHomeController
+    let cardsController: CardsController
 
     init() {
         let tokenStorage = TokenStorage()
@@ -43,6 +44,7 @@ struct AppEnvironment {
         let authRepository = AuthRepository(authClient: authClient, client: apiClient)
         let kycRepository = KycRepository(client: apiClient)
         let walletRepository = WalletRepository(client: apiClient)
+        let cardRepository = CardRepository(client: apiClient)
 
         self.sessionStore = sessionStore
         self.authController = AuthController(
@@ -52,5 +54,6 @@ struct AppEnvironment {
         )
         self.kycController = KycController(repository: kycRepository)
         self.walletController = WalletHomeController(repository: walletRepository)
+        self.cardsController = CardsController(repository: cardRepository)
     }
 }

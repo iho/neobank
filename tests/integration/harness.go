@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
@@ -227,16 +226,31 @@ func (h *Harness) buildServiceBinaries() {
 }
 
 func (h *Harness) startServiceProcesses() {
-	notifPort := mustFreePort(h.t)
-	notifGrpcPort := mustFreePort(h.t)
-	userPort := mustFreePort(h.t)
-	userGrpcPort := mustFreePort(h.t)
-	paymentPort := mustFreePort(h.t)
-	paymentGrpcPort := mustFreePort(h.t)
-	cardPort := mustFreePort(h.t)
-	cardGrpcPort := mustFreePort(h.t)
-	kycPort := mustFreePort(h.t)
-	cardProcPort := mustFreePort(h.t)
+	// Ports are reserved by binding a listener and holding it open — not by
+	// closing it and remembering the number — because some of these ports
+	// are referenced (as URLs baked into other services' env vars) tens of
+	// seconds before the owning process actually gets around to binding
+	// them. Closing early frees the port back to the OS for that whole
+	// window, and on a busy CI runner something else can grab it first,
+	// causing the real owner to fail to bind. Each listener is only closed
+	// immediately before the process that owns it is started.
+	notifRes := reservePort(h.t)
+	notifGrpcRes := reservePort(h.t)
+	userRes := reservePort(h.t)
+	userGrpcRes := reservePort(h.t)
+	paymentRes := reservePort(h.t)
+	paymentGrpcRes := reservePort(h.t)
+	cardRes := reservePort(h.t)
+	cardGrpcRes := reservePort(h.t)
+	kycRes := reservePort(h.t)
+	cardProcRes := reservePort(h.t)
+
+	notifPort, notifGrpcPort := notifRes.port, notifGrpcRes.port
+	userPort, userGrpcPort := userRes.port, userGrpcRes.port
+	paymentPort, paymentGrpcPort := paymentRes.port, paymentGrpcRes.port
+	cardPort, cardGrpcPort := cardRes.port, cardGrpcRes.port
+	kycPort := kycRes.port
+	cardProcPort := cardProcRes.port
 
 	h.NotificationURL = fmt.Sprintf("http://127.0.0.1:%s", notifPort)
 	h.UserURL = fmt.Sprintf("http://127.0.0.1:%s", userPort)
@@ -251,6 +265,7 @@ func (h *Harness) startServiceProcesses() {
 	// kyc must be up before user: user's SubmitKYC calls out to it
 	// synchronously, and it needs user's webhook URL to deliver verdicts
 	// back to (see submit_kyc.go / kyc_handlers.go).
+	kycRes.release()
 	h.startProcess("kyc", map[string]string{
 		"DATABASE_URL":            h.DatabaseURL,
 		"HTTP_PORT":               kycPort,
@@ -258,6 +273,8 @@ func (h *Harness) startServiceProcesses() {
 	})
 	waitForHTTP200(h.t, h.KYCURL+"/health")
 
+	userRes.release()
+	userGrpcRes.release()
 	h.startProcess("user", map[string]string{
 		"DATABASE_URL":                     h.DatabaseURL,
 		"REDIS_URL":                        h.RedisURL,
@@ -271,12 +288,16 @@ func (h *Harness) startServiceProcesses() {
 	})
 	waitForHTTP200(h.t, h.UserURL+"/health")
 
+	notifRes.release()
+	notifGrpcRes.release()
 	h.startProcess("notification", map[string]string{
 		"DATABASE_URL":   h.DatabaseURL,
 		"HTTP_PORT":      notifPort,
 		"GRPC_PORT":      notifGrpcPort,
 		"USER_GRPC_ADDR": h.UserGRPCAddr,
 	})
+	paymentRes.release()
+	paymentGrpcRes.release()
 	h.startProcess("payment", map[string]string{
 		"DATABASE_URL":             h.DatabaseURL,
 		"REDIS_URL":                h.RedisURL,
@@ -291,6 +312,7 @@ func (h *Harness) startServiceProcesses() {
 	// it synchronously for every virtual card, with no direct-call fallback
 	// (unlike authorize/capture, which still hit card's own endpoints
 	// directly — see docs/vendor-simulators-plan.md Phase 2a "kept as-is").
+	cardProcRes.release()
 	h.startProcess("cardproc", map[string]string{
 		"DATABASE_URL":               h.DatabaseURL,
 		"HTTP_PORT":                  cardProcPort,
@@ -299,6 +321,8 @@ func (h *Harness) startServiceProcesses() {
 	})
 	waitForHTTP200(h.t, h.CardProcURL+"/health")
 
+	cardRes.release()
+	cardGrpcRes.release()
 	h.startProcess("card", map[string]string{
 		"DATABASE_URL":                 h.DatabaseURL,
 		"REDIS_URL":                    h.RedisURL,
@@ -321,7 +345,7 @@ func (h *Harness) startProcess(name string, env map[string]string) {
 	bin := filepath.Join(h.binDir, name)
 	cmd := exec.Command(bin)
 	cmd.Env = append(os.Environ(), flattenEnv(env)...)
-	cmd.Stdout = io.Discard
+	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
 		h.t.Fatalf("start %s: %v", name, err)
@@ -337,15 +361,26 @@ func flattenEnv(env map[string]string) []string {
 	return out
 }
 
-func mustFreePort(t *testing.T) string {
+// reservedPort holds a listener on a free port so nothing else on the
+// machine can claim it before release() closes it and hands the port
+// number to the process meant to bind it.
+type reservedPort struct {
+	port string
+	ln   net.Listener
+}
+
+func (r reservedPort) release() {
+	_ = r.ln.Close()
+}
+
+func reservePort(t *testing.T) reservedPort {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("free port: %v", err)
 	}
 	port := ln.Addr().(*net.TCPAddr).Port
-	_ = ln.Close()
-	return fmt.Sprintf("%d", port)
+	return reservedPort{port: fmt.Sprintf("%d", port), ln: ln}
 }
 
 func waitForHTTP200(t *testing.T, url string) {

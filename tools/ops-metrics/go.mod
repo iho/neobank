@@ -2,7 +2,7 @@ module github.com/iho/neobank/tools/ops-metrics
 
 go 1.25.0
 
-toolchain go1.25.11
+toolchain go1.25.12
 
 require (
 	github.com/jackc/pgx/v5 v5.10.0

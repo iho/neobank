@@ -27,3 +27,5 @@ profile.cov
 # Editor/IDE
 # .idea/
 # .vscode/
+.DS_Store
+.claude

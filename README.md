@@ -10,6 +10,7 @@ Designed for **auditability**: correlation IDs end-to-end, append-only evidence 
 - [Architecture](#architecture)
 - [Orchestration vs choreography](#orchestration-vs-choreography-in-this-repo)
 - [Repository layout](#repository-layout)
+- [Mobile clients](#mobile-clients)
 - [Quick start](#quick-start)
 - [Services & ports](#services--ports)
 - [Gateway API](#gateway-api)
@@ -146,6 +147,29 @@ neobank/
 Each service follows **clean architecture**: OpenAPI → oapi-codegen (strict Chi) → use cases → sqlc repositories.
 
 PostgreSQL uses **schema-per-service** (`user`, `payment`, `card`, `notification`) — see [deployments/init-db.sql](deployments/init-db.sql).
+
+## Mobile clients
+
+Three mobile clients talk to the same gateway BFF, as a comparison point for what each
+toolkit looks like on identical backend contracts:
+
+- [`mobile/`](mobile) — Flutter (iOS + Android)
+- [`ios-native/`](ios-native) — native SwiftUI
+- [`android-native/`](android-native) — native Jetpack Compose
+
+<table>
+  <tr>
+    <td align="center"><img src="android-native/Screenshots/login.png" width="180"><br><sub>Login</sub></td>
+    <td align="center"><img src="android-native/Screenshots/kyc.png" width="180"><br><sub>KYC gate</sub></td>
+    <td align="center"><img src="android-native/Screenshots/wallet.png" width="180"><br><sub>Wallet</sub></td>
+    <td align="center"><img src="android-native/Screenshots/cards.png" width="180"><br><sub>Cards</sub></td>
+    <td align="center"><img src="android-native/Screenshots/alerts.png" width="180"><br><sub>Alerts</sub></td>
+  </tr>
+</table>
+
+(Android client shown; see each client's own README for its full screenshot set —
+[`android-native/README.md`](android-native/README.md#screenshots),
+[`ios-native/README.md`](ios-native/README.md#screenshots).)
 
 ## Prerequisites
 

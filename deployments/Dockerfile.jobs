@@ -17,11 +17,15 @@ RUN cd services/payment && go build -o /out/payment-aml-export ./cmd/aml-export
 RUN cd services/card && go build -o /out/card-reconcile ./cmd/reconcile
 RUN cd tools/saga-watchdog && go build -o /out/saga-watchdog .
 
+# Build supercronic from source instead of using the upstream release binary:
+# v0.2.47 was released built with Go 1.26.4, whose stdlib is flagged by Trivy
+# (CVE-2026-39822), and supercronic requires go >= 1.26 so it can't share the
+# main build stage.
+FROM golang:1.26.5-alpine AS supercronic
+RUN CGO_ENABLED=0 go install -ldflags "-X main.Version=v0.2.47" github.com/aptible/supercronic@v0.2.47
+
 FROM alpine:3.20
-RUN wget -qO /usr/local/bin/supercronic \
-    https://github.com/aptible/supercronic/releases/download/v0.2.47/supercronic-linux-amd64 \
-    && echo "dcb1403c188a9438c47d4bba82a9c357fc9351ce91627fb2bae627f0f5becfc4  /usr/local/bin/supercronic" | sha256sum -c - \
-    && chmod +x /usr/local/bin/supercronic
+COPY --from=supercronic /go/bin/supercronic /usr/local/bin/supercronic
 
 COPY --from=build /out/payment-reconcile /out/payment-aml-export /out/card-reconcile /out/saga-watchdog /usr/local/bin/
 COPY deployments/crontab /crontab

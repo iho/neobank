@@ -1,6 +1,6 @@
 # Build goledger server + CLI for the compose overlay.
 # Clones from GitHub by default; override GOLEDGER_REPO / GOLEDGER_REF at build time.
-FROM golang:1.25.11-alpine AS builder
+FROM golang:1.25.12-alpine AS builder
 
 ARG GOLEDGER_REPO=https://github.com/iho/goledger.git
 ARG GOLEDGER_REF=main
